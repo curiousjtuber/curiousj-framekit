@@ -1,26 +1,33 @@
 #!/usr/bin/env bash
-# Install or update Deskflow (org.deskflow.deskflow), the keyboard-and-mouse sharing tool, from
-# Flathub, so a PC's mouse and keyboard reach the Frametop desktop. https://deskflow.org
+# Install or update Deskflow (org.deskflow.deskflow), the
+# keyboard-and-mouse sharing tool, from Flathub, so a PC's mouse and
+# keyboard reach the Frametop desktop. https://deskflow.org
 #
 # Usage:  ~/steam-frame-utils/apps/install-deskflow.sh [--yes]
 #
-# --yes  don't ask before downloading; it needs the KDE runtime (org.kde.Platform 6.11), which
-#        Moonlight already brings, else about 400 MB from Flathub
+# --yes  don't ask before downloading; it needs the KDE runtime
+#        (org.kde.Platform 6.11), which Moonlight already brings, else
+#        about 400 MB from Flathub
 #
-# The Frame is the client, the PC the server. On Wayland the client injects input through the
-# RemoteDesktop portal with libei, the same route KRdp takes into the Frametop desktop, so the
-# nested KWin there accepts it. The first start asks once in the headset to allow remote control;
-# Deskflow keeps the portal's restore token in its settings and reconnects without asking. On the
-# PC the server side needs the InputCapture portal, which Plasma 6.7's portal offers. Flathub
-# builds it for aarch64. The flathub user remote is added if missing.
-# Into the user installation (~/.local/share/flatpak), like Frametop and krdpserver: no root and
-# no polkit, so it works over SSH, and the home directory survives SteamOS updates. The KDE
-# runtime goes into the user installation too, even when a system one would do, so removing
-# system Flatpaks later can't break the app. A system copy, say one Discover installed, is
-# reported: the user copy takes precedence, so remove the system one.
+# The Frame is the client, the PC the server. On Wayland the client
+# injects input through the RemoteDesktop portal with libei, the same
+# route KRdp takes into the Frametop desktop, so the nested KWin there
+# accepts it. The first start asks once in the headset to allow remote
+# control; Deskflow keeps the portal's restore token in its settings and
+# reconnects without asking. On the PC the server side needs the
+# InputCapture portal, which Plasma 6.7's portal offers. Flathub builds
+# it for aarch64. The flathub user remote is added if missing. Into the
+# user installation (~/.local/share/flatpak), like Frametop and
+# krdpserver: no root and no polkit, so it works over SSH, and the home
+# directory survives SteamOS updates. The KDE runtime goes into the user
+# installation too, even when a system one would do, so removing system
+# Flatpaks later can't break the app. A system copy, say one Discover
+# installed, is reported: the user copy takes precedence, so remove the
+# system one.
 #
-# The sandbox: network, Wayland and the GPU, kdeglobals read-only, nothing else of the home
-# directory. Portals are open to every Flatpak, so the policy needn't name them.
+# The sandbox: network, Wayland and the GPU, kdeglobals read-only,
+# nothing else of the home directory. Portals are open to every Flatpak,
+# so the policy needn't name them.
 #
 # Uninstall:
 #   flatpak uninstall --user org.deskflow.deskflow
@@ -65,8 +72,9 @@ else
   flatpak install --user "${yes[@]}" "$REMOTE" "$APP"
 fi
 
-# A runtime in the system installation satisfies the install, so flatpak wouldn't pull it into
-# the user one; removing the system Flatpaks would then break the app.
+# A runtime in the system installation satisfies the install, so flatpak
+# wouldn't pull it into the user one; removing the system Flatpaks would
+# then break the app.
 runtime=$(flatpak info --user --show-runtime "$APP")
 if flatpak info --user "$runtime" >/dev/null 2>&1; then
   echo "ok             runtime $runtime"

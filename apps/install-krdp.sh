@@ -1,32 +1,41 @@
 #!/usr/bin/env bash
-# Build and install KRdp's server, krdpserver (Plasma's Remote Desktop), as a flatpak for the
-# Frame, from apps/krdp/io.github.curiousjtuber.Krdp.yml. It serves a Plasma desktop running on
-# the Frame (Frametop's or the stock one) over RDP, for KRDC, Remmina or Windows Remote Desktop;
-# bin/krdpd starts and stops it, and so does KRdp Server in the menu (bin/krdpd-gui), which this
-# adds as well. https://invent.kde.org/plasma/krdp
+# Build and install KRdp's server, krdpserver (Plasma's Remote Desktop),
+# as a flatpak for the Frame, from
+# apps/krdp/io.github.curiousjtuber.Krdp.yml. It serves a Plasma desktop
+# running on the Frame (Frametop's or the stock one) over RDP, for KRDC,
+# Remmina or Windows Remote Desktop; bin/krdpd starts and stops it, and
+# so does KRdp Server in the menu (bin/krdpd-gui), which this adds as
+# well. https://invent.kde.org/plasma/krdp
 #
 # Usage:  ~/steam-frame-utils/apps/install-krdp.sh [--bundle [FILE] | --uninstall]
 #
-# --bundle     after building and installing, also write the app as a single-file bundle, FILE
-#              (default ./io.github.curiousjtuber.Krdp.flatpak), for another aarch64 device:
-#              flatpak --user install FILE  (it gets the KDE runtime from Flathub; no build there)
-# --uninstall  remove the app and its menu entry; the SDK and builder stay (the line to drop
-#              them is printed)
+# --bundle     after building and installing, also write the app as a
+#              single-file bundle, FILE (default
+#              ./io.github.curiousjtuber.Krdp.flatpak), for another
+#              aarch64 device: flatpak --user install FILE  (it gets the
+#              KDE runtime from Flathub; no build there)
+# --uninstall  remove the app and its menu entry; the SDK and builder
+#              stay (the line to drop them is printed)
 #
-# SteamOS has no krdp, Flathub has no krdpserver (only the KRDC client), and anything built
-# against the image's Plasma breaks at the next SteamOS update, so this builds it on KDE's
-# runtime, which brings its own Qt, KF6, ffmpeg and PipeWire; FreeRDP, kpipewire and krdp are
-# built here, with the pins and patches the manifest explains. Unlike the other apps, it goes in
-# the user flatpak installation, not system-wide: flatpak-builder works without root there, and
-# the build needs the KDE 6.11 SDK (about 1 GB to download, 4 GB on disk) and org.flatpak.Builder,
-# which this installs on first use. The build itself takes about half an hour on the Frame.
-# Downloads and build state stay in ~/.cache/krdpd/flatpak, so a re-run after a manifest change
-# rebuilds only what changed, and a run with nothing changed does nothing. No root. Run it on the
-# host, not in a distrobox.
+# SteamOS has no krdp, Flathub has no krdpserver (only the KRDC client),
+# and anything built against the image's Plasma breaks at the next
+# SteamOS update, so this builds it on KDE's runtime, which brings its
+# own Qt, KF6, ffmpeg and PipeWire; FreeRDP, kpipewire and krdp are
+# built here, with the pins and patches the manifest explains. Unlike
+# the other apps, it goes in the user flatpak installation, not
+# system-wide: flatpak-builder works without root there, and the build
+# needs the KDE 6.11 SDK (about 1 GB to download, 4 GB on disk) and
+# org.flatpak.Builder, which this installs on first use. The build
+# itself takes about half an hour on the Frame. Downloads and build
+# state stay in ~/.cache/krdpd/flatpak, so a re-run after a manifest
+# change rebuilds only what changed, and a run with nothing changed does
+# nothing. No root. Run it on the host, not in a distrobox.
 #
-# The sandbox: network (the RDP port), the GPU, flatpak's Wayland socket (the desktop to capture;
-# bin/krdpd points it at the right one), the host's PipeWire socket, and ~/.config/krdpd read-only
-# (the TLS certificate and key bin/krdpd makes). Nothing else of the home directory.
+# The sandbox: network (the RDP port), the GPU, flatpak's Wayland socket
+# (the desktop to capture; bin/krdpd points it at the right one), the
+# host's PipeWire socket, and ~/.config/krdpd read-only (the TLS
+# certificate and key bin/krdpd makes). Nothing else of the home
+# directory.
 #
 # Uninstall:
 #   ~/steam-frame-utils/apps/install-krdp.sh --uninstall
@@ -80,8 +89,9 @@ else
   echo "start it with: krdpd start   (see krdpd --help)"
 fi
 
-# The menu entry, in the home folder's applications, which both desktops' menus read. Rewritten
-# every run, so it follows this checkout if it moves.
+# The menu entry, in the home folder's applications, which both
+# desktops' menus read. Rewritten every run, so it follows this checkout
+# if it moves.
 mkdir -p "$(dirname "$menu")"
 cat > "$menu" <<EOF
 [Desktop Entry]
@@ -96,8 +106,9 @@ Categories=Network;RemoteAccess;
 Keywords=rdp;remote;krdp;krdpd;
 EOF
 
-# flatpak-builder exports each build to the ostree repo in its state dir; the bundle comes from
-# there, and names Flathub so the installing side can fetch the runtime itself.
+# flatpak-builder exports each build to the ostree repo in its state
+# dir; the bundle comes from there, and names Flathub so the installing
+# side can fetch the runtime itself.
 if [ -n "$bundle" ]; then
   flatpak build-bundle --runtime-repo="$REPO_FILE" "$state/state/cache" "$bundle" "$APP" master
   echo "wrote $bundle ($(du -h "$bundle" | cut -f1)); install it with: flatpak --user install $bundle"

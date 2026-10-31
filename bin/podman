@@ -3,7 +3,8 @@
 # nested desktops (Desktop Mode, Frametop) that have their own. Details:
 # https://github.com/curiousjtuber/steam-frame-utils#distrobox-in-desktop-mode
 
-# A distrobox has no podman of its own, but this on its PATH: hand over to the host's.
+# A distrobox has no podman of its own, but this on its PATH: hand over
+# to the host's.
 if [ -n "${CONTAINER_ID:-}" ] || [ -e /run/.containerenv ]; then
   exec distrobox-host-exec "$0" "$@"
 fi

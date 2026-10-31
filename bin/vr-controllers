@@ -1,26 +1,33 @@
 #!/usr/bin/env python3
-# steam-frame-utils: the Frame's VR controllers from a shell: list them, or turn them off as the
-# SteamVR dashboard's power menu does, without putting the headset on.
+# steam-frame-utils: the Frame's VR controllers from a shell: list them,
+# or turn them off as the SteamVR dashboard's power menu does, without
+# putting the headset on.
 #
 # Usage:  vr-controllers
 #         vr-controllers off [left|right]
 #
-# With no argument it lists SteamVR's controllers: hand, model, serial, whether each is on, and its
-# battery. `off` turns off every controller that is on, or only the hand named; a button turns it
-# back on. The headset is never touched. SteamVR has to be running, as it is in Game Mode. It runs
-# on the Frame itself, so from a PC use it over ssh.
+# With no argument it lists SteamVR's controllers: hand, model, serial,
+# whether each is on, and its battery. `off` turns off every controller
+# that is on, or only the hand named; a button turns it back on. The
+# headset is never touched. SteamVR has to be running, as it is in Game
+# Mode. It runs on the Frame itself, so from a PC use it over ssh.
 #
-# The Frame's controllers run on one AA each, and their firmware reports a percentage made for
-# alkaline cells, which reads a full NiMH cell as about 78%. So beside it the list gives the cell's
-# voltage worked back from that percentage, and what that voltage means for a NiMH cell. Both
-# are estimates: the firmware's mapping was fitted to cells measured out of the controller with a
-# multimeter, and SteamVR never reports a voltage.
+# The Frame's controllers run on one AA each, and their firmware reports
+# a percentage made for alkaline cells, which reads a full NiMH cell as
+# about 78%. So beside it the list gives the cell's voltage worked back
+# from that percentage, and what that voltage means for a NiMH cell.
+# Both are estimates: the firmware's mapping was fitted to cells
+# measured out of the controller with a multimeter, and SteamVR never
+# reports a voltage.
 #
-# SteamVR has no public call for this. The dashboard's "Turn off controller" goes through the
-# private IVRControlPanel_006 interface, whose PowerOffTrackedDevice is the 13th method (slot 12).
-# That layout is read off the Android build SteamVR ships beside the Linux one, which keeps its
-# symbols: CHmdSystemLatest's vtable in /opt/steamvr/bin/androidarm64/vrclient.so. A SteamVR update
-# that renames the interface makes this tool refuse rather than call the wrong slot.
+# SteamVR has no public call for this. The dashboard's "Turn off
+# controller" goes through the private IVRControlPanel_006 interface,
+# whose PowerOffTrackedDevice is the 13th method (slot 12). That layout
+# is read off the Android build SteamVR ships beside the Linux one,
+# which keeps its symbols: CHmdSystemLatest's vtable in
+# /opt/steamvr/bin/androidarm64/vrclient.so. A SteamVR update that
+# renames the interface makes this tool refuse rather than call the
+# wrong slot.
 
 import ctypes as C
 import json
@@ -41,13 +48,15 @@ PROP_BATTERY = 1012            # Prop_DeviceBatteryPercentage_Float
 PROP_HAS_BATTERY = 1026        # Prop_DeviceProvidesBatteryStatus_Bool
 FRAME_MODEL = "roy_"           # Roy_Left, Roy_Right: the Frame's AA controllers
 
-# The firmware's percentage is close to linear in the cell's resting voltage, 0% at 1.13 V and 100%
-# at 1.48 V: a line fitted to twenty readings between 9% and 79% against a multimeter (10 mV rms,
-# 20 mV at worst, and one percentage was seen 13 mV apart on two days), so above 79% it is
-# extrapolated.
+# The firmware's percentage is close to linear in the cell's resting
+# voltage, 0% at 1.13 V and 100% at 1.48 V: a line fitted to twenty
+# readings between 9% and 79% against a multimeter (10 mV rms, 20 mV at
+# worst, and one percentage was seen 13 mV apart on two days), so above
+# 79% it is extrapolated.
 AA_EMPTY_V, AA_FULL_V = 1.13, 1.48
-# A NiMH cell's resting voltage against its charge, a typical curve for low self-discharge cells
-# such as Eneloop: high just off the charger, then flat around 1.25 V for most of its life.
+# A NiMH cell's resting voltage against its charge, a typical curve for
+# low self-discharge cells such as Eneloop: high just off the charger,
+# then flat around 1.25 V for most of its life.
 NIMH_CURVE = [(1.15, 0), (1.20, 10), (1.22, 20), (1.235, 30), (1.245, 40), (1.255, 50),
               (1.265, 60), (1.28, 70), (1.30, 80), (1.33, 90), (1.38, 100)]
 APP_BACKGROUND = 3            # VRApplication_Background: fails unless SteamVR already runs
@@ -69,7 +78,8 @@ def usage():
 
 
 def runtime_dir():
-    # Where SteamVR runs from, as `steamvr path` would say; vrpathreg keeps it here.
+    # Where SteamVR runs from, as `steamvr path` would say; vrpathreg
+    # keeps it here.
     path = os.path.expanduser("~/.config/openvr/openvrpaths.vrpath")
     try:
         with open(path) as f:
@@ -101,7 +111,8 @@ class OpenVR:
         if err.value:
             die(f"SteamVR refused: {api.VR_GetVRInitErrorAsEnglishDescription(err.value).decode()}")
 
-        # IVRSystem through its C function table, in openvr_capi.h's order.
+        # IVRSystem through its C function table, in openvr_capi.h's
+        # order.
         for version in (b"IVRSystem_026", b"IVRControlPanel_006"):
             if not api.VR_IsInterfaceVersionValid(version):
                 die(f"this SteamVR has no {version.decode()}; the tool needs updating for it")
@@ -119,7 +130,8 @@ class OpenVR:
         self._string = fn(28, C.c_uint32, C.c_uint32, C.c_int, C.c_char_p, C.c_uint32,
                           C.POINTER(C.c_int))
 
-        # IVRControlPanel is a C++ interface: a pointer to an object whose first word is its vtable.
+        # IVRControlPanel is a C++ interface: a pointer to an object
+        # whose first word is its vtable.
         panel = api.VR_GetGenericInterface(b"IVRControlPanel_006", C.byref(err))
         if err.value or not panel:
             die("SteamVR gave no IVRControlPanel")
@@ -156,8 +168,9 @@ class OpenVR:
 def describe(vr, index):
     model = vr.string(index, PROP_MODEL) or "?"
     serial = vr.string(index, PROP_SERIAL) or "?"
-    # SteamVR forgets a controller's hand the moment it is off; the Frame's controllers carry it
-    # in the model name (Roy_Left, Roy_Right).
+    # SteamVR forgets a controller's hand the moment it is off; the
+    # Frame's controllers carry it in the model name (Roy_Left,
+    # Roy_Right).
     hand = ROLES.get(vr.role(index))
     if hand is None:
         hand = next((h for h in ROLES.values() if model.lower().endswith("_" + h)), "-")
@@ -165,7 +178,8 @@ def describe(vr, index):
 
 
 def aa_estimate(level):
-    # The AA's resting voltage from the firmware's 0-1 level, and the NiMH charge it would mean.
+    # The AA's resting voltage from the firmware's 0-1 level, and the
+    # NiMH charge it would mean.
     volts = AA_EMPTY_V + level * (AA_FULL_V - AA_EMPTY_V)
     if volts <= NIMH_CURVE[0][0]:
         return volts, 0

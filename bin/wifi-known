@@ -1,13 +1,15 @@
 #!/usr/bin/env bash
-# steam-frame-utils: the Wi-Fi networks NetworkManager has saved, from Desktop Mode, where the
-# Frame has no Plasma network applet: by default only the ones in range now, strongest first.
+# steam-frame-utils: the Wi-Fi networks NetworkManager has saved, from
+# Desktop Mode, where the Frame has no Plasma network applet: by default
+# only the ones in range now, strongest first.
 #
 # Usage:  wifi-known [--all]
 #
-# Columns: signal (0-100, blank when out of range), * for the network in use, the SSID, and the
-# connection's name when it differs from the SSID. --all lists every saved network, in range or
-# not. Saved networks are matched by SSID, not by connection name, so a renamed one still shows.
-# Connect with `nmcli connection up NAME`.
+# Columns: signal (0-100, blank when out of range), * for the network in
+# use, the SSID, and the connection's name when it differs from the
+# SSID. --all lists every saved network, in range or not. Saved networks
+# are matched by SSID, not by connection name, so a renamed one still
+# shows. Connect with `nmcli connection up NAME`.
 
 set -euo pipefail
 
@@ -27,8 +29,9 @@ case ${1:-} in
 esac
 command -v nmcli >/dev/null || die "nmcli not found"
 
-# Saved Wi-Fi connections, SSID -> connection name. Single-field queries with escaping off, so
-# an SSID with a colon in it comes through as it is.
+# Saved Wi-Fi connections, SSID -> connection name. Single-field queries
+# with escaping off, so an SSID with a colon in it comes through as it
+# is.
 declare -A saved=()
 while IFS= read -r uuid; do
   ssid=$(nmcli -e no -g 802-11-wireless.ssid connection show "$uuid")
@@ -36,8 +39,9 @@ while IFS= read -r uuid; do
 done < <(nmcli -t -f UUID,TYPE connection show | sed -n 's/:802-11-wireless$//p')
 (( ${#saved[@]} )) || die "no saved Wi-Fi networks"
 
-# What is in range, the strongest sighting per SSID. SSID goes last in the terse output so that
-# only its own colons are escaped ones (\:), undone here along with \\.
+# What is in range, the strongest sighting per SSID. SSID goes last in
+# the terse output so that only its own colons are escaped ones (\:),
+# undone here along with \\.
 declare -A signal=() inuse=()
 while IFS= read -r line; do
   in=${line%%:*} line=${line#*:}
@@ -48,7 +52,8 @@ while IFS= read -r line; do
   if [[ $in == '*' ]]; then inuse[$ssid]='*'; fi
 done < <(nmcli -t -f IN-USE,SIGNAL,SSID device wifi list)
 
-# A sort key ahead of each line, -1 for out of range, so those come last.
+# A sort key ahead of each line, -1 for out of range, so those come
+# last.
 for ssid in "${!saved[@]}"; do
   [[ -n $all || -v signal[$ssid] ]] || continue
   name=${saved[$ssid]}

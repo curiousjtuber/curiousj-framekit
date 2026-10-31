@@ -1,18 +1,22 @@
 #!/usr/bin/env python3
-# steam-frame-utils: the Steam Controllers paired to the Frame over Bluetooth: list the ones that
-# are on, or turn them off from a shell, as holding the Steam button does.
+# steam-frame-utils: the Steam Controllers paired to the Frame over
+# Bluetooth: list the ones that are on, or turn them off from a shell,
+# as holding the Steam button does.
 #
 # Usage:  steam-controller
 #         steam-controller off [NAME]
 #
-# With no argument it lists each Steam Controller that is on, with its battery when BlueZ reports
-# it. `off` turns them all off, or only the one whose name (as listed, or any part of it) is NAME.
-# A press of the Steam button turns one back on. This is Valve's own HID command, 0x9f "off!",
-# the one Steam itself sends; the kernel's hid-steam driver doesn't take this controller (28de:1303)
-# yet, so it is sent straight to the hidraw node, which SteamOS lets the user write.
+# With no argument it lists each Steam Controller that is on, with its
+# battery when BlueZ reports it. `off` turns them all off, or only the
+# one whose name (as listed, or any part of it) is NAME. A press of the
+# Steam button turns one back on. This is Valve's own HID command, 0x9f
+# "off!", the one Steam itself sends; the kernel's hid-steam driver
+# doesn't take this controller (28de:1303) yet, so it is sent straight
+# to the hidraw node, which SteamOS lets the user write.
 #
-# Checked on the Steam Controller over Bluetooth; a wired one, or the old one through its dongle,
-# takes the same command on feature report 0 and is tried that way, untested.
+# Checked on the Steam Controller over Bluetooth; a wired one, or the
+# old one through its dongle, takes the same command on feature report 0
+# and is tried that way, untested.
 
 import fcntl
 import glob
@@ -43,7 +47,8 @@ def usage():
 
 
 def hidiocsfeature(size):
-    # _IOC(_IOC_READ | _IOC_WRITE, 'H', 0x06, size), as linux/hidraw.h has it
+    # _IOC(_IOC_READ | _IOC_WRITE, 'H', 0x06, size), as linux/hidraw.h
+    # has it
     return (3 << 30) | (size << 16) | (ord("H") << 8) | 0x06
 
 
@@ -79,8 +84,8 @@ def battery(ctrl):
 
 
 def turn_off(ctrl):
-    # Over Bluetooth the controller's vendor commands go on feature report 1; over USB on
-    # report 0, as hid-steam sends them.
+    # Over Bluetooth the controller's vendor commands go on feature
+    # report 1; over USB on report 0, as hid-steam sends them.
     report_id = 1 if ctrl["bus"] == BUS_BLUETOOTH else 0
     buf = bytes([report_id]) + TURN_OFF
     buf += bytes(REPORT_SIZE - len(buf))

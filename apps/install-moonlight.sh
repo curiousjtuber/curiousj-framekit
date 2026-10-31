@@ -1,22 +1,26 @@
 #!/usr/bin/env bash
-# Install or update Moonlight (com.moonlight_stream.Moonlight), the game-streaming client for
-# Sunshine and GeForce Experience hosts, from Flathub. https://moonlight-stream.org
+# Install or update Moonlight (com.moonlight_stream.Moonlight), the
+# game-streaming client for Sunshine and GeForce Experience hosts, from
+# Flathub. https://moonlight-stream.org
 #
 # Usage:  ~/steam-frame-utils/apps/install-moonlight.sh [--yes]
 #
-# --yes  don't ask before downloading; the first install also pulls the KDE runtime
-#        (org.kde.Platform 6.11) from Flathub, about 400 MB
+# --yes  don't ask before downloading; the first install also pulls the
+#        KDE runtime (org.kde.Platform 6.11) from Flathub, about 400 MB
 #
-# Flathub, not apt in the ubuntu box: Ubuntu 26.04 has no moonlight-qt for arm64, and Flathub
-# builds it for aarch64. The flathub user remote is added if missing.
-# Into the user installation (~/.local/share/flatpak), like Frametop and krdpserver: no root and
-# no polkit, so it works over SSH, and the home directory survives SteamOS updates. The KDE
-# runtime goes into the user installation too, even when a system one would do, so removing
-# system Flatpaks later can't break the app. A system copy, say one Discover installed, is
-# reported: the user copy takes precedence, so remove the system one.
+# Flathub, not apt in the ubuntu box: Ubuntu 26.04 has no moonlight-qt
+# for arm64, and Flathub builds it for aarch64. The flathub user remote
+# is added if missing. Into the user installation
+# (~/.local/share/flatpak), like Frametop and krdpserver: no root and no
+# polkit, so it works over SSH, and the home directory survives SteamOS
+# updates. The KDE runtime goes into the user installation too, even
+# when a system one would do, so removing system Flatpaks later can't
+# break the app. A system copy, say one Discover installed, is reported:
+# the user copy takes precedence, so remove the system one.
 #
-# The sandbox: network, devices=all for the decoder and controllers, the host OS read-only, and
-# the gamescope socket, so it also runs as a non-Steam game in Game Mode.
+# The sandbox: network, devices=all for the decoder and controllers, the
+# host OS read-only, and the gamescope socket, so it also runs as a
+# non-Steam game in Game Mode.
 #
 # Uninstall:
 #   flatpak uninstall --user com.moonlight_stream.Moonlight
@@ -61,8 +65,9 @@ else
   flatpak install --user "${yes[@]}" "$REMOTE" "$APP"
 fi
 
-# A runtime in the system installation satisfies the install, so flatpak wouldn't pull it into
-# the user one; removing the system Flatpaks would then break the app.
+# A runtime in the system installation satisfies the install, so flatpak
+# wouldn't pull it into the user one; removing the system Flatpaks would
+# then break the app.
 runtime=$(flatpak info --user --show-runtime "$APP")
 if flatpak info --user "$runtime" >/dev/null 2>&1; then
   echo "ok             runtime $runtime"

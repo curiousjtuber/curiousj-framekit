@@ -1,23 +1,28 @@
 #!/usr/bin/env bash
-# Install or update waypipe for the host from Arch Linux ARM's package, relocated under ~/.local.
+# Install or update waypipe for the host from Arch Linux ARM's package,
+# relocated under ~/.local.
 #
 # Usage:  ~/steam-frame-utils/install-waypipe.sh
 #
-# SteamOS has no waypipe, and Valve's package repos for the Frame don't carry it. Arch Linux ARM's
-# aarch64 build needs only libc, libgcc, lz4 and zstd, all of which SteamOS has, and nothing
-# outside its binary and man page, so `pacman-home relocate waypipe` moves its /usr tree under
-# ~/.local and installs it there, in pacman-home's own database: no root, and SteamOS updates
-# keep it. `setup.sh --waypipe[=host]` runs this when pacman-home doesn't have waypipe yet. See
+# SteamOS has no waypipe, and Valve's package repos for the Frame don't
+# carry it. Arch Linux ARM's aarch64 build needs only libc, libgcc, lz4
+# and zstd, all of which SteamOS has, and nothing outside its binary and
+# man page, so `pacman-home relocate waypipe` moves its /usr tree under
+# ~/.local and installs it there, in pacman-home's own database: no
+# root, and SteamOS updates keep it. `setup.sh --waypipe[=host]` runs
+# this when pacman-home doesn't have waypipe yet. See
 # README.md#the-waypipe-function.
 #
-# pacman-home syncs Arch Linux ARM's package databases, about 10 MB, from one mirror (ALARM_MIRROR
-# overrides it), downloads the package when the installed version differs, takes it only with a
-# valid signature from Arch Linux ARM's keys (fetched into its own keyring the first time, and
-# held to the key fingerprints recorded in pacman-home), and warns when the host lacks a library
-# it needs, a newer glibc among them.
-# The package's PGP signature isn't checked. A waypipe installed before pacman-home, a bare binary
-# in ~/.local/bin, is backed up to waypipe.bak-<timestamp> first, since pacman won't write over a
-# file it doesn't own.
+# pacman-home syncs Arch Linux ARM's package databases, about 10 MB,
+# from one mirror (ALARM_MIRROR overrides it), downloads the package
+# when the installed version differs, takes it only with a valid
+# signature from Arch Linux ARM's keys (fetched into its own keyring the
+# first time, and held to the key fingerprints recorded in pacman-home),
+# and warns when the host lacks a library it needs, a newer glibc among
+# them. The package's PGP signature isn't checked. A waypipe installed
+# before pacman-home, a bare binary in ~/.local/bin, is backed up to
+# waypipe.bak-<timestamp> first, since pacman won't write over a file it
+# doesn't own.
 #
 # Uninstall:
 #   pacman-home -R waypipe
@@ -38,7 +43,8 @@ esac
 die() { echo "install-waypipe.sh: $*" >&2; exit 1; }
 say() { printf '%-14s %s\n' "$1" "${2//$HOME/\~}"; }
 
-# The package is checked against the host's libraries, not a distrobox's.
+# The package is checked against the host's libraries, not a
+# distrobox's.
 if [[ -n ${CONTAINER_ID:-} || -e /run/.containerenv ]]; then
   exec distrobox-host-exec "$0" "$@"
 fi
@@ -58,5 +64,6 @@ fi
 
 ver=$("$PACMAN_HOME" -Q waypipe 2>/dev/null | awk '{print $2}') || true
 say "installed" "$WAYPIPE${ver:+ $ver} from Arch Linux ARM, in pacman-home's database"
-# Earlier versions noted which of two sources waypipe came from; there is one now.
+# Earlier versions noted which of two sources waypipe came from; there
+# is one now.
 command rm -f "$HOME/.local/state/steam-frame-utils/waypipe-source"

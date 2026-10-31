@@ -1,10 +1,12 @@
 # Arch-based distrobox images for arm64
 
-SteamOS is Arch-based, so a distrobox on the same base would share the Frame's package versions and
-library ABI: a binary built or installed in it is the host's own kind of build, and pacman and the
-AUR work as on any Arch. `setup.sh` used an `ubuntu` box until 2026-10-06 because, when the Frame
-was set up, no Arch-based arm64 image looked solid enough to build on. This is a memo of what is
-out there, checked against the registries on 2026-10-03, build dates re-read on 2026-10-06.
+SteamOS is Arch-based, so a distrobox on the same base would share the
+Frame's package versions and library ABI: a binary built or installed in
+it is the host's own kind of build, and pacman and the AUR work as on
+any Arch. `setup.sh` used an `ubuntu` box until 2026-10-06 because, when
+the Frame was set up, no Arch-based arm64 image looked solid enough to
+build on. This is a memo of what is out there, checked against the
+registries on 2026-10-03, build dates re-read on 2026-10-06.
 
 ## Images
 
@@ -17,14 +19,15 @@ out there, checked against the registries on 2026-10-03, build dates re-read on 
 | `docker.io/library/archlinux` | no | x86_64 only: official Arch supports no other architecture |
 | `quay.io/toolbx/arch-toolbox` | no | x86_64 only, for the same reason |
 
-The arm64 column is what `skopeo inspect --raw` listed in each manifest. Valve's glibc version is
-from having used the image, not re-checked.
+The arm64 column is what `skopeo inspect --raw` listed in each manifest.
+Valve's glibc version is from having used the image, not re-checked.
 
 ## Using one
 
-`setup.sh --arch` creates the `arch` box from `menci/archlinuxarm`, with the pacman fix below
-applied through `--pre-init-hooks`, so it comes up first try; `--emacs=box` and `--waypipe=box`
-create it too, then install emacs-wayland and waypipe in it and put the exports and the copy in
+`setup.sh --arch` creates the `arch` box from `menci/archlinuxarm`, with
+the pacman fix below applied through `--pre-init-hooks`, so it comes up
+first try; `--emacs=box` and `--waypipe=box` create it too, then install
+emacs-wayland and waypipe in it and put the exports and the copy in
 `~/.local/bin`. By hand that is:
 
 ```bash
@@ -32,28 +35,34 @@ distrobox create --name arch --image docker.io/menci/archlinuxarm:latest \
   --pre-init-hooks "sed -i 's/^#DisableSandbox/DisableSandbox/' /etc/pacman.conf"
 ```
 
-The first `distrobox enter` runs `distrobox-init`, which installs distrobox's own dependencies with
-pacman; the toolbx images (`quay.io/toolbx/*`) come with those already, which is why a toolbx box
+The first `distrobox enter` runs `distrobox-init`, which installs
+distrobox's own dependencies with pacman; the toolbx images
+(`quay.io/toolbx/*`) come with those already, which is why a toolbx box
 starts faster the first time.
 
-**On the Frame the first enter of an Arch Linux ARM box fails** with `restricting filesystem
-access failed because Landlock is not supported by the kernel`. pacman 7 runs its downloads in a
-Landlock sandbox and the Frame kernel is built without it (`CONFIG_SECURITY_LANDLOCK is not set` in
-`/proc/config.gz`). pacman 7.0 falls back silently, which is why the holo box (pacman 7.0.0, Valve's
-build) came up without trouble; ALARM's pacman 7.1.0 treats it as fatal, so `distrobox-init`'s
-`pacman -Syy` dies and the container exits before it can be entered. The `--pre-init-hooks` above
-runs before that first pacman, which is the fix for a new box. For one already created without
-it, turn the sandbox off in the stopped container's `pacman.conf`, then enter again:
+**On the Frame the first enter of an Arch Linux ARM box fails** with
+`restricting filesystem access failed because Landlock is not supported
+by the kernel`. pacman 7 runs its downloads in a Landlock sandbox and
+the Frame kernel is built without it (`CONFIG_SECURITY_LANDLOCK is not
+set` in `/proc/config.gz`). pacman 7.0 falls back silently, which is why
+the holo box (pacman 7.0.0, Valve's build) came up without trouble;
+ALARM's pacman 7.1.0 treats it as fatal, so `distrobox-init`'s `pacman
+-Syy` dies and the container exits before it can be entered. The
+`--pre-init-hooks` above runs before that first pacman, which is the fix
+for a new box. For one already created without it, turn the sandbox off
+in the stopped container's `pacman.conf`, then enter again:
 
 ```bash
 podman unshare sh -c 'm=$(podman mount arch) && sed -i "s/^#DisableSandbox/DisableSandbox/" "$m/etc/pacman.conf"; podman umount arch'
 distrobox enter arch
 ```
 
-The prefix match covers both spellings: `lopsided` ships `#DisableSandbox`, `menci` the newer split
-`#DisableSandboxFilesystem` / `#DisableSandboxSyscalls`, of which only the filesystem one is the
-Landlock half. Checked 2026-10-06 on kernel 6.18.0 with both images at pacman 7.1.0. Valve's image was created with the platform named, since its
-manifest has amd64 too:
+The prefix match covers both spellings: `lopsided` ships
+`#DisableSandbox`, `menci` the newer split `#DisableSandboxFilesystem` /
+`#DisableSandboxSyscalls`, of which only the filesystem one is the
+Landlock half. Checked 2026-10-06 on kernel 6.18.0 with both images at
+pacman 7.1.0. Valve's image was created with the platform named, since
+its manifest has amd64 too:
 
 ```bash
 distrobox create --platform linux/arm64 --name holo \
@@ -62,36 +71,45 @@ distrobox create --platform linux/arm64 --name holo \
 
 Things to keep in mind:
 
-- **Arch Linux ARM is its own project,** with its own keyring, mirrors and build servers, a little
-  behind Arch. Its packages run on the Frame unchanged where their libraries are SteamOS's: waypipe,
-  for one, needs only libc, libgcc, lz4 and zstd, and its ALARM build runs on the Frame.
-- **Valve's repos are small.** `/etc/pacman.conf` on the Frame points at them, and their `extra`
-  database is about 560 KB against Arch's 8 MB or so. Packages missing there (waypipe, for one)
-  are missing in Valve's image too; it is the base to build against the Frame's exact libraries,
-  not a bigger package source.
-- **AUR builds** work natively on arm64 inside such a box when the PKGBUILD allows `aarch64` or
-  `any`. Anything built against the box's glibc has to run on the host's: the Frame is on 2.39.
-- **Two of the three usable images are one-person projects.** For something that has to keep
-  working across SteamOS updates, that is the risk to weigh against the closer match to the host.
+- **Arch Linux ARM is its own project,** with its own keyring, mirrors
+  and build servers, a little behind Arch. Its packages run on the Frame
+  unchanged where their libraries are SteamOS's: waypipe, for one, needs
+  only libc, libgcc, lz4 and zstd, and its ALARM build runs on the
+  Frame.
+- **Valve's repos are small.** `/etc/pacman.conf` on the Frame points at
+  them, and their `extra` database is about 560 KB against Arch's 8 MB
+  or so. Packages missing there (waypipe, for one) are missing in
+  Valve's image too; it is the base to build against the Frame's exact
+  libraries, not a bigger package source.
+- **AUR builds** work natively on arm64 inside such a box when the
+  PKGBUILD allows `aarch64` or `any`. Anything built against the box's
+  glibc has to run on the host's: the Frame is on 2.39.
+- **Two of the three usable images are one-person projects.** For
+  something that has to keep working across SteamOS updates, that is the
+  risk to weigh against the closer match to the host.
 
 ## A phantom row in `distrobox list`
 
-Not an Arch matter, but met while comparing these boxes. With the `ubuntu` box present,
-`distrobox list` shows a garbage row whose ID is ` org.opencon`, and `distrobox upgrade --all`,
-which reads that list, then stops at `Error: no such container ... Create it now? [Y/n]`.
-`distrobox-list` asks podman for one line per container ending in `{{.Labels}}{{.Mounts}}` and
-splits on newlines; the ubuntu-toolbox image's `org.opencontainers.image.description` label is
-several lines long, so the row breaks apart and the last piece, which mentions
-`/usr/bin/distrobox-host-exec`, passes the "is this a distrobox" check. Upstream issue 2084, open
-PR 2227, not in 1.8.2.5, the release `setup.sh` installs.
+Not an Arch matter, but met while comparing these boxes. With the
+`ubuntu` box present, `distrobox list` shows a garbage row whose ID is `
+org.opencon`, and `distrobox upgrade --all`, which reads that list, then
+stops at `Error: no such container ... Create it now? [Y/n]`.
+`distrobox-list` asks podman for one line per container ending in
+`{{.Labels}}{{.Mounts}}` and splits on newlines; the ubuntu-toolbox
+image's `org.opencontainers.image.description` label is several lines
+long, so the row breaks apart and the last piece, which mentions
+`/usr/bin/distrobox-host-exec`, passes the "is this a distrobox" check.
+Upstream issue 2084, open PR 2227, not in 1.8.2.5, the release
+`setup.sh` installs.
 
-The fix is PR 2227's one-liner, applied to the Frame's copy on 2026-10-06 with the original kept as
-`distrobox-list.orig-1.8.2.5`:
+The fix is PR 2227's one-liner, applied to the Frame's copy on
+2026-10-06 with the original kept as `distrobox-list.orig-1.8.2.5`:
 
 ```bash
 sed -i 's/{{.Status}}|{{.Labels}}{{.Mounts}}/{{.Status}}|{{.Labels.manager}}{{.Mounts}}/' ~/.local/bin/distrobox-list
 ```
 
-It prints only the `manager` label, which distrobox sets to `distrobox` on every box it creates, so
-a multi-line label can no longer reach the parser. A distrobox reinstall overwrites it; drop the
-patch once a release past 1.8.2.5 carries the fix.
+It prints only the `manager` label, which distrobox sets to `distrobox`
+on every box it creates, so a multi-line label can no longer reach the
+parser. A distrobox reinstall overwrites it; drop the patch once a
+release past 1.8.2.5 carries the fix.

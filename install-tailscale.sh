@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Install or update Tailscale on a Steam Frame (arm64, immutable SteamOS).
+# Install or update Tailscale on a Steam Frame (arm64, immutable
+# SteamOS).
 #
 # Usage:  sudo bash ~/install-tailscale.sh [--trust-tailnet]
 #
@@ -10,11 +11,14 @@
 #       kept across updates by the default /usr/lib/rauc/atomic-update-keep.conf
 #       (it keeps /etc/systemd/system/*.service and *.wants/**)
 #
-# --trust-tailnet  puts tailscale0 in firewalld's "trusted" zone (all tailnet traffic allowed;
-#                  rely on Tailscale ACLs) and adds that zone file to the update keep list.
-#                  Without it, only SSH is reachable over the tailnet (default "public" zone).
+# --trust-tailnet  puts tailscale0 in firewalld's "trusted" zone (all
+#                  tailnet traffic allowed; rely on Tailscale ACLs) and
+#                  adds that zone file to the update keep list. Without
+#                  it, only SSH is reachable over the tailnet (default
+#                  "public" zone).
 #
-# Re-running updates the binaries and restarts the daemon; login state is kept.
+# Re-running updates the binaries and restarts the daemon; login state
+# is kept.
 #
 # Uninstall:
 #   sudo systemctl disable --now tailscaled
@@ -94,7 +98,8 @@ After=network-pre.target NetworkManager.service systemd-resolved.service
 RequiresMountsFor=$PREFIX
 
 [Service]
-# /usr/bin/iptables is the legacy backend, but the Frame kernel has no ip_tables module; use nftables.
+# /usr/bin/iptables is the legacy backend, but the Frame kernel has no
+# ip_tables module; use nftables.
 Environment=TS_DEBUG_FIREWALL_MODE=nftables
 ExecStart=$BIN/tailscaled --statedir=$STATE --socket=$SOCKET
 RuntimeDirectory=tailscale

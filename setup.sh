@@ -1,94 +1,121 @@
 #!/usr/bin/env bash
-# Set up a Steam Frame's user environment from this repo, as the steamos user. Re-running it only
-# changes what is missing or out of date.
+# Set up a Steam Frame's user environment from this repo, as the steamos
+# user. Re-running it only changes what is missing or out of date.
 #
 # Usage:  ./setup.sh [--check] [--yes] [--brew] [--zsh] [--arch] [--emacs[=host|box]]
 #                   [--waypipe[=host|box]] [--mise] [--packages[=NAME,...]]
 #                   [--tailscale[=trust]] [--nerd-fonts[=NAME,...]]
 #
-# Always, it puts ~/.local/bin on PATH, and installs distrobox, the ~/.distroboxrc block that
-# finds bin/podman, the Desktop Mode cursor fix, the desktops' cursor size, and, in ~/.bashrc and
-# ~/.zshrc, this checkout's bin/ on PATH and the Frametop desktop terminal fix. The options add
-# the rest.
+# Always, it puts ~/.local/bin on PATH, and installs distrobox, the
+# ~/.distroboxrc block that finds bin/podman, the Desktop Mode cursor
+# fix, the desktops' cursor size, and, in ~/.bashrc and ~/.zshrc, this
+# checkout's bin/ on PATH and the Frametop desktop terminal fix. The
+# options add the rest.
 #
-# With no options at all, on a terminal, it is interactive: each optional part is checked in its
-# turn, as if its option were given when it is installed, and when it is missing it asks, then
-# installs it right away. Every change is asked about before it is made, a copy or an install on
-# its own line, a change to ~/.bashrc, ~/.zshrc, ~/.profile or ~/.distroboxrc with its diff, and
-# such a file is backed up before its first change; a part just taken up isn't asked again for
-# each of its steps. Enter takes the default: for a missing part, yes on a first run (the
-# fresh-Frame set of README.md) and no on a re-run; for a change, yes. Without a terminal, or
-# with any option (--check alone, say), it asks nothing.
+# With no options at all, on a terminal, it is interactive: each
+# optional part is checked in its turn, as if its option were given when
+# it is installed, and when it is missing it asks, then installs it
+# right away. Every change is asked about before it is made, a copy or
+# an install on its own line, a change to ~/.bashrc, ~/.zshrc,
+# ~/.profile or ~/.distroboxrc with its diff, and such a file is backed
+# up before its first change; a part just taken up isn't asked again for
+# each of its steps. Enter takes the default: for a missing part, yes on
+# a first run (the fresh-Frame set of README.md) and no on a re-run; for
+# a change, yes. Without a terminal, or with any option (--check alone,
+# say), it asks nothing.
 #
 # --check           report what would change, and change nothing
-# --yes             answer yes: create the arch box, and replace an installed emacs or waypipe
-#                   route with the other one
-# --brew            Homebrew in /home/linuxbrew/.linuxbrew if it isn't there, wl-clipboard from
-#                   it, and brew shellenv in ~/.bashrc and ~/.zshrc; uses sudo once, to create
+# --yes             answer yes: create the arch box, and replace an
+#                   installed emacs or waypipe route with the other one
+# --brew            Homebrew in /home/linuxbrew/.linuxbrew if it isn't
+#                   there, wl-clipboard from it, and brew shellenv in
+#                   ~/.bashrc and ~/.zshrc; uses sudo once, to create
 #                   /home/linuxbrew
 # --zsh             zsh from Homebrew; implies --brew
-# --arch            create the arch distrobox, Arch Linux ARM, if it doesn't exist. It asks
-#                   first: the image is about 0.7 GB, and the box's first start takes a few
-#                   minutes.
-# --emacs           emacs, from one of two sources. =host: pkgbuilds/frame/emacs built with makepkg and
-#                   installed under ~/.local with pacman-home, the same as --packages=emacs-wayland.
-#                   =box: emacs-wayland in the arch box, with emacs and emacsclient exported to
-#                   ~/.local/bin; implies --arch. Bare, it keeps the route in place, host when
-#                   there is none. Both put the same names in ~/.local/bin, so switching asks
+# --arch            create the arch distrobox, Arch Linux ARM, if it
+#                   doesn't exist. It asks first: the image is about 0.7
+#                   GB, and the box's first start takes a few minutes.
+# --emacs           emacs, from one of two sources. =host:
+#                   pkgbuilds/frame/emacs built with makepkg and
+#                   installed under ~/.local with pacman-home, the same
+#                   as --packages=emacs-wayland. =box: emacs-wayland in
+#                   the arch box, with emacs and emacsclient exported to
+#                   ~/.local/bin; implies --arch. Bare, it keeps the
+#                   route in place, host when there is none. Both put
+#                   the same names in ~/.local/bin, so switching asks
 #                   before replacing what is there; --yes answers.
-# --waypipe         waypipe for the host, from one of two sources, and the Game Mode waypipe
-#                   function in ~/.bashrc and ~/.zshrc. =host (or =arch, its old name): Arch Linux
-#                   ARM's package relocated under ~/.local by install-waypipe.sh through
-#                   pacman-home (re-run that script to update it). =box: a copy of the arch box's
-#                   /usr/bin/waypipe, the same package, which pacman in the box keeps current and
-#                   a re-run refreshes; implies --arch. Bare and switching as for --emacs.
-# --mise            mise in ~/.local/bin if it isn't there, its activation in ~/.bashrc and
-#                   ~/.zshrc (shell-init/mise.sh, unless the file activates mise already), and
-#                   rust through it (mise use -g rust), for a Rust package in pkgbuilds/frame/, since
-#                   SteamOS carries no cargo. mise upgrade updates the tools.
-# --packages        the packages in pkgbuilds/frame/ built with makepkg and installed with pacman-home,
-#                   each one that pacman-home doesn't have at the PKGBUILD's version, in dependency
-#                   order; =NAME,... for some of them. A Rust package needs cargo (--mise);
-#                   emacs's build takes about three minutes.
-# --tailscale       also fix what's missing of tailscaled (binaries, unit, enabled, running) and
-#                   of the tailscale alias in ~/.bashrc and ~/.zshrc; uses sudo.
-#                   --tailscale=trust also puts tailscale0 in firewalld's trusted zone.
-#                   Without it, what's missing is only reported.
-# --nerd-fonts      install-nerd-fonts.sh for each NAME not installed yet, JetBrainsMono and
-#                   NerdFontsSymbolsOnly by default. Re-run install-nerd-fonts.sh itself to
+# --waypipe         waypipe for the host, from one of two sources, and
+#                   the Game Mode waypipe function in ~/.bashrc and
+#                   ~/.zshrc. =host (or =arch, its old name): Arch Linux
+#                   ARM's package relocated under ~/.local by
+#                   install-waypipe.sh through pacman-home (re-run that
+#                   script to update it). =box: a copy of the arch box's
+#                   /usr/bin/waypipe, the same package, which pacman in
+#                   the box keeps current and a re-run refreshes;
+#                   implies --arch. Bare and switching as for --emacs.
+# --mise            mise in ~/.local/bin if it isn't there, its
+#                   activation in ~/.bashrc and ~/.zshrc
+#                   (shell-init/mise.sh, unless the file activates mise
+#                   already), and rust through it (mise use -g rust),
+#                   for a Rust package in pkgbuilds/frame/, since
+#                   SteamOS carries no cargo. mise upgrade updates the
+#                   tools.
+# --packages        the packages in pkgbuilds/frame/ built with makepkg
+#                   and installed with pacman-home, each one that
+#                   pacman-home doesn't have at the PKGBUILD's version,
+#                   in dependency order; =NAME,... for some of them. A
+#                   Rust package needs cargo (--mise); emacs's build
+#                   takes about three minutes.
+# --tailscale       also fix what's missing of tailscaled (binaries,
+#                   unit, enabled, running) and of the tailscale alias
+#                   in ~/.bashrc and ~/.zshrc; uses sudo.
+#                   --tailscale=trust also puts tailscale0 in
+#                   firewalld's trusted zone. Without it, what's missing
+#                   is only reported.
+# --nerd-fonts      install-nerd-fonts.sh for each NAME not installed
+#                   yet, JetBrainsMono and NerdFontsSymbolsOnly by
+#                   default. Re-run install-nerd-fonts.sh itself to
 #                   update them.
 #
-# The host and its distroboxes share the home directory, so it also runs inside a distrobox,
-# except for what needs the host: --tailscale, --brew, --zsh, --packages and --emacs=host always,
-# and --arch, --emacs=box and --waypipe=box from any box but arch itself.
+# The host and its distroboxes share the home directory, so it also runs
+# inside a distrobox, except for what needs the host: --tailscale,
+# --brew, --zsh, --packages and --emacs=host always, and --arch,
+# --emacs=box and --waypipe=box from any box but arch itself.
 #
-# bin/ and shell-init/ are used from this checkout: bin/ goes on PATH, for shells and for
-# distrobox, and the rc files source shell-init/, so a git pull updates both; after moving the
-# checkout, re-run this. Other files are copied, not linked, so they keep working if it moves or
-# is deleted. A file that differs is backed up to <file>.bak-<timestamp>
-# before it is replaced. Text inserted into shared files sits between
-# "# >>> steam-frame-utils: <name> >>>" markers, and a later run replaces the block in place.
+# bin/ and shell-init/ are used from this checkout: bin/ goes on PATH,
+# for shells and for distrobox, and the rc files source shell-init/, so
+# a git pull updates both; after moving the checkout, re-run this. Other
+# files are copied, not linked, so they keep working if it moves or is
+# deleted. A file that differs is backed up to <file>.bak-<timestamp>
+# before it is replaced. Text inserted into shared files sits between "#
+# >>> steam-frame-utils: <name> >>>" markers, and a later run replaces
+# the block in place.
 
 set -euo pipefail
 
 SRC=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
-# The rc files get its path inside double quotes, and with_src passes it through sed.
+# The rc files get its path inside double quotes, and with_src passes it
+# through sed.
 case $SRC in
   *[\"\$\`\\\|\&]*)
     echo "setup.sh: can't put $SRC on PATH: move the checkout to a path without \" \$ \` \\ | or &" >&2
     exit 1 ;;
 esac
-# The checkout's path as the rc files get it: under $HOME when it is there.
+# The checkout's path as the rc files get it: under $HOME when it is
+# there.
 SRC_RC=${SRC/#$HOME/\$HOME}
 STAMP=$(date +%Y%m%d-%H%M%S)
 BOX=arch
 IMAGE=docker.io/menci/archlinuxarm:latest
 IMAGE_SIZE="about 0.7 GB"
-# pacman 7.1 runs its downloads in a Landlock sandbox and treats a kernel without Landlock, such
-# as the Frame's, as fatal. distrobox-init's first pacman run would then kill the box before it
-# can be entered, so the sandbox is turned off ahead of it. See docs/arch-distrobox-images.md.
+# pacman 7.1 runs its downloads in a Landlock sandbox and treats a
+# kernel without Landlock, such as the Frame's, as fatal.
+# distrobox-init's first pacman run would then kill the box before it
+# can be entered, so the sandbox is turned off ahead of it. See
+# docs/arch-distrobox-images.md.
 PRE_INIT_HOOK="sed -i 's/^#DisableSandbox/DisableSandbox/' /etc/pacman.conf"
-# Set when the host re-runs this script inside the arch box for the box's own part.
+# Set when the host re-runs this script inside the arch box for the
+# box's own part.
 IN_BOX_RUN=${SFU_IN_BOX:-}
 PACMAN_HOME=$SRC/bin/pacman-home
 WAYPIPE=$HOME/.local/bin/waypipe
@@ -129,10 +156,12 @@ reboot_needed=0
 desktop_restart=0
 
 say()  { printf '%-14s %s\n' "$1" "${2//$HOME/\~}"; }
-# act WHAT VERB [PART] -- a change: "would VERB WHAT" with --check, "VERB WHAT" otherwise.
-# Interactive, it is a question first, "VERB WHAT? [Y/n]", and false when declined, unless PART
-# was offered and taken this run (in $offered), or is "asked", for a question put elsewhere, or
-# "rc", for one rc_write puts with the diff, which then counts the change.
+# act WHAT VERB [PART] -- a change: "would VERB WHAT" with --check,
+# "VERB WHAT" otherwise. Interactive, it is a question first, "VERB
+# WHAT? [Y/n]", and false when declined, unless PART was offered and
+# taken this run (in $offered), or is "asked", for a question put
+# elsewhere, or "rc", for one rc_write puts with the diff, which then
+# counts the change.
 offered=
 act() {
   if (( check )); then changed=1; say "would $2" "$1"; return 0; fi
@@ -149,18 +178,20 @@ act() {
 }
 die()  { echo "setup.sh: $*" >&2; exit 1; }
 
-# append FILE -- stdin goes after the file's last line, even one without a trailing newline
+# append FILE -- stdin goes after the file's last line, even one without
+# a trailing newline
 append() {
   [[ -s $1 && $(tail -c1 "$1") != '' ]] && printf '\n' >> "$1"
   cat >> "$1"
 }
 
-# The shell and distrobox rc files are changed through these two. Interactive, each change is
-# shown as a diff and asked about, and a file is copied to <file>.bak-<timestamp> before the run
-# first changes it; otherwise they write straight away.
+# The shell and distrobox rc files are changed through these two.
+# Interactive, each change is shown as a diff and asked about, and a
+# file is copied to <file>.bak-<timestamp> before the run first changes
+# it; otherwise they write straight away.
 declare -A rc_backed_up rc_declined
-# rc_write FILE NEW -- NEW, a file next to FILE, replaces it. A file whose creation was declined
-# is left out for the rest of the run.
+# rc_write FILE NEW -- NEW, a file next to FILE, replaces it. A file
+# whose creation was declined is left out for the rest of the run.
 rc_write() {
   local file=$1 new=$2
   if (( interactive )); then
@@ -173,7 +204,8 @@ rc_write() {
     [[ -e $file ]] || old=/dev/null
     diff -u --color=auto --label "${file/#$HOME/\~}" --label "${file/#$HOME/\~} (new)" \
       "$old" "$new" || true
-    # Ctrl-C or the end of input at the question exits; the trap takes NEW with it.
+    # Ctrl-C or the end of input at the question exits; the trap takes
+    # NEW with it.
     rc_pending=$new
     trap '[[ -n ${rc_pending:-} ]] && command rm -f "$rc_pending"' EXIT
     ask "Change ${file/#$HOME/\~}?" yes yes no
@@ -229,8 +261,9 @@ copy_file() {
   (( check )) || install -D -m "$mode" "$src" "$dst"
 }
 
-# ensure_block FILE NAME CONTENT_FILE [top] -- the marked block NAME holds exactly CONTENT_FILE.
-# A new block goes at the end of FILE, or with "top" at the start; an existing one stays put.
+# ensure_block FILE NAME CONTENT_FILE [top] -- the marked block NAME
+# holds exactly CONTENT_FILE. A new block goes at the end of FILE, or
+# with "top" at the start; an existing one stays put.
 ensure_block() {
   local file=$1 name=$2 content=$3 where=${4:-end}
   local begin="# >>> steam-frame-utils: $name >>>" end="# <<< steam-frame-utils: $name <<<"
@@ -263,7 +296,8 @@ ensure_block() {
 # with_src FILE -- FILE with @SRC@ as this checkout
 with_src() { sed "s|@SRC@|$SRC_RC|g" "$1"; }
 
-# block_lines FILE in|out -- FILE's lines inside, or outside, its steam-frame-utils blocks
+# block_lines FILE in|out -- FILE's lines inside, or outside, its
+# steam-frame-utils blocks
 block_lines() {
   awk -v want="$2" '
     /^# >>> steam-frame-utils: .* >>>$/ { inside = 1; next }
@@ -283,7 +317,7 @@ remove_block() {
   rc_write "$file" "$file.tmp.$$"
 }
 
-# --- Where we are -------------------------------------------------------------------------------
+# --- Where we are -----------------------------------------------------
 
 box=${CONTAINER_ID:-}
 if [[ -z $box && -e /run/.containerenv ]]; then
@@ -291,8 +325,9 @@ if [[ -z $box && -e /run/.containerenv ]]; then
   box=${box:-unknown}
 fi
 
-# The Frame's image is SteamOS with VARIANT_ID=vr, on arm64; a Steam Deck is SteamOS on x86_64.
-# Inside a distrobox, the host's os-release is under /run/host.
+# The Frame's image is SteamOS with VARIANT_ID=vr, on arm64; a Steam
+# Deck is SteamOS on x86_64. Inside a distrobox, the host's os-release
+# is under /run/host.
 osrel=/etc/os-release
 [[ -n $box ]] && osrel=/run/host/etc/os-release
 os=$(. "$osrel" 2>/dev/null; echo "${ID:-?} ${VARIANT_ID:-?}")
@@ -302,13 +337,15 @@ if [[ $os != "steamos vr" || $(uname -m) != aarch64 ]]; then
   [[ ${FORCE:-} == 1 ]] || exit 1
 fi
 
-# --- emacs and waypipe: host or box ----------------------------------------------------------------
-# Both routes put the same names in ~/.local/bin, so the file there says which is in place, and
-# nothing has to be remembered: pacman-home owns the host route's (pkgbuilds/frame/emacs's symlink, the
-# relocated waypipe); the box route's emacs is a distrobox export, a script with a
-# `# distrobox_binary` line, and its waypipe a plain copy of the box's binary, which nothing owns.
-# A bare option keeps the route in place and takes host when there is none; an explicit =host or
-# =box that differs from it is a switch, asked about further down, after the refusals.
+# --- emacs and waypipe: host or box -----------------------------------
+# Both routes put the same names in ~/.local/bin, so the file there says
+# which is in place, and nothing has to be remembered: pacman-home owns
+# the host route's (pkgbuilds/frame/emacs's symlink, the relocated
+# waypipe); the box route's emacs is a distrobox export, a script with a
+# `# distrobox_binary` line, and its waypipe a plain copy of the box's
+# binary, which nothing owns. A bare option keeps the route in place and
+# takes host when there is none; an explicit =host or =box that differs
+# from it is a switch, asked about further down, after the refusals.
 
 # route_of NAME -- host | box | other | none, for ~/.local/bin/NAME
 route_of() {
@@ -321,11 +358,13 @@ route_of() {
   fi
 }
 
-# --- No options, on a terminal: interactive -------------------------------------------------------
-# Each optional part is checked where its option would take it up. What is installed is kept
-# current without a question, as if its option were given; what is missing is asked about there,
-# and installed right away. A missing part defaults to yes on a first run (no rc block yet),
-# README.md's fresh-Frame set, and to no on a re-run. Switching a route in place takes the option.
+# --- No options, on a terminal: interactive ---------------------------
+# Each optional part is checked where its option would take it up. What
+# is installed is kept current without a question, as if its option were
+# given; what is missing is asked about there, and installed right away.
+# A missing part defaults to yes on a first run (no rc block yet),
+# README.md's fresh-Frame set, and to no on a re-run. Switching a route
+# in place takes the option.
 
 interactive=0 dflt=no
 if (( $# == 0 )) && [[ -z $IN_BOX_RUN && -t 0 && -t 1 ]]; then
@@ -338,7 +377,8 @@ host_ok=1 box_ok=1
 [[ -n $box ]] && host_ok=0
 [[ -n $box && $box != "$BOX" ]] && box_ok=0
 
-# ask PROMPT DEFAULT CHOICE... -- $answer is the CHOICE that the reply begins, DEFAULT on Enter
+# ask PROMPT DEFAULT CHOICE... -- $answer is the CHOICE that the reply
+# begins, DEFAULT on Enter
 ask() {
   local prompt=$1 default=$2 reply choice shown
   shift 2
@@ -360,13 +400,15 @@ ask() {
 # more TEXT -- a line under a say line
 more() { printf '%-14s %s\n' "" "$1"; }
 
-# offer TEXT QUESTION [DEFAULT] -- asks on a "missing" line; true for yes
+# offer TEXT QUESTION [DEFAULT] -- asks on a "missing" line; true for
+# yes
 offer() {
   ask "$(printf '%-14s %s' missing "${1//$HOME/\~}") $2" "${3:-$dflt}" yes no
   [[ $answer == yes ]]
 }
 
-# offer_route NAME HOST_OK HOST_TEXT BOX_TEXT -- $answer is host, box or no, for a missing NAME
+# offer_route NAME HOST_OK HOST_TEXT BOX_TEXT -- $answer is host, box or
+# no, for a missing NAME
 offer_route() {
   local choices=() default=no
   (( $2 )) && choices+=(host)
@@ -384,7 +426,8 @@ if [[ -z $IN_BOX_RUN ]]; then
   (( want_emacs || want_packages || interactive )) && emacs_have=$(route_of emacs)
   (( want_waypipe || interactive )) && waypipe_have=$(route_of waypipe)
 fi
-# Interactive, a route in place is kept, as by a bare option, where this run can take it up.
+# Interactive, a route in place is kept, as by a bare option, where this
+# run can take it up.
 if (( interactive )); then
   case $emacs_have in
     host) (( host_ok )) && want_emacs=1 ;;
@@ -414,13 +457,14 @@ if [[ -n $box ]]; then
       "build against the host's libraries; run it there, not in the $box box"
 fi
 
-# bin/podman and distrobox's exports have to win even when the caller's PATH lacks them, as it
-# can on a first run in Desktop Mode.
+# bin/podman and distrobox's exports have to win even when the caller's
+# PATH lacks them, as it can on a first run in Desktop Mode.
 export PATH=$SRC/bin:$HOME/.local/bin:$PATH
 
-# --- Inside the arch box ------------------------------------------------------------------------
-# The box's own part of --emacs=box and --waypipe=box: pacman packages, and the exports and the
-# copy into the shared ~/.local/bin. The host runs this through distrobox enter.
+# --- Inside the arch box ----------------------------------------------
+# The box's own part of --emacs=box and --waypipe=box: pacman packages,
+# and the exports and the copy into the shared ~/.local/bin. The host
+# runs this through distrobox enter.
 
 # pacman_ensure PKG
 pacman_ensure() {
@@ -430,14 +474,15 @@ pacman_ensure() {
   fi
   act "$1 in the $BOX box" "pacman -S"
   (( check )) && return
-  # With -u: installing against a fresh database without upgrading the rest is the partial
-  # upgrade Arch warns against.
+  # With -u: installing against a fresh database without upgrading the
+  # rest is the partial upgrade Arch warns against.
   sudo pacman -Syu --needed --noconfirm "$1"
 }
 
-# box_export NAME -- the box's /usr/bin/NAME as ~/.local/bin/NAME. Another box's export (the
-# earlier ubuntu box left some) is replaced; distrobox-export regenerates it. Anything else is
-# left alone, unless the host's --check run said it would remove it first (SFU_SWITCHING).
+# box_export NAME -- the box's /usr/bin/NAME as ~/.local/bin/NAME.
+# Another box's export (the earlier ubuntu box left some) is replaced;
+# distrobox-export regenerates it. Anything else is left alone, unless
+# the host's --check run said it would remove it first (SFU_SWITCHING).
 box_export() {
   local bin=$HOME/.local/bin/$1
   if [[ ! -e $bin ]] || [[ " ${SFU_SWITCHING:-} " == *" $1 "* ]]; then
@@ -456,15 +501,16 @@ box_export() {
 
 in_box_part() {
   if [[ $emacs_route == box ]]; then
-    # emacs-wayland is the pgtk build, drawing on Wayland directly; it provides emacs and
-    # conflicts with the X11 build of that name.
+    # emacs-wayland is the pgtk build, drawing on Wayland directly; it
+    # provides emacs and conflicts with the X11 build of that name.
     pacman_ensure emacs-wayland
     box_export emacs
     box_export emacsclient
   fi
   if [[ $waypipe_route == box ]]; then
     pacman_ensure waypipe
-    # The host runs a plain copy of the box's binary; its libraries are all on SteamOS too.
+    # The host runs a plain copy of the box's binary; its libraries are
+    # all on SteamOS too.
     if [[ " ${SFU_SWITCHING:-} " == *" waypipe "* ]]; then
       act "$WAYPIPE, from the $BOX box" "copy"
     elif [[ -e /usr/bin/waypipe ]]; then
@@ -482,9 +528,9 @@ if [[ -n $IN_BOX_RUN ]]; then
   exit 0
 fi
 
-# --- ~/.local/bin on PATH -------------------------------------------------------------------------
-# distrobox and its exports live there.
-# Any line that already puts it on PATH counts, however it spells the home directory.
+# --- ~/.local/bin on PATH ---------------------------------------------
+# distrobox and its exports live there. Any line that already puts it on
+# PATH counts, however it spells the home directory.
 
 for rc in "$HOME/.bashrc" "$HOME/.profile"; do
   if [[ -f $rc ]] && grep -qE "^[^#]*PATH=.*(~|\\\$HOME|\\\$\\{HOME\\}|$HOME)/\\.local/bin" "$rc"; then
@@ -495,7 +541,7 @@ for rc in "$HOME/.bashrc" "$HOME/.profile"; do
   fi
 done
 
-# --- distrobox ----------------------------------------------------------------------------------
+# --- distrobox --------------------------------------------------------
 
 DISTROBOX=$HOME/.local/bin/distrobox
 if [[ -x $DISTROBOX ]]; then
@@ -505,18 +551,19 @@ elif act "distrobox into ~/.local" "install" && (( ! check )); then
     | sh -s -- --prefix "$HOME/.local"
 fi
 
-# --- bin/podman: distrobox from Desktop Mode --------------------------------------------------------
-# distrobox has to find it even where the caller's PATH doesn't have bin/, as for an export started
-# from a launcher.
+# --- bin/podman: distrobox from Desktop Mode --------------------------
+# distrobox has to find it even where the caller's PATH doesn't have
+# bin/, as for an export started from a launcher.
 
 content=$(mktemp)
 with_src "$SRC/distrobox/distroboxrc" > "$content"
 ensure_block "$HOME/.distroboxrc" podman "$content"
 command rm -f "$content"
 
-# --- Copies of bin/ from earlier versions ---------------------------------------------------------
-# ~/.local/bin comes first in PATH, so an old copy would hide the checkout's script. It is backed
-# up rather than deleted, in case it was edited by hand.
+# --- Copies of bin/ from earlier versions -----------------------------
+# ~/.local/bin comes first in PATH, so an old copy would hide the
+# checkout's script. It is backed up rather than deleted, in case it was
+# edited by hand.
 
 for src in "$SRC"/bin/*; do
   name=${src##*/}
@@ -530,15 +577,19 @@ for src in "$SRC"/bin/*; do
   fi
 done
 
-# --- Mouse cursor in Desktop Mode ---------------------------------------------------------------
-# bin/sw-cursor holds the policy: the environment.d software cursor, a choice made with
-# `sw-cursor on|off` kept, and the cursor-size autostart entry wherever the software cursor is
-# (see docs/desktop-cursor.md). It reports in this script's style, and says by its exit status
-# what changed: 100 the environment.d file, 101 the autostart entries only. Interactive, with
-# nothing in place it is offered; otherwise a dry run shows what would change, and that is asked.
+# --- Mouse cursor in Desktop Mode -------------------------------------
+# bin/sw-cursor holds the policy: the environment.d software cursor, a
+# choice made with `sw-cursor on|off` kept, and the cursor-size
+# autostart entry wherever the software cursor is (see
+# docs/desktop-cursor.md). It reports in this script's style, and says
+# by its exit status what changed: 100 the environment.d file, 101 the
+# autostart entries only. Interactive, with nothing in place it is
+# offered; otherwise a dry run shows what would change, and that is
+# asked.
 
 CURSOR_CONF=$HOME/.config/environment.d/90-kwin-software-cursor.conf
-# sw_cursor_run [--check] -- sw-cursor auto, its exit status into changed and the notes
+# sw_cursor_run [--check] -- sw-cursor auto, its exit status into
+# changed and the notes
 sw_cursor_run() {
   local rc=0
   "$SRC/bin/sw-cursor" auto "$@" || rc=$?
@@ -574,9 +625,9 @@ else
   fi
 fi
 
-# --- Nerd Fonts: --nerd-fonts ------------------------------------------------------------------
-# Only whether each font is there at all; updating needs the network, so it is left to
-# install-nerd-fonts.sh.
+# --- Nerd Fonts: --nerd-fonts -----------------------------------------
+# Only whether each font is there at all; updating needs the network, so
+# it is left to install-nerd-fonts.sh.
 
 # Interactive, each one missing is asked about.
 (( interactive )) && nerd_fonts=$DEFAULT_FONTS
@@ -598,9 +649,10 @@ if [[ -n $nerd_fonts ]]; then
   fi
 fi
 
-# --- Switching between the routes ------------------------------------------------------------------
-# An explicit =host or =box against the other route in place: asked about, since it replaces what
-# a previous run put there. --yes answers; with no terminal the installed route stays.
+# --- Switching between the routes -------------------------------------
+# An explicit =host or =box against the other route in place: asked
+# about, since it replaces what a previous run put there. --yes answers;
+# with no terminal the installed route stays.
 
 switching=   # what a --check run would have removed, for the in-box dry run (SFU_SWITCHING)
 # confirm_replace WHAT WITH -- "WHAT Replace it with WITH? [y/N]"
@@ -648,7 +700,8 @@ if (( want_waypipe )); then
   case $waypipe_have:$waypipe_route in
     box:host)
       if confirm_replace "~/.local/bin/waypipe isn't pacman-home's (the $BOX box's copy, or installed by hand)." "Arch Linux ARM's package relocated by pacman-home"; then
-        # install-waypipe.sh backs the file up itself before the install.
+        # install-waypipe.sh backs the file up itself before the
+        # install.
         (( check )) && say "would back up" "$WAYPIPE -> $WAYPIPE.bak-<timestamp>"
       else
         say "keep" "$WAYPIPE, not pacman-home's; --waypipe=host --yes replaces it"
@@ -665,7 +718,8 @@ if (( want_waypipe )); then
       fi ;;
   esac
 fi
-# --emacs=host is --packages of emacs-wayland: all of them when --packages is bare, else one more.
+# --emacs=host is --packages of emacs-wayland: all of them when
+# --packages is bare, else one more.
 if [[ $emacs_route == host ]]; then
   if (( ! want_packages )); then
     want_packages=1 packages=emacs-wayland
@@ -674,9 +728,9 @@ if [[ $emacs_route == host ]]; then
   fi
 fi
 
-# --- waypipe from Arch Linux ARM: --waypipe[=host] -------------------------------------------------
-# Only whether pacman-home has it; updating needs the network and Arch Linux ARM's databases, so
-# it is left to install-waypipe.sh.
+# --- waypipe from Arch Linux ARM: --waypipe[=host] --------------------
+# Only whether pacman-home has it; updating needs the network and Arch
+# Linux ARM's databases, so it is left to install-waypipe.sh.
 
 if (( interactive && ! want_waypipe )) && [[ $waypipe_have == none ]]; then
   offer_route waypipe 1 "Arch Linux ARM's package, relocated under ~/.local" \
@@ -688,8 +742,9 @@ if (( interactive && ! want_waypipe )) && [[ $waypipe_have == none ]]; then
 fi
 
 if (( want_waypipe )) && [[ $waypipe_route == host ]]; then
-  # The keys that sign Arch Linux ARM's packages, so pacman-home takes waypipe only signed. A
-  # fresh install gets them through install-waypipe.sh; this is for a waypipe from before.
+  # The keys that sign Arch Linux ARM's packages, so pacman-home takes
+  # waypipe only signed. A fresh install gets them through
+  # install-waypipe.sh; this is for a waypipe from before.
   if "$SRC/bin/pacman-home" keyring --check >/dev/null 2>&1; then
     say "ok" "Arch Linux ARM's signing keys in pacman-home's keyring"
   elif act "Arch Linux ARM's signing keys into pacman-home's keyring (pacman-home keyring)" "install"; then
@@ -703,12 +758,14 @@ if (( want_waypipe )) && [[ $waypipe_route == host ]]; then
   fi
 fi
 
-# --- mise, and rust through it: --mise ------------------------------------------------------------
-# mise's installer puts a single binary in ~/.local/bin; the tools it installs go under
-# ~/.local/share/mise, with shims in ~/.local/share/mise/shims, so all of it survives SteamOS
-# updates and works in the distroboxes too, which share the home directory. Rust is the one tool
-# a build here may need: cargo for a Rust package. Which version is mise's business (`latest`, kept current by
-# `mise upgrade`); setup.sh only asks whether cargo resolves.
+# --- mise, and rust through it: --mise --------------------------------
+# mise's installer puts a single binary in ~/.local/bin; the tools it
+# installs go under ~/.local/share/mise, with shims in
+# ~/.local/share/mise/shims, so all of it survives SteamOS updates and
+# works in the distroboxes too, which share the home directory. Rust is
+# the one tool a build here may need: cargo for a Rust package. Which
+# version is mise's business (`latest`, kept current by `mise upgrade`);
+# setup.sh only asks whether cargo resolves.
 
 MISE=$HOME/.local/bin/mise
 
@@ -724,7 +781,8 @@ if (( want_mise )); then
   elif act "mise into ~/.local/bin" "install" mise; then
     (( check )) || curl -fsSL https://mise.run | MISE_INSTALL_PATH=$MISE sh >/dev/null
   fi
-  # From $HOME, so that the global config answers rather than some project's .mise.toml.
+  # From $HOME, so that the global config answers rather than some
+  # project's .mise.toml.
   if [[ -x $MISE ]] && (cd && "$MISE" which cargo >/dev/null 2>&1); then
     say "ok" "rust $(cd && "$MISE" exec -- rustc --version 2>/dev/null | cut -d' ' -f2) through mise"
   elif act "rust through mise (mise use -g rust), for cargo" "install" mise; then
@@ -732,22 +790,26 @@ if (( want_mise )); then
   fi
 fi
 
-# --- The packages under ~/.local: --packages[=NAME,...] ---------------------------------------------
-# One directory per package under pkgbuilds/frame/, each a PKGBUILD for a ~/.local prefix (see
-# README.md#packages-for-the-host). pacman-home's database says what is installed, at which
-# version; a package missing or at another version is built with makepkg and installed with
-# pacman-home -U. Dependencies between the packages decide the order. pkgbuilds/pc/ holds the
-# packages for an Arch PC, which this never looks at.
+# --- The packages under ~/.local: --packages[=NAME,...] ---------------
+# One directory per package under pkgbuilds/frame/, each a PKGBUILD for
+# a ~/.local prefix (see README.md#packages-for-the-host). pacman-home's
+# database says what is installed, at which version; a package missing
+# or at another version is built with makepkg and installed with
+# pacman-home -U. Dependencies between the packages decide the order.
+# pkgbuilds/pc/ holds the packages for an Arch PC, which this never
+# looks at.
 
-# pkgbuild_info DIR -- "name ver-rel dep dep..." from the PKGBUILD, read the way makepkg does
+# pkgbuild_info DIR -- "name ver-rel dep dep..." from the PKGBUILD, read
+# the way makepkg does
 pkgbuild_info() {
   bash -c 'source "$1/PKGBUILD" >/dev/null 2>&1 || exit 1
     printf "%s %s-%s" "$pkgname" "$pkgver" "$pkgrel"
     for d in "${depends[@]}"; do printf " %s" "${d%%[<>=]*}"; done; echo' _ "$1"
 }
 
-# Interactive: emacs's route when there is none, then the packages pacman-home has, and those it
-# lacks if wanted. emacs=host builds against the host's libraries, so not from a box.
+# Interactive: emacs's route when there is none, then the packages
+# pacman-home has, and those it lacks if wanted. emacs=host builds
+# against the host's libraries, so not from a box.
 if (( interactive )); then
   if (( ! want_emacs )) && [[ $emacs_have == none ]]; then
     offer_route emacs "$host_ok" "pkgbuilds/frame/emacs built here, under ~/.local (about 3 minutes)" \
@@ -781,8 +843,9 @@ fi
 
 if (( want_packages )); then
   [[ -x $PACMAN_HOME ]] || die "$PACMAN_HOME is missing"
-  # cargo, for a Rust package, comes from mise's shims; they go after the host's directories so that a
-  # tool the host has (meson, for one) is still the host's.
+  # cargo, for a Rust package, comes from mise's shims; they go after
+  # the host's directories so that a tool the host has (meson, for one)
+  # is still the host's.
   [[ -d $HOME/.local/share/mise/shims ]] && export PATH=$PATH:$HOME/.local/share/mise/shims
   declare -A pkg_dir pkg_ver pkg_deps
   for dir in "$SRC"/pkgbuilds/frame/*/; do
@@ -800,7 +863,8 @@ if (( want_packages )); then
   else
     wanted=("${!pkg_dir[@]}")
   fi
-  # Dependency order: a package goes after any wanted package it depends on.
+  # Dependency order: a package goes after any wanted package it depends
+  # on.
   ordered=()
   while (( ${#wanted[@]} )); do
     progress=0
@@ -819,7 +883,8 @@ if (( want_packages )); then
     (( progress )) || die "dependency cycle among pkgbuilds: ${wanted[*]}"
   done
   for name in "${ordered[@]}"; do
-    # The box's emacs export (or a hand-installed emacs) sits where this package's symlink goes.
+    # The box's emacs export (or a hand-installed emacs) sits where this
+    # package's symlink goes.
     if [[ $name == emacs-wayland && $emacs_have != none && $emacs_have != host ]]; then
       say "skip" "emacs-wayland: $HOME/.local/bin/emacs isn't pacman-home's (the $BOX box's export?); --emacs=host replaces it"
       continue
@@ -839,9 +904,10 @@ if (( want_packages )); then
   done
 fi
 
-# --- Homebrew: --brew, --zsh -------------------------------------------------------------------
-# The default prefix, since Homebrew's bottles are built for it; elsewhere everything builds from
-# source. /home survives SteamOS updates.
+# --- Homebrew: --brew, --zsh ------------------------------------------
+# The default prefix, since Homebrew's bottles are built for it;
+# elsewhere everything builds from source. /home survives SteamOS
+# updates.
 
 BREW_PREFIX=/home/linuxbrew/.linuxbrew
 BREW=$BREW_PREFIX/bin/brew
@@ -870,8 +936,9 @@ if (( want_brew )); then
     say "ok" "Homebrew $("$BREW" --version 2>/dev/null | sed -n '1s/^Homebrew //p')"
   elif act "Homebrew into $BREW_PREFIX" "install" brew; then
     if (( ! check )); then
-      # The installer needs sudo only where it can't write /home/linuxbrew, and it can't ask for a
-      # password when it runs unattended. With the directory ours, it needs none.
+      # The installer needs sudo only where it can't write
+      # /home/linuxbrew, and it can't ask for a password when it runs
+      # unattended. With the directory ours, it needs none.
       [[ -w ${BREW_PREFIX%/*} ]] || sudo install -d -o "$USER" -g "$(id -gn)" "${BREW_PREFIX%/*}"
       NONINTERACTIVE=1 bash -c \
         "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
@@ -887,7 +954,7 @@ if (( interactive && want_brew && ! want_zsh )); then
 fi
 (( want_zsh )) && brew_ensure zsh zsh
 
-# --- The arch box: --arch, --emacs=box, --waypipe=box ---------------------------------------------
+# --- The arch box: --arch, --emacs=box, --waypipe=box -----------------
 
 confirm_box() {
   (( yes )) && return 0
@@ -903,8 +970,9 @@ confirm_box() {
   [[ $answer == [yY]* ]]
 }
 
-# Interactive, an arch box in place is reported, and one that no route needs is offered on its own.
-# Its answer stands in for confirm_box's question.
+# Interactive, an arch box in place is reported, and one that no route
+# needs is offered on its own. Its answer stands in for confirm_box's
+# question.
 if (( interactive && box_ok && ! want_arch )); then
   if [[ $box == "$BOX" ]] || podman container exists "$BOX" 2>/dev/null; then
     want_arch=1
@@ -951,11 +1019,12 @@ if (( want_arch )); then
   fi
 fi
 
-# --- Tailscale ----------------------------------------------------------------------------------
+# --- Tailscale --------------------------------------------------------
 
-# Each part is checked on its own, and --tailscale fixes only what is missing. Only the installer
-# can put back the binaries or the unit (a SteamOS update can drop the unit), so either of those
-# re-runs it, and it then enables, starts and trusts in one go.
+# Each part is checked on its own, and --tailscale fixes only what is
+# missing. Only the installer can put back the binaries or the unit (a
+# SteamOS update can drop the unit), so either of those re-runs it, and
+# it then enables, starts and trusts in one go.
 TS=/home/.tailscale/bin
 KEEP=/etc/atomic-update.conf.d/tailscale-firewall.conf
 
@@ -1019,7 +1088,8 @@ else
     fi
     if ts_needs trusted \
       && act "tailscale0 in firewalld's trusted zone, kept across updates" "trust" tailscale; then
-      # The same steps install-tailscale.sh --trust-tailnet takes, without reinstalling.
+      # The same steps install-tailscale.sh --trust-tailnet takes,
+      # without reinstalling.
       if (( ! check )); then
         sudo firewall-cmd --permanent --zone=trusted --add-interface=tailscale0
         sudo firewall-cmd --reload
@@ -1040,15 +1110,18 @@ else
   fi
 fi
 
-# --- Shell init ---------------------------------------------------------------------------------
-# Two marked blocks of each rc file source files of shell-init/ from this checkout: "top" at its
-# start, ahead of mise activate and of ~/.local/bin on PATH, and "end" at its end. A file goes in
-# when its option is given, or when a block already has it, so a run without that option keeps it.
-# One that the rc file defines outside the blocks is left out. Blocks of earlier versions, one per
-# file or with the file's text inline, are replaced.
+# --- Shell init -------------------------------------------------------
+# Two marked blocks of each rc file source files of shell-init/ from
+# this checkout: "top" at its start, ahead of mise activate and of
+# ~/.local/bin on PATH, and "end" at its end. A file goes in when its
+# option is given, or when a block already has it, so a run without that
+# option keeps it. One that the rc file defines outside the blocks is
+# left out. Blocks of earlier versions, one per file or with the file's
+# text inline, are replaced.
 
 INIT_LINK='# https://github.com/curiousjtuber/steam-frame-utils#shell-init'
-# bin's pattern names this checkout's directory, so that some other bin/ on PATH doesn't match.
+# bin's pattern names this checkout's directory, so that some other bin/
+# on PATH doesn't match.
 src_re=$(printf '%s' "${SRC##*/}" | sed 's/[][\\.*^$+?(){}|]/\\&/g')
 declare -A INIT_PATTERNS=(
   [frametop]='^[[:space:]]*export FRAMETOP_XDG_CONFIG_HOME='
@@ -1059,15 +1132,15 @@ declare -A INIT_PATTERNS=(
   [mise]='^[^#]*mise activate'
 )
 
-# block_has_init RC INIT -- a block of RC sources shell-init/INIT.sh, or holds its text inline, as
-# blocks of earlier versions did
+# block_has_init RC INIT -- a block of RC sources shell-init/INIT.sh, or
+# holds its text inline, as blocks of earlier versions did
 block_has_init() {
   [[ -f $1 ]] && block_lines "$1" in \
     | grep -qE -- "^for _sfu in( [a-z-]+)* $2( [a-z-]+)*; do\$|${INIT_PATTERNS[$2]}"
 }
 
-# init_block RC NAME WHERE [INIT WANTED]... -- the block NAME sources each shell-init/INIT.sh that
-# is WANTED (1) or already in a block of RC
+# init_block RC NAME WHERE [INIT WANTED]... -- the block NAME sources
+# each shell-init/INIT.sh that is WANTED (1) or already in a block of RC
 init_block() {
   local rc=$1 name=$2 where=$3 init wanted
   shift 3
@@ -1085,8 +1158,9 @@ init_block() {
     remove_block "$rc" "$name"
     return
   fi
-  # A missing file, as after the checkout moved, is skipped rather than an error at every shell
-  # start. The loop variable is reused for the path, and unset so that it doesn't linger.
+  # A missing file, as after the checkout moved, is skipped rather than
+  # an error at every shell start. The loop variable is reused for the
+  # path, and unset so that it doesn't linger.
   local content; content=$(mktemp)
   {
     printf '%s\n' "$INIT_LINK"
@@ -1098,10 +1172,11 @@ init_block() {
   command rm -f "$content"
 }
 
-# The containers share these rc files, so each file works on the host and in a distrobox alike.
-# SteamOS has no zsh, so ~/.zshrc is optional; --zsh creates it so that zsh doesn't start with its
-# new-user menu. Interactive, the first block's write creates it instead, so that it is asked about
-# with its content.
+# The containers share these rc files, so each file works on the host
+# and in a distrobox alike. SteamOS has no zsh, so ~/.zshrc is optional;
+# --zsh creates it so that zsh doesn't start with its new-user menu.
+# Interactive, the first block's write creates it instead, so that it is
+# asked about with its content.
 if (( want_zsh && ! interactive )) && [[ ! -e $HOME/.zshrc ]]; then
   act "$HOME/.zshrc" "create"
   (( check )) || : > "$HOME/.zshrc"
@@ -1114,8 +1189,9 @@ fi
 want_ts_init=0
 [[ -z $box && -n $tailscale ]] && want_ts_init=1
 for rc in "${rcs[@]}"; do
-  # frametop is a no-op outside a Frametop desktop's terminal, so it always goes in. bin comes
-  # after brew, to go ahead of it in PATH; ~/.local/bin, added further down, goes ahead of both.
+  # frametop is a no-op outside a Frametop desktop's terminal, so it
+  # always goes in. bin comes after brew, to go ahead of it in PATH;
+  # ~/.local/bin, added further down, goes ahead of both.
   init_block "$rc" top top brew "$want_brew" frametop 1 bin 1
   init_block "$rc" end end waypipe "$want_waypipe" tailscale "$want_ts_init" mise "$want_mise"
   if [[ -f $rc ]]; then
@@ -1125,7 +1201,7 @@ for rc in "${rcs[@]}"; do
   fi
 done
 
-# --- Done ---------------------------------------------------------------------------------------
+# --- Done -------------------------------------------------------------
 
 if (( ! changed )); then
   echo "everything is up to date"

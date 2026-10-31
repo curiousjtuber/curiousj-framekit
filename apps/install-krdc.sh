@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
-# Install or update KRDC (org.kde.krdc), KDE's RDP and VNC client, from Flathub, for desktops
-# served by KRdp (Plasma's Remote Desktop). https://apps.kde.org/krdc
+# Install or update KRDC (org.kde.krdc), KDE's RDP and VNC client, from
+# Flathub, for desktops served by KRdp (Plasma's Remote Desktop).
+# https://apps.kde.org/krdc
 #
 # Usage:  ~/steam-frame-utils/apps/install-krdc.sh [--yes]
 #
-# --yes  don't ask before downloading; it needs the KDE runtime (org.kde.Platform 6.10), which
-#        Stream Frame already brings, else a few hundred MB from Flathub
+# --yes  don't ask before downloading; it needs the KDE runtime
+#        (org.kde.Platform 6.10), which Stream Frame already brings,
+#        else a few hundred MB from Flathub
 #
-# For desktop work rather than games: KRdp streams the whole workspace, every monitor, and its
-# mouse input goes through KWin in the stream's coordinates, so the pointer lines up on a
-# multi-monitor host, where Sunshine's virtual absolute mouse doesn't. The Flatpak bundles
-# FreeRDP. The flathub user remote is added if missing.
-# Into the user installation (~/.local/share/flatpak), like Frametop and krdpserver: no root and
-# no polkit, so it works over SSH, and the home directory survives SteamOS updates. The KDE
-# runtime goes into the user installation too, even when a system one would do, so removing
-# system Flatpaks later can't break the app. A system copy, say one Discover installed, is
-# reported: the user copy takes precedence, so remove the system one.
+# For desktop work rather than games: KRdp streams the whole workspace,
+# every monitor, and its mouse input goes through KWin in the stream's
+# coordinates, so the pointer lines up on a multi-monitor host, where
+# Sunshine's virtual absolute mouse doesn't. The Flatpak bundles
+# FreeRDP. The flathub user remote is added if missing. Into the user
+# installation (~/.local/share/flatpak), like Frametop and krdpserver:
+# no root and no polkit, so it works over SSH, and the home directory
+# survives SteamOS updates. The KDE runtime goes into the user
+# installation too, even when a system one would do, so removing system
+# Flatpaks later can't break the app. A system copy, say one Discover
+# installed, is reported: the user copy takes precedence, so remove the
+# system one.
 #
 # The sandbox: network and the GPU, nothing of the home directory.
 #
@@ -62,8 +67,9 @@ else
   flatpak install --user "${yes[@]}" "$REMOTE" "$APP"
 fi
 
-# A runtime in the system installation satisfies the install, so flatpak wouldn't pull it into
-# the user one; removing the system Flatpaks would then break the app.
+# A runtime in the system installation satisfies the install, so flatpak
+# wouldn't pull it into the user one; removing the system Flatpaks would
+# then break the app.
 runtime=$(flatpak info --user --show-runtime "$APP")
 if flatpak info --user "$runtime" >/dev/null 2>&1; then
   echo "ok             runtime $runtime"

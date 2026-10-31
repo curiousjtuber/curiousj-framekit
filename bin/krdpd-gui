@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-# steam-frame-utils: a window for bin/krdpd, KRdp's RDP server for a Plasma desktop on the Frame.
-# Starts and stops it, shows where to connect and the password, and its log. Every action runs
-# krdpd itself (status through `krdpd status --keys`), so the two never disagree; the server
-# keeps running after the window closes. apps/install-krdp.sh adds it to the menu as KRdp Server.
+# steam-frame-utils: a window for bin/krdpd, KRdp's RDP server for a
+# Plasma desktop on the Frame. Starts and stops it, shows where to
+# connect and the password, and its log. Every action runs krdpd itself
+# (status through `krdpd status --keys`), so the two never disagree; the
+# server keeps running after the window closes. apps/install-krdp.sh
+# adds it to the menu as KRdp Server.
 #
 # Usage:  krdpd-gui
 #
-# GTK 4 and libadwaita through PyGObject, all part of SteamOS's image, so nothing to install.
-# Run it on the host, from Desktop Mode or Frametop's desktop.
+# GTK 4 and libadwaita through PyGObject, all part of SteamOS's image,
+# so nothing to install. Run it on the host, from Desktop Mode or
+# Frametop's desktop.
 
 import os
 import pwd
@@ -84,7 +87,8 @@ class Window(Adw.ApplicationWindow):
         page.add(self.connect_group)
         self.address_rows = []
 
-        # The password, kept in ~/.config/krdpd/password; the user is under Serve.
+        # The password, kept in ~/.config/krdpd/password; the user is
+        # under Serve.
         pw = Adw.PreferencesGroup(title="Login")
         page.add(pw)
         self.pw_row = Adw.ActionRow(title="Password")
@@ -141,7 +145,7 @@ class Window(Adw.ApplicationWindow):
         self.refresh()
         GLib.timeout_add_seconds(POLL_SECONDS, self.poll)
 
-    # --- status -------------------------------------------------------------------------------
+    # --- status -------------------------------------------------------
 
     def poll(self):
         if not self.busy and not self.polling:
@@ -253,7 +257,7 @@ class Window(Adw.ApplicationWindow):
         krdpd(["log", "200"], lambda ok, out, err: self.log_view.get_buffer().set_text(
             out if ok else err))
 
-    # --- start and stop -----------------------------------------------------------------------
+    # --- start and stop -----------------------------------------------
 
     def run(self, args, label, then=None):
         """krdpd ARGS with the buttons off; a failure's message in a dialog."""
@@ -312,7 +316,7 @@ class Window(Adw.ApplicationWindow):
         self.run(["stop"], "Stopping…", lambda: self.start(force, lambda: self.toast(
             "Restarted with the new password")))
 
-    # --- password -----------------------------------------------------------------------------
+    # --- password -----------------------------------------------------
 
     def with_password(self, use):
         def done(ok, out, err):
@@ -384,7 +388,7 @@ class Window(Adw.ApplicationWindow):
             self.refresh()
         krdpd(["password", *args], done)
 
-    # --- feedback -----------------------------------------------------------------------------
+    # --- feedback -----------------------------------------------------
 
     def toast(self, text):
         self.toasts.add_toast(Adw.Toast(title=text))

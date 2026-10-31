@@ -1,25 +1,29 @@
 #!/usr/bin/env bash
-# steam-frame-utils: a stock Arch PKGBUILD rewritten for a ~/.local prefix, into pkgbuilds/frame/NAME/.
+# steam-frame-utils: a stock Arch PKGBUILD rewritten for a ~/.local
+# prefix, into pkgbuilds/frame/NAME/.
 #
 # Usage:  pkgbuilds/frame/homeify NAME    Arch's PKGBUILD for NAME, from gitlab.archlinux.org, or
 #                                         the AUR's when Arch has none, with the files it lists
 #                                         alongside (patches, units)
 #         pkgbuilds/frame/homeify NAME FILE  a PKGBUILD you already have
 #
-# The original is kept as PKGBUILD.upstream and the diff printed. The rewrite: the prefix given
-# to configure, cmake, meson (arch-meson too) and make, with sysconfdir and localstatedir under it;
-# the *dir= flags that name /usr; /usr, /etc, /var and /opt under $pkgdir and in backup=; aarch64
-# added to arch;
-# makepkg's debug split and lto turned off; the install scriptlet dropped, since nothing runs it;
-# and PKG_CONFIG_PATH and an rpath for ~/.local/lib exported in build(), so packages built this
-# way find each other. A PKGBUILD that runs cargo gets the rpath in RUSTFLAGS too, since rustc
-# ignores LDFLAGS, and a makedepends that mise's shims provide (cargo, python, ...) is unlisted,
-# since makepkg checks them against the host's packages. It ends with the makedepends and
-# depends the host lacks.
+# The original is kept as PKGBUILD.upstream and the diff printed. The
+# rewrite: the prefix given to configure, cmake, meson (arch-meson too)
+# and make, with sysconfdir and localstatedir under it; the *dir= flags
+# that name /usr; /usr, /etc, /var and /opt under $pkgdir and in
+# backup=; aarch64 added to arch; makepkg's debug split and lto turned
+# off; the install scriptlet dropped, since nothing runs it; and
+# PKG_CONFIG_PATH and an rpath for ~/.local/lib exported in build(), so
+# packages built this way find each other. A PKGBUILD that runs cargo
+# gets the rpath in RUSTFLAGS too, since rustc ignores LDFLAGS, and a
+# makedepends that mise's shims provide (cargo, python, ...) is
+# unlisted, since makepkg checks them against the host's packages. It
+# ends with the makedepends and depends the host lacks.
 #
-# Review the result before building; this is the mechanical part. What a build system hardcodes
-# shows up afterwards as a file outside ~/.local, which `pacman-home check` lists and `pacman-home
-# -U` refuses; fix that in the PKGBUILD by hand. A program that looks under /usr at run time
+# Review the result before building; this is the mechanical part. What a
+# build system hardcodes shows up afterwards as a file outside ~/.local,
+# which `pacman-home check` lists and `pacman-home -U` refuses; fix that
+# in the PKGBUILD by hand. A program that looks under /usr at run time
 # shows up only when it runs. Then:
 #   cd pkgbuilds/frame/NAME && makepkg -f && pacman-home -U NAME-*.pkg.tar.zst
 
@@ -44,8 +48,9 @@ if [[ -n $given ]]; then
   command cp -f "$given" "$upstream"
   from=$given
 else
-  # Arch's packaging repos first, the AUR when they have no such package. GitLab answers a
-  # missing project with a sign-in page and status 200, so the content is checked, not the status.
+  # Arch's packaging repos first, the AUR when they have no such
+  # package. GitLab answers a missing project with a sign-in page and
+  # status 200, so the content is checked, not the status.
   is_pkgbuild() { grep -qE '^pkg(name|base)=' "$1" 2>/dev/null; }
   if curl -fsSL -o "$upstream" "$arch_base/PKGBUILD" 2>/dev/null && is_pkgbuild "$upstream"; then
     from=$arch_base/PKGBUILD
@@ -78,14 +83,16 @@ build_exports='  # homeify: what is already under ~/.local is found at configure
   export LDFLAGS="${LDFLAGS:-} -Wl,-rpath,$_prefix/lib"'
 if (( uses_cargo )); then
   build_exports+='\
-  # homeify: rustc links through its own driver, so the rpath goes in RUSTFLAGS as well.\
+  # homeify: rustc links through its own driver, so the rpath goes in
+  # RUSTFLAGS as well.\
   export RUSTFLAGS="${RUSTFLAGS:-} -C link-arg=-Wl,-rpath,$_prefix/lib"'
 fi
 unlist=()
 if (( ${#from_mise[@]} )); then
   unlist=(-e '0,/^[a-z_]+ *\(\) *\{/{/^[a-z_]+ *\(\) *\{/ i\
-# homeify: these makedepends come from mise'"'"'s shims (setup.sh --mise), not host packages, which\
-# is all makepkg checks; the build fails plainly without them.\
+# homeify: these makedepends come from mise'"'"'s shims (setup.sh
+# --mise), not host packages, which\ is all makepkg checks; the build
+# fails plainly without them.\
 for _d in '"${from_mise[*]}"'; do for _i in "${!makedepends[@]}"; do\
   [[ ${makedepends[_i]} == "$_d" ]] && unset '"'"'makedepends[_i]'"'"'; done; done; unset _d _i\
 
@@ -94,17 +101,20 @@ fi
 
 {
   cat <<HEADER
-# Rewritten for a \$HOME/.local prefix by steam-frame-utils' pkgbuilds/frame/homeify on $(date +%F), from
+# Rewritten for a \$HOME/.local prefix by steam-frame-utils'
+# pkgbuilds/frame/homeify on $(date +%F), from
 #   $from
-# The original is PKGBUILD.upstream. Built on the Frame host with makepkg and installed with
-# pacman-home; see README.md#packages-for-the-host.
+# The original is PKGBUILD.upstream. Built on the Frame host with
+# makepkg and installed with pacman-home; see
+# README.md#packages-for-the-host.
 
 HEADER
   sed -E \
     -e '/^arch=\(/ { /aarch64|any/! s/^arch=\((.*)\)/arch=('"'"'aarch64'"'"' \1)/ }' \
     -e '0,/^pkg(base|name)=/{/^pkg(base|name)=/ a\
 \
-# homeify: the prefix, and makepkg'"'"'s debug split and lto, which lengthens a build for nothing here.\
+# homeify: the prefix, and makepkg'"'"'s debug split and lto, which
+# lengthens a build for nothing here.\
 _prefix=$HOME/.local\
 options+=(!debug !lto)
 }' \

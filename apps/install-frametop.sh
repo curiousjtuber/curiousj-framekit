@@ -1,43 +1,58 @@
 #!/usr/bin/env bash
-# Install or update Frametop, the multi-screen Plasma desktop and 3D mouse that run on the Frame
-# itself, from a release on GitHub: built by its CI, checked here. https://github.com/Frametop/frametop
+# Install or update Frametop, the multi-screen Plasma desktop and 3D
+# mouse that run on the Frame itself, from a release on GitHub: built by
+# its CI, checked here. https://github.com/Frametop/frametop
 #
 # Usage:  ~/steam-frame-utils/apps/install-frametop.sh [--version X.Y.Z] [--yes] [--no-eye-tracker]
 #                 [--no-bluetooth | --bluetooth] [--any-steamos] [--unpack-only]
 #         ~/steam-frame-utils/apps/install-frametop.sh --uninstall
 #
-# --version X.Y.Z   that release instead of the one this script records the sha256 of; the zip
-#                   is then checked only against the release's own SHA256SUMS, which says so
-# --yes             don't ask (install.sh's --yes): gaze mode yes, Frametop's own eye tracker
-#                   only if sudo runs without a password, no Bluetooth fixes, no SteamVR restart
-# --no-eye-tracker  don't offer Frametop's own eye tracker, the one part that is a root service
-# --no-bluetooth    don't offer the Bluetooth fixes, the other part that writes to /etc
+# --version X.Y.Z   that release instead of the one this script records
+#                   the sha256 of; the zip is then checked only against
+#                   the release's own SHA256SUMS, which says so
+# --yes             don't ask (install.sh's --yes): gaze mode yes,
+#                   Frametop's own eye tracker only if sudo runs without
+#                   a password, no Bluetooth fixes, no SteamVR restart
+# --no-eye-tracker  don't offer Frametop's own eye tracker, the one part
+#                   that is a root service
+# --no-bluetooth    don't offer the Bluetooth fixes, the other part that
+#                   writes to /etc
 # --bluetooth       install the Bluetooth fixes without asking
-# --any-steamos     install on a SteamOS build the release is known to break on
-# --unpack-only     download and check the zip, load its image and copy the release's files
-#                   out, but don't run their install.sh (the line to run it is printed)
-# --uninstall       run the installed release's uninstall.sh: two runs, with a restart between
+# --any-steamos     install on a SteamOS build the release is known to
+#                   break on
+# --unpack-only     download and check the zip, load its image and copy
+#                   the release's files out, but don't run their
+#                   install.sh (the line to run it is printed)
+# --uninstall       run the installed release's uninstall.sh: two runs,
+#                   with a restart between
 #
-# It downloads the release's Frametop.zip (about 1.1 GB) and SHA256SUMS, checks the zip against
-# the sha256 recorded below, so a release replaced after this script was written doesn't
-# install, and against SHA256SUMS, unpacks it and runs its install-release.sh, Frametop's own
-# installer. That one checks this SteamOS build against the releases' table (the newest from
-# Frametop's main branch over https, the zip's copy when offline), checks the image file in the
-# zip against the sha256 in its frametop-release.json, loads it into podman, copies the
-# release's files to ~/.local/share/frametop/releases/VERSION (current links there; the release
-# before stays, for rollback) and runs their install.sh, which builds and downloads nothing:
-# a container from the image, the input relay, pointer and power services, the SteamVR driver,
-# the desktop and the settings apps, all in the home directory. Two optional parts ask for sudo:
-# the eye tracker's frame grabber, a root service in /etc/frametop, and the Bluetooth fixes in
-# /etc/steamframe. Everything else needs no root. Run it on the host, not in a distrobox. The
-# download stays in ~/.cache/frametop-install until the install succeeds, so a run that stops
-# resumes where it was; a re-run with the same release reinstalls it, which is how it updates.
+# It downloads the release's Frametop.zip (about 1.1 GB) and SHA256SUMS,
+# checks the zip against the sha256 recorded below, so a release
+# replaced after this script was written doesn't install, and against
+# SHA256SUMS, unpacks it and runs its install-release.sh, Frametop's own
+# installer. That one checks this SteamOS build against the releases'
+# table (the newest from Frametop's main branch over https, the zip's
+# copy when offline), checks the image file in the zip against the
+# sha256 in its frametop-release.json, loads it into podman, copies the
+# release's files to ~/.local/share/frametop/releases/VERSION (current
+# links there; the release before stays, for rollback) and runs their
+# install.sh, which builds and downloads nothing: a container from the
+# image, the input relay, pointer and power services, the SteamVR
+# driver, the desktop and the settings apps, all in the home directory.
+# Two optional parts ask for sudo: the eye tracker's frame grabber, a
+# root service in /etc/frametop, and the Bluetooth fixes in
+# /etc/steamframe. Everything else needs no root. Run it on the host,
+# not in a distrobox. The download stays in ~/.cache/frametop-install
+# until the install succeeds, so a run that stops resumes where it was;
+# a re-run with the same release reinstalls it, which is how it updates.
 #
-# A source checkout in ~/frametop is left alone, but the launcher's Desktop entry and the
-# services switch to the release; running that checkout's install.sh switches them back.
+# A source checkout in ~/frametop is left alone, but the launcher's
+# Desktop entry and the services switch to the release; running that
+# checkout's install.sh switches them back.
 #
-# Rollback: ~/.local/share/frametop/releases/<the release before>/install.sh
-# Uninstall: --uninstall, or ~/.local/share/frametop/releases/current/uninstall.sh
+# Rollback: ~/.local/share/frametop/releases/<the release
+# before>/install.sh Uninstall: --uninstall, or
+# ~/.local/share/frametop/releases/current/uninstall.sh
 
 set -euo pipefail
 
@@ -76,7 +91,8 @@ done
 if (( uninstall )); then
   script=$RELEASES/current/uninstall.sh
   [[ -f $script ]] || die "no release in $RELEASES to uninstall (Frametop's own: curl -fsSL https://frametop.github.io/frametop/uninstall.sh | bash)"
-  # Its second run deletes the releases, itself included: run a copy, pointed at the release.
+  # Its second run deletes the releases, itself included: run a copy,
+  # pointed at the release.
   tmp=$(mktemp -d)
   trap 'command rm -rf "$tmp"' EXIT
   command cp "$script" "$tmp/uninstall.sh"

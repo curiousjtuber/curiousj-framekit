@@ -1,24 +1,29 @@
 #!/usr/bin/env bash
-# Install or update Stream Frame (com.boxtree.StreamFrame), Boxtree's app for watching, recording
-# and screenshotting the headset, from Boxtree's Flatpak repo. https://streamframe.app
+# Install or update Stream Frame (com.boxtree.StreamFrame), Boxtree's
+# app for watching, recording and screenshotting the headset, from
+# Boxtree's Flatpak repo. https://streamframe.app
 #
 # Usage:  ~/steam-frame-utils/apps/install-stream-frame.sh [--yes]
 #
-# --yes  don't ask before downloading; the first install also pulls the KDE runtime
-#        (org.kde.Platform 6.10) from Flathub, a few hundred MB
+# --yes  don't ask before downloading; the first install also pulls the
+#        KDE runtime (org.kde.Platform 6.10) from Flathub, a few hundred
+#        MB
 #
-# It adds the repo as the user remote stream-frame, and flathub for the runtime, and installs the
-# app; a re-run updates it.
-# Into the user installation (~/.local/share/flatpak), like Frametop and krdpserver: no root and
-# no polkit, so it works over SSH, and the home directory survives SteamOS updates. The KDE
-# runtime goes into the user installation too, even when a system one would do, so removing
-# system Flatpaks later can't break the app. A system copy, say one Discover installed, is
-# reported: the user copy takes precedence, so remove the system one.
+# It adds the repo as the user remote stream-frame, and flathub for the
+# runtime, and installs the app; a re-run updates it. Into the user
+# installation (~/.local/share/flatpak), like Frametop and krdpserver:
+# no root and no polkit, so it works over SSH, and the home directory
+# survives SteamOS updates. The KDE runtime goes into the user
+# installation too, even when a system one would do, so removing system
+# Flatpaks later can't break the app. A system copy, say one Discover
+# installed, is reported: the user copy takes precedence, so remove the
+# system one.
 #
 # The headset side needs nothing more: SteamOS ships ffmpeg in /usr/bin.
 #
-# The sandbox is thin: devices=all, ~/.ssh read-only, the SSH agent, and talk access to
-# org.freedesktop.Flatpak, which lets it run commands on the host.
+# The sandbox is thin: devices=all, ~/.ssh read-only, the SSH agent, and
+# talk access to org.freedesktop.Flatpak, which lets it run commands on
+# the host.
 #
 # Uninstall:
 #   flatpak uninstall --user com.boxtree.StreamFrame
@@ -66,8 +71,9 @@ else
   flatpak install --user "${yes[@]}" "$REMOTE" "$APP"
 fi
 
-# A runtime in the system installation satisfies the install, so flatpak wouldn't pull it into
-# the user one; removing the system Flatpaks would then break the app.
+# A runtime in the system installation satisfies the install, so flatpak
+# wouldn't pull it into the user one; removing the system Flatpaks would
+# then break the app.
 runtime=$(flatpak info --user --show-runtime "$APP")
 if flatpak info --user "$runtime" >/dev/null 2>&1; then
   echo "ok             runtime $runtime"

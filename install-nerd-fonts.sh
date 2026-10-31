@@ -1,24 +1,28 @@
 #!/usr/bin/env bash
-# Install or update Nerd Fonts for the current user, in ~/.local/share/fonts.
+# Install or update Nerd Fonts for the current user, in
+# ~/.local/share/fonts.
 #
 # Usage:  ~/steam-frame-utils/install-nerd-fonts.sh [NAME...]
 #
 # NAME is a release archive without .tar.xz, as listed on
-# https://github.com/ryanoasis/nerd-fonts/releases/latest: JetBrainsMono, FiraCode, Hack, Meslo,
-# CascadiaCode, NerdFontsSymbolsOnly, ... Without one, it installs JetBrainsMono and
+# https://github.com/ryanoasis/nerd-fonts/releases/latest:
+# JetBrainsMono, FiraCode, Hack, Meslo, CascadiaCode,
+# NerdFontsSymbolsOnly, ... Without one, it installs JetBrainsMono and
 # NerdFontsSymbolsOnly.
 #
-# No root and no steamos-readonly: fontconfig reads ~/.local/share/fonts under Wayland and X11
-# alike, Flatpak apps see it too, and /home survives SteamOS updates. The host and its distroboxes
-# share it.
+# No root and no steamos-readonly: fontconfig reads ~/.local/share/fonts
+# under Wayland and X11 alike, Flatpak apps see it too, and /home
+# survives SteamOS updates. The host and its distroboxes share it.
 #
-# Each font goes in its own ~/.local/share/fonts/NerdFonts/NAME, with a .version file. A re-run
-# replaces only fonts older than the latest release. Archives are checked against the release's
-# SHA-256.txt. NerdFontsSymbolsOnly also brings a fontconfig rule, copied to
-# ~/.config/fontconfig/conf.d, that makes every font fall back to it for the icons.
+# Each font goes in its own ~/.local/share/fonts/NerdFonts/NAME, with a
+# .version file. A re-run replaces only fonts older than the latest
+# release. Archives are checked against the release's SHA-256.txt.
+# NerdFontsSymbolsOnly also brings a fontconfig rule, copied to
+# ~/.config/fontconfig/conf.d, that makes every font fall back to it for
+# the icons.
 #
-# Restart running apps to see a new font. In a terminal, pick the "Nerd Font Mono" family, so each
-# icon takes one cell.
+# Restart running apps to see a new font. In a terminal, pick the "Nerd
+# Font Mono" family, so each icon takes one cell.
 #
 # Uninstall:
 #   rm -rf ~/.local/share/fonts/NerdFonts/NAME && fc-cache -f
@@ -49,8 +53,8 @@ for cmd in curl tar xz sha256sum fc-cache fc-scan; do
   command -v "$cmd" >/dev/null || die "missing required command: $cmd"
 done
 
-# releases/latest redirects to .../releases/tag/<tag>. Resolving it once keeps the checksums and
-# every archive from the same release.
+# releases/latest redirects to .../releases/tag/<tag>. Resolving it once
+# keeps the checksums and every archive from the same release.
 tag=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$REPO/releases/latest") \
   || die "can't reach $REPO"
 tag=${tag##*/}

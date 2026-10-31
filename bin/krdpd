@@ -1,58 +1,70 @@
 #!/usr/bin/env bash
-# steam-frame-utils: serve a Plasma desktop running on the Frame over RDP, with KDE's krdpserver
-# from the flatpak apps/install-krdp.sh builds. For KRDC, Remmina or Windows Remote Desktop:
-# every screen of that desktop, side by side as KWin arranges them, the cursor drawn by the
-# viewer. Started by hand, never automatically. Details:
+# steam-frame-utils: serve a Plasma desktop running on the Frame over
+# RDP, with KDE's krdpserver from the flatpak apps/install-krdp.sh
+# builds. For KRDC, Remmina or Windows Remote Desktop: every screen of
+# that desktop, side by side as KWin arranges them, the cursor drawn by
+# the viewer. Started by hand, never automatically. Details:
 # https://github.com/curiousjtuber/steam-frame-utils#apps
 #
 # Usage:  krdpd start [--desktop frametop|stock|DIR] [--port N] [--user NAME] [--address ADDR]
 #         krdpd stop | status [--keys] | log [LINES]
 #         krdpd password [NEW | --generate]
 #
-# --desktop  which desktop to serve: frametop (Frametop's, runtime dir /run/user/UID/frametop),
-#            stock (SteamOS's Desktop, /run/user/UID/nested_plasma), or a runtime dir holding
-#            a wayland-0 socket. Default: frametop when it runs. stock needs --force: on SteamOS
-#            0.4.5 the stock desktop's KWin (6.2.5 on its X11 backend inside gamescope) crashes
-#            in its screencast plugin as soon as a client connects, leaving a bare KWin that
-#            only logging out of it clears; Frametop's KWin (Wayland backend) streams fine.
-# --port     default 3391. 3389 is SteamOS's own xrdp (a separate X11 session), 3390 Frametop
-#            Remote Access's krdp; this one runs beside either.
-# --user     the login name clients give; default the Frame's user. The password is the one in
-#            ~/.config/krdpd/password, made at the first start; `krdpd password` shows it,
-#            `krdpd password NEW` sets it, `--generate` makes a new random one (restart after).
-# --address  default 0.0.0.0, every address: the Frame's firewall already lets the LAN at every
-#            port above 1024, and RDP brings its own TLS and login (NLA). Give the tailnet
+# --desktop  which desktop to serve: frametop (Frametop's, runtime dir
+#            /run/user/UID/frametop), stock (SteamOS's Desktop,
+#            /run/user/UID/nested_plasma), or a runtime dir holding a
+#            wayland-0 socket. Default: frametop when it runs. stock
+#            needs --force: on SteamOS 0.4.5 the stock desktop's KWin
+#            (6.2.5 on its X11 backend inside gamescope) crashes in its
+#            screencast plugin as soon as a client connects, leaving a
+#            bare KWin that only logging out of it clears; Frametop's
+#            KWin (Wayland backend) streams fine.
+# --port     default 3391. 3389 is SteamOS's own xrdp (a separate X11
+#            session), 3390 Frametop Remote Access's krdp; this one runs
+#            beside either.
+# --user     the login name clients give; default the Frame's user. The
+#            password is the one in ~/.config/krdpd/password, made at
+#            the first start; `krdpd password` shows it, `krdpd password
+#            NEW` sets it, `--generate` makes a new random one (restart
+#            after).
+# --address  default 0.0.0.0, every address: the Frame's firewall
+#            already lets the LAN at every port above 1024, and RDP
+#            brings its own TLS and login (NLA). Give the tailnet
 #            address to keep it off the LAN.
 #
 # status --keys prints key=value lines, for bin/krdpd-gui.
 #
-# Clients accept the Frame's self-signed certificate once (made here, in ~/.config/krdpd).
-# KWin allows the capture through the flatpak's desktop file (see the manifest), so neither
-# desktop needs a permission bypass. One thing this doesn't do for Frametop: ask ft-screens for
-# full frame rate on screens you aren't looking at, so those draw slowly over RDP; Frametop
-# Remote Access does that for its own server. Log: ~/.local/state/krdpd.log.
+# Clients accept the Frame's self-signed certificate once (made here, in
+# ~/.config/krdpd). KWin allows the capture through the flatpak's
+# desktop file (see the manifest), so neither desktop needs a permission
+# bypass. One thing this doesn't do for Frametop: ask ft-screens for
+# full frame rate on screens you aren't looking at, so those draw slowly
+# over RDP; Frametop Remote Access does that for its own server. Log:
+# ~/.local/state/krdpd.log.
 
 set -euo pipefail
 
 APP=io.github.curiousjtuber.Krdp
-# Fixed paths, not XDG_CONFIG_HOME and XDG_STATE_HOME: a terminal inside Frametop's desktop
-# has those pointed at the nested session's folders, and the flatpak is granted ~/.config/krdpd.
+# Fixed paths, not XDG_CONFIG_HOME and XDG_STATE_HOME: a terminal inside
+# Frametop's desktop has those pointed at the nested session's folders,
+# and the flatpak is granted ~/.config/krdpd.
 conf=$HOME/.config/krdpd
 log=$HOME/.local/state/krdpd.log
 info=$HOME/.local/state/krdpd.info  # what start served, for status
 uid=$(id -u)
 run=/run/user/$uid
-# flatpak keeps its instances under XDG_RUNTIME_DIR, and Frametop's desktop moves that to
-# $run/frametop, so from there flatpak ps would miss the server and flatpak kill couldn't reach
-# it. The sandbox's /run/user/UID is mapped from it too.
+# flatpak keeps its instances under XDG_RUNTIME_DIR, and Frametop's
+# desktop moves that to $run/frametop, so from there flatpak ps would
+# miss the server and flatpak kill couldn't reach it. The sandbox's
+# /run/user/UID is mapped from it too.
 export XDG_RUNTIME_DIR=$run
 
 usage() { sed -n '2,/^$/s/^# \{0,1\}//p' "$0"; }
 die() { echo "krdpd: $*" >&2; exit 1; }
 
 installed() { flatpak --user info "$APP" >/dev/null 2>&1 || flatpak info "$APP" >/dev/null 2>&1; }
-# The running instance's krdpserver, if any: flatpak lists instances by app id, and child-pid is
-# the app's own process (pid is the sandbox's).
+# The running instance's krdpserver, if any: flatpak lists instances by
+# app id, and child-pid is the app's own process (pid is the sandbox's).
 instance_pid() { flatpak ps --columns=application,child-pid 2>/dev/null | awk -v a="$APP" '$1 == a {print $2; exit}'; }
 running() { [ -n "$(instance_pid)" ]; }
 
@@ -119,10 +131,11 @@ start() {
   fi
   ensure_creds
   mkdir -p "$(dirname "$log")"
-  # flatpak resolves the sandbox's xdg grants against the XDG dirs, so give it the user's real
-  # ones, whatever this shell inherited from a nested session. WAYLAND_DISPLAY, as an absolute
-  # path, is the socket flatpak connects the sandbox to (with a security context, which is what
-  # KWin trusts).
+  # flatpak resolves the sandbox's xdg grants against the XDG dirs, so
+  # give it the user's real ones, whatever this shell inherited from a
+  # nested session. WAYLAND_DISPLAY, as an absolute path, is the socket
+  # flatpak connects the sandbox to (with a security context, which is
+  # what KWin trusts).
   unset XDG_CONFIG_HOME XDG_STATE_HOME XDG_DATA_HOME XDG_CACHE_HOME
   WAYLAND_DISPLAY=$dir/wayland-0 setsid flatpak run --env=LANG=C.UTF-8 "$APP" \
     --plasma --address "$address" --port "$port" \

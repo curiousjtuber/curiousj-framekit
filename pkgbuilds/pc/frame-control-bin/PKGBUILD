@@ -1,17 +1,21 @@
-# Maintainer: CuriousJ <curious.j.tuber@gmail.com>
-# Frame Control (https://github.com/saphid/frame-control), the PC-side app for the Steam Frame,
-# as an Arch package for the x86_64 or aarch64 PC: not for the Frame, which is what it manages,
-# which is why it lives under pkgbuilds/pc/, where setup.sh never looks.
+# Maintainer: CuriousJ <curious.j.tuber@gmail.com> Frame Control
+# (https://github.com/saphid/frame-control), the PC-side app for the
+# Steam Frame, as an Arch package for the x86_64 or aarch64 PC: not for
+# the Frame, which is what it manages, which is why it lives under
+# pkgbuilds/pc/, where setup.sh never looks.
 #
-# A -bin package that repackages the .deb each release's workflow publishes, so what pacman
-# installs is byte for byte the tested release, checked against the sha256 from its SHA256SUMS.
-# The app bundles Electron, Python and adb; ssh comes from the host, as on every platform, and
-# so do the optional rsync, avahi-browse and ffprobe. Its own updater sees a package install and
-# only announces a release; updating is bumping pkgver and the two sums here, then makepkg.
+# A -bin package that repackages the .deb each release's workflow
+# publishes, so what pacman installs is byte for byte the tested
+# release, checked against the sha256 from its SHA256SUMS. The app
+# bundles Electron, Python and adb; ssh comes from the host, as on every
+# platform, and so do the optional rsync, avahi-browse and ffprobe. Its
+# own updater sees a package install and only announces a release;
+# updating is bumping pkgver and the two sums here, then makepkg.
 #
-# /opt/frame-control, not the .deb's "/opt/Frame Control": no space in the path, and the
-# desktop entry's Exec is rewritten to the /usr/bin link. chrome-sandbox stays 0755: the .deb's
-# postinst only makes it SUID where unprivileged user namespaces are off, and Arch has them on.
+# /opt/frame-control, not the .deb's "/opt/Frame Control": no space in
+# the path, and the desktop entry's Exec is rewritten to the /usr/bin
+# link. chrome-sandbox stays 0755: the .deb's postinst only makes it
+# SUID where unprivileged user namespaces are off, and Arch has them on.
 #
 # Build and install on the PC:
 #   makepkg -si
@@ -23,8 +27,9 @@ pkgdesc="Manage a Valve Steam Frame over SSH: headset view, games, Android apps,
 arch=('x86_64' 'aarch64')
 url="https://github.com/saphid/frame-control"
 license=('MIT')
-# Direct NEEDED entries of the bundled Electron binary (readelf -d), the ssh client the app runs
-# for every headset connection, and xdg-open for links.
+# Direct NEEDED entries of the bundled Electron binary (readelf -d), the
+# ssh client the app runs for every headset connection, and xdg-open for
+# links.
 depends=('alsa-lib' 'at-spi2-core' 'cairo' 'dbus' 'expat' 'gcc-libs' 'glib2'
          'glibc' 'gtk3' 'hicolor-icon-theme' 'libcups' 'libx11' 'libxcb'
          'libxcomposite' 'libxdamage' 'libxext' 'libxfixes' 'libxkbcommon'

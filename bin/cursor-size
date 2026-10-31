@@ -1,21 +1,26 @@
 #!/usr/bin/env bash
-# steam-frame-utils: show or set the mouse cursor's size in a Plasma desktop on the Frame,
-# Frametop's or SteamOS's stock Desktop, and apply it to the running desktop at once.
+# steam-frame-utils: show or set the mouse cursor's size in a Plasma
+# desktop on the Frame, Frametop's or SteamOS's stock Desktop, and apply
+# it to the running desktop at once.
 #
 # Usage:  cursor-size [SIZE] [--theme NAME] [--desktop frametop|stock]
 #         cursor-size --apply [--desktop frametop|stock]
 #
-# With no SIZE it prints the desktop's size and theme. SIZE is in pixels, 24 by default in
-# Plasma; gamescope's own cursor is 256. --theme also sets the theme (breeze_cursors,
-# Breeze_Light, Adwaita, steam, ...). --apply sets nothing: it gives KWin the saved setting again,
-# for the autostart entry setup.sh installs, since at each start KWin takes gamescope's
-# XCURSOR_SIZE=256 and XCURSOR_THEME=steam over kcminputrc until told to reread it.
+# With no SIZE it prints the desktop's size and theme. SIZE is in
+# pixels, 24 by default in Plasma; gamescope's own cursor is 256.
+# --theme also sets the theme (breeze_cursors, Breeze_Light, Adwaita,
+# steam, ...). --apply sets nothing: it gives KWin the saved setting
+# again, for the autostart entry setup.sh installs, since at each start
+# KWin takes gamescope's XCURSOR_SIZE=256 and XCURSOR_THEME=steam over
+# kcminputrc until told to reread it.
 #
-# Run from a terminal inside a desktop, it changes that one. Elsewhere (SSH, Game Mode) it changes
-# the desktop that runs, Frametop's first, or with --desktop the one named; with neither running
-# it saves the setting for both. The setting goes in the desktop's kcminputrc, where System
-# Settings keeps it too. KWin redraws its cursor at once; an app that draws its own (X11 apps, some
-# older toolkits) keeps the size the desktop started with.
+# Run from a terminal inside a desktop, it changes that one. Elsewhere
+# (SSH, Game Mode) it changes the desktop that runs, Frametop's first,
+# or with --desktop the one named; with neither running it saves the
+# setting for both. The setting goes in the desktop's kcminputrc, where
+# System Settings keeps it too. KWin redraws its cursor at once; an app
+# that draws its own (X11 apps, some older toolkits) keeps the size the
+# desktop started with.
 
 set -euo pipefail
 
@@ -64,7 +69,8 @@ if [[ ${KDE_FULL_SESSION:-} == true ]]; then
   for d in frametop stock; do [[ ${XDG_RUNTIME_DIR:-} == "${runtime[$d]}" ]] && here=$d; done
 fi
 
-# bus_of DESKTOP -- the session bus address of its plasmashell, if it runs
+# bus_of DESKTOP -- the session bus address of its plasmashell, if it
+# runs
 bus_of() {
   local pid env
   for pid in $(pgrep -u "$(id -u)" -x plasmashell); do
@@ -95,8 +101,8 @@ for d in "${targets[@]}"; do
   [[ $d == stock || -d ${config[$d]} ]] || die "${config[$d]} is missing: is Frametop installed?"
   [[ -z $size ]] || write_key "$d" cursorSize "$size"
   [[ -z $theme ]] || write_key "$d" cursorTheme "$theme"
-  # KWin reloads [Mouse] from kcminputrc on KGlobalSettings' CursorChanged (5), as System
-  # Settings sends it.
+  # KWin reloads [Mouse] from kcminputrc on KGlobalSettings'
+  # CursorChanged (5), as System Settings sends it.
   if [[ $d == "$here" ]]; then bus=${DBUS_SESSION_BUS_ADDRESS:-}; else bus=$(bus_of "$d"); fi
   if [[ -n $bus ]]; then
     DBUS_SESSION_BUS_ADDRESS=$bus dbus-send --session --type=signal /KGlobalSettings \

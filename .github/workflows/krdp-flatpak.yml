@@ -1,9 +1,12 @@
-# Builds KRdp's server flatpak (apps/krdp) natively on GitHub's arm64 runner, with the same
-# install-krdp.sh the Frame runs, so nobody needs the Frame or qemu to make the bundle.
-# A push that touches the manifest keeps the bundle as a workflow artifact; a krdp-* tag also
-# uploads it to that tag's release, created as a draft if there isn't one, to publish by hand.
-# Each bundle gets a signed build attestation, so a download can be traced to this workflow and
-# commit: gh attestation verify io.github.curiousjtuber.Krdp.flatpak --repo curiousjtuber/steam-frame-utils
+# Builds KRdp's server flatpak (apps/krdp) natively on GitHub's arm64
+# runner, with the same install-krdp.sh the Frame runs, so nobody needs
+# the Frame or qemu to make the bundle. A push that touches the manifest
+# keeps the bundle as a workflow artifact; a krdp-* tag also uploads it
+# to that tag's release, created as a draft if there isn't one, to
+# publish by hand. Each bundle gets a signed build attestation, so a
+# download can be traced to this workflow and commit: gh attestation
+# verify io.github.curiousjtuber.Krdp.flatpak --repo
+# curiousjtuber/steam-frame-utils
 name: krdp flatpak
 
 on:
@@ -36,7 +39,8 @@ jobs:
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q flatpak dbus
-          # Ubuntu 24.04 confines unprivileged user namespaces, which bwrap needs for the builder
+          # Ubuntu 24.04 confines unprivileged user namespaces, which
+          # bwrap needs for the builder
           if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
@@ -46,8 +50,9 @@ jobs:
             echo "XDG_RUNTIME_DIR=$d" >> "$GITHUB_ENV"
           fi
 
-      # The flatpak'd builder installs dependencies through the host's flatpak over the session
-      # bus, which a runner doesn't have, so the flatpak steps each get one.
+      # The flatpak'd builder installs dependencies through the host's
+      # flatpak over the session bus, which a runner doesn't have, so
+      # the flatpak steps each get one.
       - name: Build and bundle
         run: |
           mkdir -p dist
