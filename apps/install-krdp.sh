@@ -3,8 +3,8 @@
 # as a flatpak for the Frame, from
 # apps/krdp/io.github.curiousjtuber.Krdp.yml. It serves a Plasma desktop
 # running on the Frame (Frametop's or the stock one) over RDP, for KRDC,
-# Remmina or Windows Remote Desktop; bin/krdpd starts and stops it, and
-# so does KRdp Server in the menu (bin/krdpd-gui), which this adds as
+# Remmina or Windows Remote Desktop; cjf rdp starts and stops it, and
+# so does KRdp Server in the menu (cjf rdp gui), which this adds as
 # well. https://invent.kde.org/plasma/krdp
 #
 # Usage:  ~/steam-frame-utils/apps/install-krdp.sh [--bundle [FILE] | --uninstall]
@@ -32,9 +32,9 @@
 # nothing. No root. Run it on the host, not in a distrobox.
 #
 # The sandbox: network (the RDP port), the GPU, flatpak's Wayland socket
-# (the desktop to capture; bin/krdpd points it at the right one), the
+# (the desktop to capture; cjf rdp points it at the right one), the
 # host's PipeWire socket, and ~/.config/krdpd read-only (the TLS
-# certificate and key bin/krdpd makes). Nothing else of the home
+# certificate and key cjf rdp makes). Nothing else of the home
 # directory.
 #
 # Uninstall:
@@ -44,7 +44,7 @@
 set -euo pipefail
 
 APP=io.github.curiousjtuber.Krdp
-GUI=io.github.curiousjtuber.Krdpd  # bin/krdpd-gui's app id: KWin matches the window to this entry
+GUI=io.github.curiousjtuber.Krdpd  # cjf rdp gui's app id: KWin matches the window to this entry
 SDK=org.kde.Sdk//6.11
 REPO_FILE=https://dl.flathub.org/repo/flathub.flatpakrepo
 here=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -86,7 +86,7 @@ else
     --state-dir="$state/state" "$state/build" "$manifest"
   echo "$stamp" > "$state/installed"
   echo "installed $APP ($(flatpak --user info "$APP" 2>/dev/null | sed -n 's/^ *Commit: \(.\{12\}\).*/\1/p'))"
-  echo "start it with: krdpd start   (see krdpd --help)"
+  echo "start it with: cjf rdp start   (see cjf rdp --help)"
 fi
 
 # The menu entry, in the home folder's applications, which both
@@ -99,7 +99,7 @@ Type=Application
 Name=KRdp Server
 GenericName=Remote Desktop Server
 Comment=Serve this Plasma desktop over RDP: start, stop, where to connect, the password
-Exec=$(cd "$here/.." && pwd)/bin/krdpd-gui
+Exec=$HOME/.local/bin/cjf rdp gui
 Icon=krfb
 Terminal=false
 Categories=Network;RemoteAccess;

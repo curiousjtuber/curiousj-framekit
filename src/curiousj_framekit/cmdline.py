@@ -211,6 +211,36 @@ def write_file(opts: Options, path: str | os.PathLike, content: str, *,
     return True
 
 
+def remove_file(opts: Options, path: str | os.PathLike, why: str = "", *,
+                ask=None, out=None) -> bool:
+    """Remove a file of ours, asking first; True when it went. Under
+    --check it says what would go. No backup: this is for files the kit
+    wrote itself and can write again."""
+    path = Path(path)
+    name = tilde(path)
+    if not path.exists() and not path.is_symlink():
+        return False
+    say("would remove" if opts.check else "remove", f"{name}{': ' + why if why else ''}", out)
+    if not confirm(opts, f"remove {name}?", True, ask):
+        return False
+    path.unlink()
+    return True
+
+
+def cjf_path() -> str:
+    """The absolute path of the cjf command, for files other programs run
+    without the shell's PATH (autostart entries, Steam's launch options):
+    the entry point in ~/.local/bin as a rule, found from how this
+    process was started, else from PATH."""
+    argv0 = sys.argv[0] if sys.argv else ""
+    if argv0 and os.path.basename(argv0) in ("cjf", "curiousj-framekit") and "/" in argv0:
+        return os.path.abspath(argv0)
+    found = shutil.which("cjf") or shutil.which("curiousj-framekit")
+    if found:
+        return os.path.abspath(found)
+    return str(Path.home() / ".local/bin/cjf")
+
+
 # --- commands -----------------------------------------------------------
 
 def run(opts: Options, argv: list[str], *, check: bool = True,

@@ -1,0 +1,86 @@
+# cjf vr AA calibration readings. One reading per line:
+#   test,side,what,min,value
+# what:  pct_run  firmware %, controller running (before turning it off)
+#        v_in     volts in place, controller off, <min> minutes after turning it off
+#        v_out    volts out of the controller (resting)
+#        pct_on   firmware %, <min> minutes after turning it back on
+#        v_on     volts in place, controller on (under load), <min> minutes after turning it on
+# A blank min means "not timed". Rows r1-r8 were taken out-then-on (v_out, then pct_on at 0);
+# rows r9-r13 run-then-in-place (pct_run, then v_in at 0). r9 is NiMH straight off the charger.
+test,side,what,min,value
+r1,R,v_out,,1.234
+r1,R,pct_on,0,36
+r1,L,v_out,,1.228
+r1,L,pct_on,0,33
+r2,R,v_out,,1.334
+r2,R,pct_on,0,62
+r2,L,v_out,,1.338
+r2,L,pct_on,0,62
+r3,R,v_out,,1.297
+r3,R,pct_on,0,43
+r3,L,v_out,,1.333
+r3,L,pct_on,0,53
+r4,R,v_out,,1.331
+r4,R,pct_on,0,61
+r4,L,v_out,,1.328
+r4,L,pct_on,0,59
+r5,R,v_out,,1.289
+r5,R,pct_on,0,46
+r5,L,v_out,,1.328
+r5,L,pct_on,0,55
+r6,R,v_out,,1.320
+r6,R,pct_on,0,53
+r6,L,v_out,,1.279
+r6,L,pct_on,0,40
+r7,R,v_out,,1.223
+r7,R,pct_on,0,28
+r7,L,v_out,,1.284
+r7,L,pct_on,0,43
+r8,R,v_out,,1.157
+r8,R,pct_on,0,9
+r8,L,v_out,,1.245
+r8,L,pct_on,0,32
+r9,R,pct_run,,79
+r9,R,v_in,0,1.406
+r9,L,pct_run,,77
+r9,L,v_in,0,1.402
+r10,R,pct_run,,70
+r10,R,v_in,0,1.369
+r10,L,pct_run,,68
+r10,L,v_in,0,1.366
+r11,R,pct_run,,71
+r11,R,v_in,0,1.373
+r11,L,pct_run,,69
+r11,L,v_in,0,1.370
+r12,R,pct_run,,67
+r12,R,v_in,0,1.356
+r12,L,pct_run,,64
+r12,L,v_in,0,1.351
+r13,R,pct_run,,63
+r13,R,v_in,0,1.338
+r13,L,pct_run,,59
+r13,L,v_in,0,1.332
+# e60, 2026-10-16: side-by-side test near 60%. The user's note: the controllers were turned off
+# before the 5 min v_on reading, and the last row (% and V) came a minute after it: logged as 6 min.
+e60,R,pct_run,,62
+e60,R,v_in,0,1.336
+e60,R,v_in,1,1.337
+e60,R,v_in,5,1.338
+e60,R,v_in,15,1.339
+e60,R,v_out,,1.339
+e60,R,v_on,0,1.334
+e60,R,v_on,1,1.333
+e60,R,v_on,5,1.331
+e60,R,pct_on,6,61
+e60,R,v_on,6,1.328
+e60,L,pct_run,,59
+e60,L,v_in,0,1.330
+e60,L,v_in,1,1.331
+e60,L,v_in,5,1.332
+e60,L,v_in,15,1.333
+e60,L,v_out,,1.333
+e60,L,v_on,0,1.326
+e60,L,v_on,1,1.325
+e60,L,v_on,5,1.322
+e60,L,pct_on,6,58
+e60,L,v_on,6,1.320

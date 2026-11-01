@@ -15,17 +15,15 @@ that location.
 | `apps/` | installers for apps: Frametop, Stream Frame, Moonlight, KRDC, Deskflow, BSManager, Full Keyboard and KRdp's server (see [Apps](#apps)) |
 | `shell-init/` | bash and zsh init for `bin/` on `PATH`, Homebrew, mise, the `tailscale` alias, `waypipe`, and terminals in the Frametop desktop (see [Shell init](#shell-init)) |
 | `bin/podman` | lets distrobox work from Desktop Mode and the Frametop desktop (see [Distrobox in Desktop Mode](#distrobox-in-desktop-mode)) |
-| `bin/bsmanager` | BSManager on the Frame, in a window on a Linux PC through waypipe (see [Apps](#apps)) |
-| `bin/cursor-size [SIZE] [--theme NAME] [--desktop frametop\|stock]` | shows or sets the mouse cursor's size in Desktop Mode or the Frametop desktop, and applies it to the running desktop (see [Cursor size](#cursor-size)) |
-| `bin/sw-cursor [on\|off\|default]` | Desktop Mode's software cursor for the next sessions, or what is set now and what the running desktop got; `setup.sh` keeps a choice made here (see [Mouse cursor in Desktop Mode](#mouse-cursor-in-desktop-mode)) |
-| `autostart/` | runs `cursor-size --apply` as each desktop starts, so the size set survives a restart; `setup.sh` installs it wherever it installs the software cursor, with which the desktops take gamescope's 256 px, and removes it otherwise (same section) |
-| `bin/wifi-known [--all]` | the Wi-Fi networks NetworkManager has saved that are in range, strongest first; Desktop Mode has no Plasma network applet, so this and `nmtui` stand in for it |
+| `bsmanager [--no-gpu] [-- ARGS]` | BSManager on the Frame, in a window on a Linux PC through waypipe: from the PC, `waypipe --remote-bin /home/steamos/.local/bin/waypipe ssh steamos@frame.local bsmanager` (see [Apps](#apps)) |
+| `cjf cursor size [SIZE] [--theme NAME] [--desktop frametop\|stock]`, `cjf cursor theme NAME`, `cjf cursor apply` | shows or sets the mouse cursor's size and theme in Desktop Mode or the Frametop desktop; from a terminal inside the desktop it applies at once (see [Cursor size](#cursor-size)) |
+| `cjf cursor software [on\|off\|default]` | Desktop Mode's software cursor for the next sessions, or what is set now; a choice made here is kept in `~/.config/curiousj-framekit/config.toml`, and the cursor-size autostart entry goes with it (see [Mouse cursor in Desktop Mode](#mouse-cursor-in-desktop-mode)) |
+| `cjf wifi [--all]` | the Wi-Fi networks NetworkManager has saved that are in range, strongest first; Desktop Mode has no Plasma network applet, so this and `nmtui` stand in for it |
 | `cjf status` | the versions of SteamOS, SteamVR and the Steam client, as Valve's patch notes number them, with each one's build and update channel; the first command of `curiousj-framekit`, the Python package that is replacing these scripts stage by stage (see [reorg-steps.md](reorg-steps.md)): `uv tool install --editable ~/steam-frame-utils` puts `cjf` in `~/.local/bin`, and `cjf` bare lists its commands. SteamVR comes with the OS image and the client updates itself, so the client is read from `~/.local/share/Steam`, not from its package |
-| `bin/vr-controllers [off [left\|right]]` | lists the VR controllers SteamVR knows, with battery (for the Frame's AA controllers also an estimated cell voltage and NiMH charge), or turns them off from a shell as the dashboard's power menu does; this goes through a private SteamVR interface, so the script says how its slot was found and refuses if SteamVR renames the interface |
-| `bin/steam-controller [off [NAME]]` | lists the Steam Controllers paired over Bluetooth that are on, with battery, or turns them off, with Valve's own HID power-off command sent to the hidraw node since the kernel's hid-steam doesn't take this controller yet |
-| `bin/beat-saber-recent [-n N \| --all]` | the songs Beat Saber started in its recent launches, in order, from the Unity logs in its Proton prefix and from `~/.local/state/steam-frame-utils/beat-saber-songs.tsv`, which `beat-saber-recent --record` fills from those logs; Unity keeps only two, so set the game's launch options to `~/steam-frame-utils/bin/beat-saber-recent --record; %command%; ~/steam-frame-utils/bin/beat-saber-recent --record` and every launch is kept (`PlayerData.dat` has play counts but no dates); `beat-saber-recent --install-hook` sets that through the running Steam client, over the debug port the Frame's Steam has open, when nothing is set there yet |
+| `cjf vr [off [left\|right]]` | the headset's battery and charging state from the kernel, then the VR controllers SteamVR knows, with battery (for the Frame's AA controllers also an estimated cell voltage and NiMH charge), or turns them off from a shell as the dashboard's power menu does; this goes through a private SteamVR interface, so it refuses if SteamVR renames the interface |
+| `cjf controllers [off [NAME]]` | lists the Steam Controllers paired over Bluetooth that are on, with battery, or turns them off, with Valve's own HID power-off command sent to the hidraw node since the kernel's hid-steam doesn't take this controller yet |
+| `beat-saber-recent [-n N \| --all]` | the songs Beat Saber started in its recent launches, in order, from the Unity logs in its Proton prefix and from `~/.local/state/curiousj-framekit/beat-saber-songs.tsv`, which `beat-saber-recent --record` fills from those logs; Unity keeps only two, so the game's launch options run the hook before and after the game and every launch is kept; `beat-saber-recent --install-hook` sets that through the running Steam client, over the debug port the Frame's Steam has open, when nothing is set there yet |
 | `distrobox/distroboxrc` | makes distrobox find `bin/podman` whatever the caller's `PATH` (same section) |
-| `environment.d/` | shows the mouse cursor in Desktop Mode on SteamOS below 0.5.6; `setup.sh` installs it there and removes it from 0.5.6 on, where the stock desktop draws it itself and Frametop's session sets the variable for its own (see [Mouse cursor in Desktop Mode](#mouse-cursor-in-desktop-mode)) |
 | `pkgbuilds/frame/` | PKGBUILDs for the Frame host itself, built with makepkg on the Frame for a `~/.local` prefix: `pkgbuilds/frame/emacs/` is Emacs with PGTK, `pkgbuilds/frame/pacman/` pacman 7 with a current libalpm, and `pkgbuilds/frame/homeify` rewrites a stock Arch PKGBUILD into one (see [Packages for the host](#packages-for-the-host)) |
 | `pkgbuilds/pc/` | PKGBUILDs for an Arch PC instead, ordinary `/usr` packages installed with `makepkg -si` there: `pkgbuilds/pc/krdpserver-embed-cursor/`, a krdpserver that can paint the PC's own pointer into the stream (see [Apps](#apps)), and `pkgbuilds/pc/frame-control-bin/`, [Frame Control](https://github.com/saphid/frame-control) as an Arch package built from its release `.deb` (the PKGBUILD's header says what it changes) |
 | `bin/pacman-home` | pacman for packages under `~/.local`, with its database there and no root: the ones built from `pkgbuilds/frame/`, and stock binary packages it relocates (same section) |
@@ -75,8 +73,6 @@ Always, whatever the options:
 | `distrobox/distroboxrc` | inserts into `~/.distroboxrc`, which puts this checkout's `bin/` first for distrobox |
 | `bin/` | goes on `PATH` from this checkout, through `shell-init/bin.sh` (see [Shell init](#shell-init)), so a `git pull` updates its scripts. A copy in `~/.local/bin` from an earlier version would come first, so it is backed up to `<file>.bak-<timestamp>` |
 | `shell-init/frametop.sh` | sourced from the block at the top of `~/.bashrc`, and of `~/.zshrc` if that exists (see [Shell init](#shell-init)) |
-| `environment.d/` | through `bin/sw-cursor`: copies to `~/.config/environment.d/`, unless `sw-cursor off` was chosen; reboot afterwards (see [Mouse cursor in Desktop Mode](#mouse-cursor-in-desktop-mode)). Interactive, it is offered when nothing is there |
-| `autostart/` | with the software cursor: copies to `~/.config/autostart/`, and to `~/.config/frametop/autostart/` once Frametop is installed, with this checkout's path in `Exec`; each desktop picks it up at its next start |
 
 Options add the rest, and each one also fixes only what's missing:
 
@@ -332,7 +328,7 @@ gets on the headset.
 | `install-bsmanager.sh` | [BSManager](https://github.com/DaVarga/bs-manager), DaVarga's arm64 fork, for Beat Saber versions, mods and maps | `~/Applications/BSManager.AppImage`, with a menu entry and the BeatSaver OneClick links |
 | `install-full-keyboard.sh [--version X.Y.Z \| --uninstall]` | [Full Keyboard](https://github.com/TaiKeid/steam-frame-full-keyboard), TaiKeid's full-size virtual keyboard for the dashboard and local apps | `~/.local/share/framekeyboard`, with the launcher `~/.local/bin/framekeyboard` and a menu entry |
 | `install-frametop.sh [--version X.Y.Z] [--yes] [--no-eye-tracker] [--no-bluetooth \| --bluetooth] [--any-steamos] [--unpack-only] \| --uninstall` | [Frametop](https://github.com/Frametop/frametop), the multi-screen Plasma desktop and 3D mouse that run on the Frame itself | `~/.local/share/frametop/releases/<version>`, with a podman image and container from the release's `Frametop.zip`, and services in the home directory; two optional parts use sudo |
-| `install-krdp.sh [--bundle [FILE] \| --uninstall]` | [KRdp](https://invent.kde.org/plasma/krdp)'s server, krdpserver, for serving a Plasma desktop on the Frame over RDP to KRDC, Remmina or Windows Remote Desktop | Flatpak `io.github.curiousjtuber.Krdp`, built here on KDE's runtime, in the user installation; no root. Run with `bin/krdpd`, or KRdp Server in the menu |
+| `install-krdp.sh [--bundle [FILE] \| --uninstall]` | [KRdp](https://invent.kde.org/plasma/krdp)'s server, krdpserver, for serving a Plasma desktop on the Frame over RDP to KRDC, Remmina or Windows Remote Desktop | Flatpak `io.github.curiousjtuber.Krdp`, built here on KDE's runtime, in the user installation; no root. Run with `cjf rdp`, or KRdp Server in the menu |
 
 - **The Flatpak apps** go into the user installation,
   `~/.local/share/flatpak`, like Frametop and krdpserver: no root and no
@@ -436,7 +432,7 @@ gets on the headset.
   FILE` and no build. GitHub builds the same bundle on an arm64 runner
   (`.github/workflows/krdp-flatpak.yml`) when the manifest changes, and
   attaches it to the release when a `krdp-*` tag is pushed.
-- **`bin/krdpd start [--desktop frametop|stock|DIR] [--port N] [--user
+- **`cjf rdp start [--desktop frametop|stock|DIR] [--port N] [--user
   NAME] [--address ADDR]`**, `stop`, `status`, `log`, `password [NEW |
   --generate]` runs that server by hand. It serves Frametop's desktop
   when that runs (the stock Desktop only with `--force`: on SteamOS
@@ -445,7 +441,7 @@ gets on the headset.
   bare KWin until you log out of it; Frametop's KWin, on the Wayland
   backend, streams fine), on port 3391 by default: 3389 is SteamOS's own
   xrdp, which logs into a separate X11 session, and 3390 is Frametop
-  Remote Access's krdp when that is on, so `krdpd` runs beside either.
+  Remote Access's krdp when that is on, so `cjf rdp` runs beside either.
   The login is the Frame's user with the password in
   `~/.config/krdpd/password`, made at the first start; the self-signed
   certificate there is what clients accept once. The Frame's firewall
@@ -455,13 +451,13 @@ gets on the headset.
   Frametop's screens you aren't looking at draw slowly, since only
   Frametop Remote Access asks ft-screens for full rate.
 - **KRdp Server**, the menu entry `install-krdp.sh` adds, is
-  `bin/krdpd-gui`: a window that starts and stops the same server and
-  shows where to connect, the password, and the log. It runs `krdpd` for
+  `cjf rdp gui`: a window that starts and stops the same server and
+  shows where to connect, the password, and the log. It runs `cjf rdp` for
   everything, so the two never disagree, and the server keeps running
   after the window closes. It's GTK 4 and libadwaita through Python, all
   in SteamOS's image, so it needs nothing installed; run it on the host,
   from either desktop.
-- **`bin/bsmanager [--no-gpu] [HOST]`** shows the Frame's BSManager in a
+- **`bsmanager [--no-gpu]`** shows the Frame's BSManager in a
   window on a Linux PC's Wayland desktop, through waypipe. In the
   headset, start BSManager from Steam instead. It runs in either of two
   places:
@@ -665,24 +661,24 @@ variable once, at its start, so a change takes a reboot; nothing
 switches it in a running desktop. `env | grep KWIN` in a Desktop Mode
 Konsole confirms it.
 
-`bin/sw-cursor` manages the file,
+`cjf cursor software` manages the file,
 `~/.config/environment.d/90-kwin-software-cursor.conf`:
 
 ```bash
-sw-cursor            # what is set, SteamOS's default, and what the running desktop got
-sw-cursor on         # the software cursor for the next sessions
-sw-cursor off        # without it
-sw-cursor default    # the default again, on
+cjf cursor software            # what is set, SteamOS's default, and what the running desktop got
+cjf cursor software on         # the software cursor for the next sessions
+cjf cursor software off        # without it
+cjf cursor software default    # the default again, on
 ```
 
-`setup.sh` runs `sw-cursor auto`: the default where nothing was chosen.
+`setup.sh` runs `cjf cursor software auto`: the default where nothing was chosen.
 Interactive, with nothing in place, it offers the software cursor
 instead. `on` and `off` are a choice it keeps, written into the file
 with a marker line (`KWIN_FORCE_SW_CURSOR=0` for `off`, so a later run
 neither reinstalls nor removes it); `default` forgets the choice. A file
 there that isn't steam-frame-utils' is left alone by `auto` and
 `default`, and backed up by `on` and `off`. Frametop's session script
-sets the variable for its own KWin, so `sw-cursor` doesn't change the
+sets the variable for its own KWin, so `cjf cursor software` doesn't change the
 Frametop desktop's cursor.
 [docs/desktop-cursor.md](docs/desktop-cursor.md) has what was found on
 0.5.6.
@@ -697,10 +693,10 @@ keeps in `kcminputrc` (`[Mouse] cursorSize` and `cursorTheme`, 24 and
 `breeze_cursors` by default), so the cursor comes up huge and System
 Settings' choice is lost at the next start.
 
-`cursor-size` sets it for the running desktop:
+`cjf cursor size` sets it for the running desktop:
 
 ```bash
-cursor-size 32
+cjf cursor size 32
 ```
 
 It writes `kcminputrc` and tells KWin to reload it, the way System
@@ -712,15 +708,14 @@ frametop|stock` names; with neither running it saves the setting for
 both. Apps that draw their own cursor, X11 ones and some older toolkits,
 size it from the `XCURSOR_SIZE` the desktop started with.
 
-At each start KWin takes gamescope's variables again, so `sw-cursor`
+At each start KWin takes gamescope's variables again, so `cjf cursor software`
 (and `setup.sh` through it) installs
-`autostart/steam-frame-utils-cursor.desktop` in each desktop's autostart
-dir; it runs `cursor-size --apply`, which gives KWin the saved setting
+`curiousj-framekit-cursor.desktop` in each desktop's autostart dir; it runs `cjf cursor apply`, which gives KWin the saved setting
 without changing it. The cursor is 256 px for the second or two until
 Plasma reaches autostart. SteamOS 0.5.6 keeps the size itself, but only
 without the software cursor; with it the desktops take gamescope's 256
 px again, so the entry goes wherever the `environment.d` file does, and
-is removed with `sw-cursor off`.
+is removed with `cjf cursor software off`.
 
 The obvious place, a script in `plasma-workspace/env/` exporting the
 variables before KWin starts, doesn't work on the Frame, and that's

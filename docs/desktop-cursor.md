@@ -1,9 +1,10 @@
 # The desktop mouse cursor on SteamOS 0.5.6
 
-What SteamOS 0.5.6 changed for the two cursor fixes `bin/sw-cursor`
+What SteamOS 0.5.6 changed for the two cursor fixes `cjf cursor software`
 installs, the software cursor
-(`environment.d/90-kwin-software-cursor.conf`) and the size entry
-(`autostart/steam-frame-utils-cursor.desktop`), where Frametop's cursor
+(`~/.config/environment.d/90-kwin-software-cursor.conf`) and the size
+entry (`curiousj-framekit-cursor.desktop` in each desktop's autostart
+dir), where Frametop's cursor
 went instead, and why the software cursor stays the default. The
 README's [Mouse cursor in Desktop
 Mode](../README.md#mouse-cursor-in-desktop-mode) section has the fixes
@@ -18,7 +19,7 @@ reboot.
 | | Stock Desktop Mode | Frametop desktop |
 |---|---|---|
 | Without `KWIN_FORCE_SW_CURSOR` | cursor drawn, size kept | no cursor |
-| With it | cursor drawn, but 256 px until `cursor-size --apply` | cursor drawn |
+| With it | cursor drawn, but 256 px until `cjf cursor apply` | cursor drawn |
 
 That looked like 0.5.6 fixing the stock desktop on its own, but it is
 half right: the cursor it draws is the controller's mouse mode's, and a
@@ -60,14 +61,15 @@ variable is the controller's mouse-mode cursor, gamescope's own. A
 pointer from a real mouse goes to KWin, which still puts it on a
 hardware plane, so Deskflow (a virtual mouse from another machine) and a
 USB or Bluetooth mouse show no cursor. For 0.5.6 and later alike,
-`bin/sw-cursor` therefore keeps the software cursor as its default, and
+`cjf cursor software` therefore keeps the software cursor as its default, and
 with it the size entry, since with the variable set the desktops take
 gamescope's 256 px again. A version check (`CURSOR_FIXED_IN`, from
 `VERSION_ID`) was in for five days and is gone.
 
 ## What setup.sh does with it
 
-`bin/sw-cursor` holds the policy; `setup.sh` runs `sw-cursor auto`, or
+`cjf cursor software` holds the policy; `setup.sh` runs `cjf cursor
+software auto`, or
 offers the software cursor when nothing is in place and the run is
 interactive.
 
@@ -75,12 +77,15 @@ interactive.
 |---|---|
 | none | installs it, and the size entries |
 | the default copy | kept |
-| chosen with `sw-cursor on` or `off` | kept, the size entries with the choice |
+| chosen with `cjf cursor software on` or `off` | kept, the size entries with the choice |
 | anything else | left alone with a `skip`; the entries too |
 
-A choice is a file whose first line is `# steam-frame-utils: sw-cursor
-on` or `off`, then `KWIN_FORCE_SW_CURSOR=1` or `=0`; `sw-cursor default`
-drops it. A size entry of ours is known by its `Name=` line, so one
+A choice is `software = true` or `false` under `[cursor]` in
+`~/.config/curiousj-framekit/config.toml`, and the file then holds
+`KWIN_FORCE_SW_CURSOR=1` or `=0`; `cjf cursor software default` drops
+the choice. (Before the kit, the choice was a marker line at the top of
+the file, `# steam-frame-utils: sw-cursor on` or `off`; such a file is
+still recognized, and `auto` carries its choice into the config.) A size entry of ours is known by its `Name=` line, so one
 rendered with an older checkout path is replaced too. The
 `environment.d` change needs a reboot either way: KWin reads the
 variable once, at its start (a function-local static in kwin 6.2's
@@ -90,11 +95,11 @@ variable once, at its start (a function-local static in kwin 6.2's
 
 `cjf status` gives the version. Then:
 
-1. Open the stock desktop without the software cursor (`sw-cursor off`,
-   then a reboot) and move a real mouse, Deskflow's or a paired one, not
+1. Open the stock desktop without the software cursor (`cjf cursor software
+   off`, then a reboot) and move a real mouse, Deskflow's or a paired one, not
    the controller: is its cursor drawn, and at the size System Settings
-   has? If it is, the default could become off again. `sw-cursor` with
-   no argument says what the running desktop got.
+   has? If it is, the default could become off again. `cjf cursor software`
+   with no argument says what is set and whether Desktop Mode runs.
 2. Open the Frametop desktop with the `export KWIN_FORCE_SW_CURSOR=1`
    line in its session script commented out: if the cursor is drawn, the
    line can go.

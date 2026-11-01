@@ -15,7 +15,10 @@ class Help(unittest.TestCase):
         result = CliRunner().invoke(cli.cli, ["--help"])
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cjf -- curiousj's kit for the Steam Frame.", result.output)
-        self.assertIn("status      the versions", result.output)
+        self.assertRegex(result.output, r"\n    status +the versions")
+        for name in ("cursor", "wifi", "vr", "controllers", "rdp"):
+            self.assertRegex(result.output, rf"\n    {name} +\S")
+            self.assertIn(name, cli.cli.commands)
         self.assertIn("--check", result.output)
 
     def test_command_lines_for_the_picker(self):

@@ -578,8 +578,8 @@ for src in "$SRC"/bin/*; do
 done
 
 # --- Mouse cursor in Desktop Mode -------------------------------------
-# bin/sw-cursor holds the policy: the environment.d software cursor, a
-# choice made with `sw-cursor on|off` kept, and the cursor-size
+# `cjf cursor software` holds the policy: the environment.d software cursor, a
+# choice made with `cjf cursor software on|off` kept, and the cursor-size
 # autostart entry wherever the software cursor is (see
 # docs/desktop-cursor.md). It reports in this script's style, and says
 # by its exit status what changed: 100 the environment.d file, 101 the
@@ -588,16 +588,21 @@ done
 # asked.
 
 CURSOR_CONF=$HOME/.config/environment.d/90-kwin-software-cursor.conf
-# sw_cursor_run [--check] -- sw-cursor auto, its exit status into
+# sw_cursor_run [--check] -- cjf cursor software auto, its exit status into
 # changed and the notes
+CJF=$HOME/.local/bin/cjf
+cjf_cursor_auto() {  # [--check] -- `cjf cursor software auto`, the global option first
+  [[ -x $CJF ]] || die "$CJF is missing: the cursor fix moved into curiousj-framekit (uv tool install --editable $SRC)"
+  "$CJF" "$@" cursor software auto
+}
 sw_cursor_run() {
   local rc=0
-  "$SRC/bin/sw-cursor" auto "$@" || rc=$?
+  cjf_cursor_auto "$@" || rc=$?
   case $rc in
     0) ;;
     100) changed=1 reboot_needed=1 ;;
     101) changed=1 desktop_restart=1 ;;
-    *) die "bin/sw-cursor failed (exit $rc)" ;;
+    *) die "cjf cursor software auto failed (exit $rc)" ;;
   esac
   return $rc
 }
@@ -606,22 +611,22 @@ if (( ! interactive )); then
   (( check )) && args+=(--check)
   sw_cursor_run "${args[@]}" || true
 elif [[ ! -e $CURSOR_CONF && ! -L $CURSOR_CONF ]]; then
-  printf '%-14s %s\n' missing "Desktop Mode's software cursor (sw-cursor on), for a real mouse,"
+  printf '%-14s %s\n' missing "Desktop Mode's software cursor (cjf cursor software on), for a real mouse,"
   more "Deskflow's say: SteamOS 0.5.6 draws only the controller's mouse-mode cursor without it"
   ask "$(printf '%-14s %s' "" "Enable it?")" "$dflt" yes no
   if [[ $answer == yes ]]; then sw_cursor_run || true
-  else say "skip" "software cursor: not enabled; sw-cursor on does it later"
+  else say "skip" "software cursor: not enabled; cjf cursor software on does it later"
   fi
 else
   rc=0
-  "$SRC/bin/sw-cursor" auto --check || rc=$?
+  cjf_cursor_auto --check || rc=$?
   if (( rc == 100 || rc == 101 )); then
     ask "$(printf '%-14s %s' "" "Make the cursor changes above?")" yes yes no
     if [[ $answer == yes ]]; then sw_cursor_run || true
     else say "skip" "cursor files: left as they are"
     fi
   elif (( rc )); then
-    die "bin/sw-cursor failed (exit $rc)"
+    die "cjf cursor software auto failed (exit $rc)"
   fi
 fi
 

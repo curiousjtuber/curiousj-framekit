@@ -3,13 +3,20 @@
     cjf [-v] [--yes] [--check] COMMAND [ARGS...]
     cjf                                 pick a command from a menu
 
-    status      the versions of SteamOS, SteamVR and the Steam client
+    status        the versions of SteamOS, SteamVR and the Steam client
+    cursor        the mouse cursor in Desktop Mode and Frametop's desktop
+    wifi          the saved Wi-Fi networks in range
+    vr            the headset and VR controllers: battery, or turn off
+    controllers   the Steam Controllers paired over Bluetooth
+    rdp           serve a Plasma desktop on the Frame over RDP
 
 Run bare, on a terminal, it lists the commands and runs the one picked
 (fzf when installed, else a numbered menu). The options go before the
 command: -v logs each command run (-vv more), --yes answers yes to
 every question, --check reports what a command would change and changes
 nothing. curiousj-framekit is the same command under its full name.
+Beat Saber's two tools are commands of their own: beat-saber-recent and
+bsmanager.
 """
 
 from __future__ import annotations
@@ -20,6 +27,7 @@ import click
 
 from . import cmdline, pick
 from .cmdline import Options
+from .frame import controllers, cursor, rdp, vr, wifi
 from .install import status
 
 PROG = "cjf"
@@ -57,6 +65,11 @@ def pick_command(ctx: click.Context) -> str | None:
 
 
 cli.add_command(status.status)
+cli.add_command(cursor.cursor)
+cli.add_command(wifi.wifi)
+cli.add_command(vr.vr_cmd, "vr")
+cli.add_command(controllers.controllers_cmd, "controllers")
+cli.add_command(rdp.rdp)
 
 
 def main(argv: list[str] | None = None) -> int:
