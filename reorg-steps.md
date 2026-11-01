@@ -452,6 +452,33 @@ Goal: the repo, the checkouts and the Frame carry the new name.
    Frame `cjf init` and `cjf install` from the picker for one item.
 6. Merge `dev` to `main`; tag `v0.1.0`.
 
+**Done 2026-11-01** (`9a1fdf3`, `c45f077`, `42712bc`). The GitHub
+repository was renamed in place with `gh repo rename`; the old URLs
+answer 301 to the new ones, the krdp release and the workflow came
+along. Both remotes were set by hand (`gh` did not touch the ssh form).
+On the Frame the checkout moved to `~/curiousj-framekit` and the tool
+was reinstalled from it (`uv` is a mise shim there, so plain ssh needs
+`~/.local/share/mise/shims` on PATH first); `cjf status` reports
+`kit 0.1.0 curiousj-framekit, editable from ~/curiousj-framekit`, and
+a login shell finds `cjf` in `~/.local/bin`. Two files under the home
+still named the old directory: the software-cursor environment.d file
+carried the old marker line, dropped by `cjf cursor software on` now
+that the choice is in the config, and the emacs binary embeds its
+configure-time lisp path as a fallback, which is harmless (its runpath
+is `~/.local/lib`, `ldd` resolves everything). Step 5 was run from the
+raw URL on `main` into a fake `HOME` on the PC: mise, uv through it,
+the kit at `9a1fdf3`, with `CURIOUSJ_FRAMEKIT_NO_INIT` since `cjf
+init` is the Frame's; the Frame's own init and picker were not run
+again, it was set up in stage 3. The two workflow runs the rename
+triggered failed in forty seconds: `cjf install` now takes every
+item's status first, and the pacman-home kind ran `/usr/bin/pacman`,
+which the runner lacks; `c45f077` guards that in `pkg.pacman`, and the
+dispatched run after it built the bundle in eight minutes. The version
+became 0.1.0 for the tag. Kept on purpose: the old name inside
+`docs/install.md` and `docs/shell-init.md`, which quote the old scheme,
+and the PC's checkout directory, still `~/steam-frame-utils` (this
+session's working directory; renaming it is yours).
+
 ## Points to settle while implementing
 
 Named in the plan, left to the stage that meets them:
