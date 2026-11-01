@@ -8,11 +8,11 @@ that location.
 
 | Path | |
 |---|---|
-| `setup.sh` | checks and installs everything below but `apps/`, whose installers are run by hand (see [Setup](#setup)) |
-| `install-tailscale.sh` | Tailscale as a system service that survives updates (see [Tailscale](#tailscale)) |
-| `install-nerd-fonts.sh` | Nerd Fonts in the home directory, no root needed (see [Nerd Fonts](#nerd-fonts)) |
-| `install-waypipe.sh` | waypipe for the host: Arch Linux ARM's package, relocated under `~/.local` by `pacman-home`, no root needed (see [The waypipe function](#the-waypipe-function)) |
-| `apps/` | installers for apps: Frametop, Stream Frame, Moonlight, KRDC, Deskflow, BSManager, Full Keyboard and KRdp's server (see [Apps](#apps)) |
+| `cjf install` | the catalog of optional items: apps, host packages, Tailscale, Homebrew, fonts, the cursor fix; `cjf install` bare picks from it, `cjf installed` shows every item's state, `cjf install --all` updates what updates by installing again (see [Setup](#setup)) |
+| `cjf install tailscale [--trust]` | Tailscale as a system service that survives updates (see [Tailscale](#tailscale)) |
+| `cjf install nerd-fonts [NAME...]` | Nerd Fonts in the home directory, no root needed (see [Nerd Fonts](#nerd-fonts)) |
+| `cjf install waypipe` | waypipe for the host: Arch Linux ARM's package, relocated under `~/.local` by `pacman-home`, no root needed (see [The waypipe function](#the-waypipe-function)) |
+| `cjf install frametop\|stream-frame\|moonlight\|krdc\|deskflow\|bsmanager\|full-keyboard\|krdp` | the apps, each a catalog item (see [Apps](#apps)); [docs/TRUST.md](docs/TRUST.md) says what each one checks |
 | `cjf init` | the base: `~/.local/bin` on `PATH`, `~/.local/share/curiousj-framekit/init.sh` (bash and zsh init for Homebrew, mise, the `tailscale` alias, `waypipe`, terminals in the Frametop desktop, and `cjf`'s completion), the podman shim, one marked block in `~/.bashrc`, `~/.zshrc` and `~/.distroboxrc`, and the cursor fix; `cjf migrate` moves a Frame set up by `setup.sh` over (see [Shell init](#shell-init)) |
 | `~/.local/share/curiousj-framekit/shims/podman` | written by `cjf init`: lets distrobox work from Desktop Mode and the Frametop desktop (see [Distrobox in Desktop Mode](#distrobox-in-desktop-mode)) |
 | `bsmanager [--no-gpu] [-- ARGS]` | BSManager on the Frame, in a window on a Linux PC through waypipe: from the PC, `waypipe --remote-bin /home/steamos/.local/bin/waypipe ssh steamos@frame.local bsmanager` (see [Apps](#apps)) |
@@ -30,6 +30,12 @@ that location.
 | `docs/` | memos on the surrounding ground: [Arch-based distrobox images for arm64](docs/arch-distrobox-images.md); [the proximity sensor](docs/proximity-sensor.md), on the `frame-prox` tool that SteamOS 0.4.4 made redundant and how its undocumented settings were found; [the desktop cursor](docs/desktop-cursor.md), what SteamOS 0.5.6 changed for the two cursor fixes and how to re-check on the next one; [packages under `~/.local`](docs/home-packages.md), what each one took to get there; [paru](docs/paru.md), tried on the home database and dropped; [the screen reader](docs/orca-screen-reader.md), the command that silences Orca's "dummy output module" message and why Steam restarts it at every boot; and [trust](docs/TRUST.md), what `setup.sh` fetches and who is trusted at the root (the apps have [apps/TRUST.md](apps/TRUST.md)) |
 
 ## Setup
+
+Since stage 4 of the reorganization `setup.sh` is gone: `cjf init` is
+the base, and every optional part is a catalog item installed with
+`cjf install NAME`, picked from `cjf install` bare, and listed by `cjf
+installed`. The text below describes the `setup.sh` options the catalog
+replaced; its reasons still hold, and the docs are rewritten in stage 6.
 
 ```bash
 ~/steam-frame-utils/setup.sh
@@ -157,19 +163,10 @@ written into `~/.bashrc` by hand.
 
 ## Tailscale
 
-`install-tailscale.sh` installs or updates Tailscale as a native system
-service, using kernel TUN rather than userspace or proxy mode. `setup.sh
---tailscale` runs it and adds the `tailscale` alias (see [Shell
-init](#shell-init)). To run it by hand, copy the script to the Frame and
-run it there:
-
-```bash
-scp install-tailscale.sh steamos@frame.local:
-```
-
-```bash
-sudo bash ~/install-tailscale.sh [--trust-tailnet]
-```
+`cjf install tailscale [--trust]` installs or updates Tailscale as a
+native system service, using kernel TUN rather than userspace or proxy
+mode; the download and its check run as you, one sudo installs. The
+`tailscale` alias comes with the shell init. Then:
 
 ```bash
 sudo /home/.tailscale/bin/tailscale up --qr --operator=steamos --ssh
@@ -310,6 +307,11 @@ To uninstall a font, delete its folder and run `fc-cache -f`. The
 script's header comment has the steps.
 
 ## Apps
+
+Each app is a catalog item now: `cjf install frametop`, `cjf install
+moonlight`, and so on, with the options the scripts took after the name
+(`cjf install --help` lists them), and `cjf uninstall NAME`. The text
+below still names the scripts; the behaviour is the same.
 
 `apps/` holds one installer per app. `setup.sh` doesn't run them; each
 is run by hand, and a re-run updates. The header comment of each has the
