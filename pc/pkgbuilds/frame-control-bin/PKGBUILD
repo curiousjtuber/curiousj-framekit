@@ -2,7 +2,7 @@
 # (https://github.com/saphid/frame-control), the PC-side app for the
 # Steam Frame, as an Arch package for the x86_64 or aarch64 PC: not for
 # the Frame, which is what it manages, which is why it lives under
-# pkgbuilds/pc/, where setup.sh never looks.
+# pc/, where the kit's catalog never looks.
 #
 # A -bin package that repackages the .deb each release's workflow
 # publishes, so what pacman installs is byte for byte the tested

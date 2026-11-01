@@ -12,10 +12,14 @@ build/
 *.egg-info/
 .pytest_cache/
 
-# makepkg, run in a pkgbuilds/ directory
-pkgbuilds/*/*/src/
-pkgbuilds/*/*/pkg/
-pkgbuilds/*/*/*.pkg.tar.*
-pkgbuilds/*/*/*.tar.xz
-pkgbuilds/*/*/*.deb
-pkgbuilds/*/*/*.tar.xz.sig
+# makepkg, run in a PKGBUILD's directory
+pkgbuilds/frame/*/src/
+pkgbuilds/frame/*/pkg/
+pkgbuilds/frame/*/*.pkg.tar.*
+pkgbuilds/frame/*/*.tar.xz
+pc/pkgbuilds/*/src/
+pc/pkgbuilds/*/pkg/
+pc/pkgbuilds/*/*.pkg.tar.*
+pc/pkgbuilds/*/*.tar.xz
+pc/pkgbuilds/*/*.deb
+pc/pkgbuilds/*/*.tar.xz.sig
