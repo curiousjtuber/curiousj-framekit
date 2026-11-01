@@ -68,9 +68,9 @@ pacman-home. Not a trade worth keeping.
 
 ## If it comes back
 
-Everything needed is recorded: `pkgbuilds/frame/homeify paru`
-regenerates the PKGBUILD from the AUR with no hand edit; `setup.sh
---mise` provides cargo; the three config lines are `PacmanConf =
+Everything needed is recorded: `cjf pkg homeify paru`
+regenerates the PKGBUILD from the AUR with no hand edit; `cjf install
+rust` provides cargo; the three config lines are `PacmanConf =
 ~/.local/etc/pacman.conf` (absolute), `Sudo = fakeroot` and `Pacman =
 <path to pacman-home>` under `[bin]`; and pacman-home needs its fakeroot
 skipped when `FAKEROOTKEY` is already set.

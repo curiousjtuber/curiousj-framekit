@@ -340,6 +340,18 @@ tailscale`", which the Tailscale section of the docs says.
 
 ## Stage 5: the package managers
 
+**Done 2026-11-01** (`0b50086` and the deletion commit). Verified on
+the Frame beside the old script: `pacman-home -Q`, `-Qo` and `check`
+gave identical output; `keyring --check` found the keys; `-U` of the
+cached waypipe package reinstalled it through fakeroot; `outdated`
+synced Arch Linux ARM's databases and reported waypipe 0.11.3 newer
+than the 0.11.2 installed; `cjf pkg homeify jq` fetched Arch's PKGBUILD
+and produced the rewrite `docs/home-packages.md` describes for jq
+(prefix, aarch64, `python` unlisted as mise's), parsing cleanly. Not
+run: `cjf pkg build` (a real build; its code path is the kind's), and
+`relocate` of a new package (a download; `fetch` and `relocate_pkg` are
+the script's steps and `-U` of their result is what was run).
+
 Goal: `pacman-home`, `makepkg-home` and `homeify` are Python, with
 `pacman-home` keeping its name.
 
