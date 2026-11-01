@@ -1,13 +1,14 @@
 #!/bin/sh
-# Installs curiousj-framekit with uv, into ~/.local/bin, as `cjf` and
-# `curiousj-framekit`:
+# Installs curiousj-framekit on a Steam Frame: mise first, uv and fzf
+# through it, then the kit as a uv tool (cjf and curiousj-framekit in
+# ~/.local/bin), and finally `cjf init` for the base.
 #
 #   curl -LsSf https://raw.githubusercontent.com/curiousjtuber/steam-frame-utils/main/install.sh | sh
 #   wget -qO- https://raw.githubusercontent.com/curiousjtuber/steam-frame-utils/main/install.sh | sh
 #
-# uv is installed first from astral.sh when none is found, and uv
-# fetches a Python 3.12+ when the system has none, so a bare Frame needs
-# only curl or wget, and git. Nothing here needs root. Run it again to
+# It says what it is about to install, only what is missing, and asks
+# once on the terminal before doing anything; `cjf init` then asks
+# before each file it changes. Nothing here needs root. Run it again to
 # upgrade: an install already there, editable or not, is upgraded from
 # the source it came from.
 #
@@ -15,25 +16,51 @@
 #                             already there: a git URL (default
 #                             git+https://github.com/curiousjtuber/steam-frame-utils,
 #                             '@TAG' pins one) or a checkout's directory
-#   CURIOUSJ_FRAMEKIT_NO_UV   set: stop rather than install uv
+#   CURIOUSJ_FRAMEKIT_YES     set: don't ask (as when there is no
+#                             terminal to ask on)
+#   CURIOUSJ_FRAMEKIT_NO_INIT set: stop before `cjf init`
 #
 # The whole script is one function, called on its last line, so a
-# download cut short runs nothing. Taken from curiousj-tools' install.sh.
+# download cut short runs nothing. After curiousj-tools' install.sh.
 
 main() {
     set -eu
     default_source=git+https://github.com/curiousjtuber/steam-frame-utils
+    bin=${XDG_BIN_HOME:-$HOME/.local/bin}
+    shims=${MISE_DATA_DIR:-$HOME/.local/share/mise}/shims
+    PATH=$bin:$shims:$PATH
 
-    uv=$(find_uv) || uv=
-    if [ -z "$uv" ]; then
-        [ -z "${CURIOUSJ_FRAMEKIT_NO_UV:-}" ] ||
-            die "no uv found, and CURIOUSJ_FRAMEKIT_NO_UV is set: install uv (https://docs.astral.sh/uv/), then rerun"
-        say "installing uv from astral.sh"
+    mise=$(find_tool mise) || mise=
+    uv=$(find_tool uv) || uv=
+    fzf=$(find_tool fzf) || fzf=
+
+    echo "curiousj-framekit will install, for $(id -un), with no root:"
+    [ -n "$mise" ] || echo "  mise                 $bin/mise, from mise.run"
+    missing=
+    [ -n "$uv" ] || missing="$missing uv"
+    [ -n "$fzf" ] || missing="$missing fzf"
+    [ -z "$missing" ] || echo "  $(echo $missing | tr ' ' ',')  through mise (mise use -g$missing)"
+    if "${uv:-false}" tool list 2>/dev/null | grep -q '^curiousj-framekit '; then
+        echo "  curiousj-framekit    upgraded, from where it was installed"
+    else
+        echo "  curiousj-framekit    as a uv tool: cjf and curiousj-framekit in $bin, from ${CURIOUSJ_FRAMEKIT_SOURCE:-$default_source}"
+    fi
+    [ -n "${CURIOUSJ_FRAMEKIT_NO_INIT:-}" ] || echo "and then run \`cjf init\`, which asks before each change it makes."
+    confirm "continue?"
+
+    if [ -z "$mise" ]; then
+        say "installing mise from mise.run"
         tmp=$(mktemp)
         trap 'rm -f "$tmp"' EXIT
-        fetch https://astral.sh/uv/install.sh > "$tmp" || die "could not download the uv installer"
-        sh "$tmp" || die "the uv installer failed"
-        uv=$(find_uv) || die "uv installed, but not found where its installer puts it"
+        fetch https://mise.run > "$tmp" || die "could not download the mise installer"
+        MISE_INSTALL_PATH=$bin/mise sh "$tmp" || die "the mise installer failed"
+        mise=$(find_tool mise) || die "mise installed, but not found in $bin"
+    fi
+    if [ -n "$missing" ]; then
+        say "installing$missing through mise"
+        # shellcheck disable=SC2086  # the tool names are meant to split
+        "$mise" use -g $missing || die "\`mise use -g$missing\` failed"
+        uv=$(find_tool uv) || uv=$("$mise" which uv) || die "uv installed through mise, but not found"
     fi
     say "using $uv"
 
@@ -45,11 +72,29 @@ main() {
     else
         install_from "$default_source"
     fi
+    [ -x "$bin/cjf" ] || die "installed, but $bin/cjf is missing"
 
-    command -v fzf > /dev/null 2>&1 ||
-        note "optional, not found: fzf (the menus fall back to numbered lists)"
+    if [ -n "${CURIOUSJ_FRAMEKIT_NO_INIT:-}" ]; then
+        say "done. Next: cjf init"
+        return
+    fi
+    say "running cjf init"
+    if [ -n "${CURIOUSJ_FRAMEKIT_YES:-}" ]; then
+        "$bin/cjf" --yes init
+    else
+        "$bin/cjf" init < /dev/tty
+    fi
+}
 
-    say "done. Run: cjf"
+confirm() {  # ask on the terminal; yes without one, or with CURIOUSJ_FRAMEKIT_YES
+    [ -z "${CURIOUSJ_FRAMEKIT_YES:-}" ] || return 0
+    [ -r /dev/tty ] || return 0
+    printf '%s [Y/n] ' "$1" > /dev/tty
+    read -r reply < /dev/tty || die "no answer; stopping"
+    case $reply in
+        ''|y|Y|yes|YES|Yes) ;;
+        *) echo "curiousj-framekit: stopped; nothing was installed"; exit 1 ;;
+    esac
 }
 
 install_from() {  # install SOURCE: replaces any install already there
@@ -60,13 +105,12 @@ install_from() {  # install SOURCE: replaces any install already there
     "$uv" tool install --force "$1" || die "\`uv tool install $1\` failed"
 }
 
-find_uv() {  # the uv on PATH, else one where its installer or mise puts it
-    if command -v uv > /dev/null 2>&1; then
-        command -v uv
+find_tool() {  # NAME on PATH, else where its installer or mise puts it
+    if command -v "$1" > /dev/null 2>&1; then
+        command -v "$1"
         return
     fi
-    for f in "${XDG_BIN_HOME:-$HOME/.local/bin}/uv" "$HOME/.local/bin/uv" "$HOME/.cargo/bin/uv" \
-             "${MISE_DATA_DIR:-$HOME/.local/share/mise}/shims/uv"; do
+    for f in "$bin/$1" "$HOME/.cargo/bin/$1" "$shims/$1"; do
         if [ -x "$f" ]; then
             echo "$f"
             return
@@ -86,7 +130,6 @@ fetch() {  # fetch URL: the body on stdout
 }
 
 say()  { printf 'curiousj-framekit: %s\n' "$1"; }
-note() { printf 'curiousj-framekit: note: %s\n' "$1" >&2; }
 die()  { printf 'curiousj-framekit: error: %s\n' "$1" >&2; exit 1; }
 
 main "$@"

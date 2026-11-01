@@ -6,11 +6,10 @@
 #                   [--waypipe[=host|box]] [--mise] [--packages[=NAME,...]]
 #                   [--tailscale[=trust]] [--nerd-fonts[=NAME,...]]
 #
-# Always, it puts ~/.local/bin on PATH, and installs distrobox, the
-# ~/.distroboxrc block that finds bin/podman, the Desktop Mode cursor
-# fix, the desktops' cursor size, and, in ~/.bashrc and ~/.zshrc, this
-# checkout's bin/ on PATH and the Frametop desktop terminal fix. The
-# options add the rest.
+# The base (~/.local/bin on PATH, the shell init, the podman shim and
+# the Desktop Mode cursor fix) moved to `cjf init` in curiousj-framekit,
+# the Python package replacing this script stage by stage; the options
+# below are what is left here until the catalog takes them over.
 #
 # With no options at all, on a terminal, it is interactive: each
 # optional part is checked in its turn, as if its option were given when
@@ -55,7 +54,7 @@
 #                   implies --arch. Bare and switching as for --emacs.
 # --mise            mise in ~/.local/bin if it isn't there, its
 #                   activation in ~/.bashrc and ~/.zshrc
-#                   (shell-init/mise.sh, unless the file activates mise
+#                   (init.sh activates it, unless the file activates mise
 #                   already), and rust through it (mise use -g rust),
 #                   for a Rust package in pkgbuilds/frame/, since
 #                   SteamOS carries no cargo. mise upgrade updates the
@@ -82,8 +81,7 @@
 # --brew, --zsh, --packages and --emacs=host always, and --arch,
 # --emacs=box and --waypipe=box from any box but arch itself.
 #
-# bin/ and shell-init/ are used from this checkout: bin/ goes on PATH,
-# for shells and for distrobox, and the rc files source shell-init/, so
+# bin/pacman-home and bin/makepkg-home are used from this checkout, so
 # a git pull updates both; after moving the checkout, re-run this. Other
 # files are copied, not linked, so they keep working if it moves or is
 # deleted. A file that differs is backed up to <file>.bak-<timestamp>
@@ -369,7 +367,7 @@ route_of() {
 interactive=0 dflt=no
 if (( $# == 0 )) && [[ -z $IN_BOX_RUN && -t 0 && -t 1 ]]; then
   interactive=1
-  grep -qxF '# >>> steam-frame-utils: top >>>' "$HOME/.bashrc" 2>/dev/null || dflt=yes
+  grep -qxF '# >>> curiousj-framekit: init >>>' "$HOME/.bashrc" 2>/dev/null || dflt=yes
   echo "Each part is checked; what is missing is asked about. Enter takes the answer in brackets."
 fi
 # What this run can take up: the host's parts, and the arch box's.
@@ -459,7 +457,7 @@ fi
 
 # bin/podman and distrobox's exports have to win even when the caller's
 # PATH lacks them, as it can on a first run in Desktop Mode.
-export PATH=$SRC/bin:$HOME/.local/bin:$PATH
+export PATH=$HOME/.local/bin:$PATH
 
 # --- Inside the arch box ----------------------------------------------
 # The box's own part of --emacs=box and --waypipe=box: pacman packages,
@@ -526,108 +524,6 @@ if [[ -n $IN_BOX_RUN ]]; then
   # 100 tells the host's run that something changed.
   (( changed )) && exit 100
   exit 0
-fi
-
-# --- ~/.local/bin on PATH ---------------------------------------------
-# distrobox and its exports live there. Any line that already puts it on
-# PATH counts, however it spells the home directory.
-
-for rc in "$HOME/.bashrc" "$HOME/.profile"; do
-  if [[ -f $rc ]] && grep -qE "^[^#]*PATH=.*(~|\\\$HOME|\\\$\\{HOME\\}|$HOME)/\\.local/bin" "$rc"; then
-    say "ok" "$rc: ~/.local/bin on PATH"
-  else
-    act "$rc: export PATH=~/.local/bin:\$PATH" "add" rc
-    (( check )) || rc_append "$rc" 'export PATH=~/.local/bin:$PATH'
-  fi
-done
-
-# --- distrobox --------------------------------------------------------
-
-DISTROBOX=$HOME/.local/bin/distrobox
-if [[ -x $DISTROBOX ]]; then
-  say "ok" "distrobox $("$DISTROBOX" version 2>/dev/null | sed 's/.*: *//')"
-elif act "distrobox into ~/.local" "install" && (( ! check )); then
-  curl -fsSL https://raw.githubusercontent.com/89luca89/distrobox/main/install \
-    | sh -s -- --prefix "$HOME/.local"
-fi
-
-# --- bin/podman: distrobox from Desktop Mode --------------------------
-# distrobox has to find it even where the caller's PATH doesn't have
-# bin/, as for an export started from a launcher.
-
-content=$(mktemp)
-with_src "$SRC/distrobox/distroboxrc" > "$content"
-ensure_block "$HOME/.distroboxrc" podman "$content"
-command rm -f "$content"
-
-# --- Copies of bin/ from earlier versions -----------------------------
-# ~/.local/bin comes first in PATH, so an old copy would hide the
-# checkout's script. It is backed up rather than deleted, in case it was
-# edited by hand.
-
-for src in "$SRC"/bin/*; do
-  name=${src##*/}
-  old=$HOME/.local/bin/$name
-  [[ -f $old && ! -L $old ]] || continue
-  if sed -n 2p "$old" | grep -q '^# steam-frame-utils:'; then
-    act "$old -> $old.bak-$STAMP, an earlier version's copy of bin/$name" "back up" || continue
-    (( check )) || command mv -f "$old" "$old.bak-$STAMP"
-  else
-    say "skip" "$old isn't from steam-frame-utils, and hides bin/$name; left alone"
-  fi
-done
-
-# --- Mouse cursor in Desktop Mode -------------------------------------
-# `cjf cursor software` holds the policy: the environment.d software cursor, a
-# choice made with `cjf cursor software on|off` kept, and the cursor-size
-# autostart entry wherever the software cursor is (see
-# docs/desktop-cursor.md). It reports in this script's style, and says
-# by its exit status what changed: 100 the environment.d file, 101 the
-# autostart entries only. Interactive, with nothing in place it is
-# offered; otherwise a dry run shows what would change, and that is
-# asked.
-
-CURSOR_CONF=$HOME/.config/environment.d/90-kwin-software-cursor.conf
-# sw_cursor_run [--check] -- cjf cursor software auto, its exit status into
-# changed and the notes
-CJF=$HOME/.local/bin/cjf
-cjf_cursor_auto() {  # [--check] -- `cjf cursor software auto`, the global option first
-  [[ -x $CJF ]] || die "$CJF is missing: the cursor fix moved into curiousj-framekit (uv tool install --editable $SRC)"
-  "$CJF" "$@" cursor software auto
-}
-sw_cursor_run() {
-  local rc=0
-  cjf_cursor_auto "$@" || rc=$?
-  case $rc in
-    0) ;;
-    100) changed=1 reboot_needed=1 ;;
-    101) changed=1 desktop_restart=1 ;;
-    *) die "cjf cursor software auto failed (exit $rc)" ;;
-  esac
-  return $rc
-}
-if (( ! interactive )); then
-  args=()
-  (( check )) && args+=(--check)
-  sw_cursor_run "${args[@]}" || true
-elif [[ ! -e $CURSOR_CONF && ! -L $CURSOR_CONF ]]; then
-  printf '%-14s %s\n' missing "Desktop Mode's software cursor (cjf cursor software on), for a real mouse,"
-  more "Deskflow's say: SteamOS 0.5.6 draws only the controller's mouse-mode cursor without it"
-  ask "$(printf '%-14s %s' "" "Enable it?")" "$dflt" yes no
-  if [[ $answer == yes ]]; then sw_cursor_run || true
-  else say "skip" "software cursor: not enabled; cjf cursor software on does it later"
-  fi
-else
-  rc=0
-  cjf_cursor_auto --check || rc=$?
-  if (( rc == 100 || rc == 101 )); then
-    ask "$(printf '%-14s %s' "" "Make the cursor changes above?")" yes yes no
-    if [[ $answer == yes ]]; then sw_cursor_run || true
-    else say "skip" "cursor files: left as they are"
-    fi
-  elif (( rc )); then
-    die "cjf cursor software auto failed (exit $rc)"
-  fi
 fi
 
 # --- Nerd Fonts: --nerd-fonts -----------------------------------------
@@ -1115,97 +1011,6 @@ else
   fi
 fi
 
-# --- Shell init -------------------------------------------------------
-# Two marked blocks of each rc file source files of shell-init/ from
-# this checkout: "top" at its start, ahead of mise activate and of
-# ~/.local/bin on PATH, and "end" at its end. A file goes in when its
-# option is given, or when a block already has it, so a run without that
-# option keeps it. One that the rc file defines outside the blocks is
-# left out. Blocks of earlier versions, one per file or with the file's
-# text inline, are replaced.
-
-INIT_LINK='# https://github.com/curiousjtuber/steam-frame-utils#shell-init'
-# bin's pattern names this checkout's directory, so that some other bin/
-# on PATH doesn't match.
-src_re=$(printf '%s' "${SRC##*/}" | sed 's/[][\\.*^$+?(){}|]/\\&/g')
-declare -A INIT_PATTERNS=(
-  [frametop]='^[[:space:]]*export FRAMETOP_XDG_CONFIG_HOME='
-  [bin]="^[^#]*PATH=.*$src_re/bin"
-  [brew]='^[^#]*brew shellenv'
-  [waypipe]='^[[:space:]]*(function[[:space:]]+waypipe|waypipe[[:space:]]*\(\))'
-  [tailscale]='^[[:space:]]*alias tailscale='
-  [mise]='^[^#]*mise activate'
-)
-
-# block_has_init RC INIT -- a block of RC sources shell-init/INIT.sh, or
-# holds its text inline, as blocks of earlier versions did
-block_has_init() {
-  [[ -f $1 ]] && block_lines "$1" in \
-    | grep -qE -- "^for _sfu in( [a-z-]+)* $2( [a-z-]+)*; do\$|${INIT_PATTERNS[$2]}"
-}
-
-# init_block RC NAME WHERE [INIT WANTED]... -- the block NAME sources
-# each shell-init/INIT.sh that is WANTED (1) or already in a block of RC
-init_block() {
-  local rc=$1 name=$2 where=$3 init wanted
-  shift 3
-  local inits=()
-  while (( $# )); do
-    init=$1 wanted=$2
-    shift 2
-    if [[ -f $rc ]] && block_lines "$rc" out | grep -qE -- "${INIT_PATTERNS[$init]}"; then
-      say "ok" "$rc: $init, defined outside steam-frame-utils"
-    elif (( wanted )) || block_has_init "$rc" "$init"; then
-      inits+=("$init")
-    fi
-  done
-  if (( ! ${#inits[@]} )); then
-    remove_block "$rc" "$name"
-    return
-  fi
-  # A missing file, as after the checkout moved, is skipped rather than
-  # an error at every shell start. The loop variable is reused for the
-  # path, and unset so that it doesn't linger.
-  local content; content=$(mktemp)
-  {
-    printf '%s\n' "$INIT_LINK"
-    printf 'for _sfu in %s; do\n' "${inits[*]}"
-    printf '    _sfu="%s/shell-init/$_sfu.sh"\n' "$SRC_RC"
-    printf '    [[ -r $_sfu ]] && source "$_sfu"\ndone\nunset _sfu\n'
-  } > "$content"
-  ensure_block "$rc" "$name" "$content" "$where"
-  command rm -f "$content"
-}
-
-# The containers share these rc files, so each file works on the host
-# and in a distrobox alike. SteamOS has no zsh, so ~/.zshrc is optional;
-# --zsh creates it so that zsh doesn't start with its new-user menu.
-# Interactive, the first block's write creates it instead, so that it is
-# asked about with its content.
-if (( want_zsh && ! interactive )) && [[ ! -e $HOME/.zshrc ]]; then
-  act "$HOME/.zshrc" "create"
-  (( check )) || : > "$HOME/.zshrc"
-fi
-rcs=("$HOME/.bashrc")
-if [[ -f $HOME/.zshrc ]] || (( want_zsh )); then
-  rcs+=("$HOME/.zshrc")
-fi
-
-want_ts_init=0
-[[ -z $box && -n $tailscale ]] && want_ts_init=1
-for rc in "${rcs[@]}"; do
-  # frametop is a no-op outside a Frametop desktop's terminal, so it
-  # always goes in. bin comes after brew, to go ahead of it in PATH;
-  # ~/.local/bin, added further down, goes ahead of both.
-  init_block "$rc" top top brew "$want_brew" frametop 1 bin 1
-  init_block "$rc" end end waypipe "$want_waypipe" tailscale "$want_ts_init" mise "$want_mise"
-  if [[ -f $rc ]]; then
-    for old in $(sed -n 's/^# >>> steam-frame-utils: \(.*\) >>>$/\1/p' "$rc"); do
-      [[ $old == top || $old == end ]] || remove_block "$rc" "$old"
-    done
-  fi
-done
-
 # --- Done -------------------------------------------------------------
 
 if (( ! changed )); then
@@ -1213,7 +1018,5 @@ if (( ! changed )); then
 elif (( check )); then
   echo "run without --check to apply"
 else
-  (( reboot_needed )) && echo "reboot for the environment.d change to reach Desktop Mode"
-  (( desktop_restart )) && echo "the cursor size autostart entry runs at a desktop's next start"
-  echo "open a new shell for the shell init changes"
+  echo "the base (PATH, the shell init, the cursor fix) is `cjf init`'s now; run it after this"
 fi

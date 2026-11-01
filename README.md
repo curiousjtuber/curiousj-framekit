@@ -13,8 +13,8 @@ that location.
 | `install-nerd-fonts.sh` | Nerd Fonts in the home directory, no root needed (see [Nerd Fonts](#nerd-fonts)) |
 | `install-waypipe.sh` | waypipe for the host: Arch Linux ARM's package, relocated under `~/.local` by `pacman-home`, no root needed (see [The waypipe function](#the-waypipe-function)) |
 | `apps/` | installers for apps: Frametop, Stream Frame, Moonlight, KRDC, Deskflow, BSManager, Full Keyboard and KRdp's server (see [Apps](#apps)) |
-| `shell-init/` | bash and zsh init for `bin/` on `PATH`, Homebrew, mise, the `tailscale` alias, `waypipe`, and terminals in the Frametop desktop (see [Shell init](#shell-init)) |
-| `bin/podman` | lets distrobox work from Desktop Mode and the Frametop desktop (see [Distrobox in Desktop Mode](#distrobox-in-desktop-mode)) |
+| `cjf init` | the base: `~/.local/bin` on `PATH`, `~/.local/share/curiousj-framekit/init.sh` (bash and zsh init for Homebrew, mise, the `tailscale` alias, `waypipe`, terminals in the Frametop desktop, and `cjf`'s completion), the podman shim, one marked block in `~/.bashrc`, `~/.zshrc` and `~/.distroboxrc`, and the cursor fix; `cjf migrate` moves a Frame set up by `setup.sh` over (see [Shell init](#shell-init)) |
+| `~/.local/share/curiousj-framekit/shims/podman` | written by `cjf init`: lets distrobox work from Desktop Mode and the Frametop desktop (see [Distrobox in Desktop Mode](#distrobox-in-desktop-mode)) |
 | `bsmanager [--no-gpu] [-- ARGS]` | BSManager on the Frame, in a window on a Linux PC through waypipe: from the PC, `waypipe --remote-bin /home/steamos/.local/bin/waypipe ssh steamos@frame.local bsmanager` (see [Apps](#apps)) |
 | `cjf cursor size [SIZE] [--theme NAME] [--desktop frametop\|stock]`, `cjf cursor theme NAME`, `cjf cursor apply` | shows or sets the mouse cursor's size and theme in Desktop Mode or the Frametop desktop; from a terminal inside the desktop it applies at once (see [Cursor size](#cursor-size)) |
 | `cjf cursor software [on\|off\|default]` | Desktop Mode's software cursor for the next sessions, or what is set now; a choice made here is kept in `~/.config/curiousj-framekit/config.toml`, and the cursor-size autostart entry goes with it (see [Mouse cursor in Desktop Mode](#mouse-cursor-in-desktop-mode)) |
@@ -23,7 +23,6 @@ that location.
 | `cjf vr [off [left\|right]]` | the headset's battery and charging state from the kernel, then the VR controllers SteamVR knows, with battery (for the Frame's AA controllers also an estimated cell voltage and NiMH charge), or turns them off from a shell as the dashboard's power menu does; this goes through a private SteamVR interface, so it refuses if SteamVR renames the interface |
 | `cjf controllers [off [NAME]]` | lists the Steam Controllers paired over Bluetooth that are on, with battery, or turns them off, with Valve's own HID power-off command sent to the hidraw node since the kernel's hid-steam doesn't take this controller yet |
 | `beat-saber-recent [-n N \| --all]` | the songs Beat Saber started in its recent launches, in order, from the Unity logs in its Proton prefix and from `~/.local/state/curiousj-framekit/beat-saber-songs.tsv`, which `beat-saber-recent --record` fills from those logs; Unity keeps only two, so the game's launch options run the hook before and after the game and every launch is kept; `beat-saber-recent --install-hook` sets that through the running Steam client, over the debug port the Frame's Steam has open, when nothing is set there yet |
-| `distrobox/distroboxrc` | makes distrobox find `bin/podman` whatever the caller's `PATH` (same section) |
 | `pkgbuilds/frame/` | PKGBUILDs for the Frame host itself, built with makepkg on the Frame for a `~/.local` prefix: `pkgbuilds/frame/emacs/` is Emacs with PGTK, `pkgbuilds/frame/pacman/` pacman 7 with a current libalpm, and `pkgbuilds/frame/homeify` rewrites a stock Arch PKGBUILD into one (see [Packages for the host](#packages-for-the-host)) |
 | `pkgbuilds/pc/` | PKGBUILDs for an Arch PC instead, ordinary `/usr` packages installed with `makepkg -si` there: `pkgbuilds/pc/krdpserver-embed-cursor/`, a krdpserver that can paint the PC's own pointer into the stream (see [Apps](#apps)), and `pkgbuilds/pc/frame-control-bin/`, [Frame Control](https://github.com/saphid/frame-control) as an Arch package built from its release `.deb` (the PKGBUILD's header says what it changes) |
 | `bin/pacman-home` | pacman for packages under `~/.local`, with its database there and no root: the ones built from `pkgbuilds/frame/`, and stock binary packages it relocates (same section) |
@@ -70,9 +69,8 @@ Always, whatever the options:
 |---|---|
 | `~/.local/bin` first in `PATH` | adds `export PATH=~/.local/bin:$PATH` to `~/.bashrc` and `~/.profile`, unless a line there already puts `~/.local/bin` on `PATH` |
 | distrobox | installs into `~/.local` if `~/.local/bin/distrobox` is missing |
-| `distrobox/distroboxrc` | inserts into `~/.distroboxrc`, which puts this checkout's `bin/` first for distrobox |
 | `bin/` | goes on `PATH` from this checkout, through `shell-init/bin.sh` (see [Shell init](#shell-init)), so a `git pull` updates its scripts. A copy in `~/.local/bin` from an earlier version would come first, so it is backed up to `<file>.bak-<timestamp>` |
-| `shell-init/frametop.sh` | sourced from the block at the top of `~/.bashrc`, and of `~/.zshrc` if that exists (see [Shell init](#shell-init)) |
+| the shell init | `cjf init` writes `~/.local/share/curiousj-framekit/init.sh` and the block at the top of `~/.bashrc`, and of `~/.zshrc` if that exists, that sources it (see [Shell init](#shell-init)) |
 
 Options add the rest, and each one also fixes only what's missing:
 

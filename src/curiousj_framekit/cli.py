@@ -4,11 +4,13 @@
     cjf                                 pick a command from a menu
 
     status        the versions of SteamOS, SteamVR and the Steam client
+    init          the base: PATH, init.sh, the shims, the rc blocks
     cursor        the mouse cursor in Desktop Mode and Frametop's desktop
     wifi          the saved Wi-Fi networks in range
     vr            the headset and VR controllers: battery, or turn off
     controllers   the Steam Controllers paired over Bluetooth
     rdp           serve a Plasma desktop on the Frame over RDP
+    migrate       move a Frame set up by steam-frame-utils to this kit
 
 Run bare, on a terminal, it lists the commands and runs the one picked
 (fzf when installed, else a numbered menu). The options go before the
@@ -28,7 +30,7 @@ import click
 from . import cmdline, pick
 from .cmdline import Options
 from .frame import controllers, cursor, rdp, vr, wifi
-from .install import status
+from .install import init, migrate, status
 
 PROG = "cjf"
 
@@ -65,6 +67,8 @@ def pick_command(ctx: click.Context) -> str | None:
 
 
 cli.add_command(status.status)
+cli.add_command(init.init)
+cli.add_command(migrate.migrate)
 cli.add_command(cursor.cursor)
 cli.add_command(wifi.wifi)
 cli.add_command(vr.vr_cmd, "vr")

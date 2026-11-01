@@ -1,0 +1,28 @@
+#!/bin/sh
+# curiousj-framekit: podman with the real runtime dir and user bus, from
+# nested desktops (Desktop Mode, Frametop) that have their own. Installed
+# by `cjf init` to ~/.local/share/curiousj-framekit/shims/, which init.sh
+# and ~/.distroboxrc put first on PATH. Details: the README's "Distrobox
+# in Desktop Mode".
+#
+# Rootless podman breaks on a nested desktop's session environment:
+# crun asks org.freedesktop.systemd1 on the session bus, which the
+# nested desktop's private bus doesn't have, and podman keeps its state
+# under XDG_RUNTIME_DIR, so a container started elsewhere looks unset-up.
+# Under a runtime dir nested in /run/user/UID this switches podman alone
+# to the real ones; everywhere else it passes through.
+
+# A distrobox has no podman of its own, but this on its PATH: hand over
+# to the host's.
+if [ -n "${CONTAINER_ID:-}" ] || [ -e /run/.containerenv ]; then
+  exec distrobox-host-exec "$0" "$@"
+fi
+
+uid=$(id -u)
+case "$XDG_RUNTIME_DIR" in
+  /run/user/"$uid"/*)
+    XDG_RUNTIME_DIR=/run/user/$uid
+    DBUS_SESSION_BUS_ADDRESS=unix:path=$XDG_RUNTIME_DIR/bus
+    export XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS ;;
+esac
+exec /usr/bin/podman "$@"

@@ -187,8 +187,9 @@ def write_file(opts: Options, path: str | os.PathLike, content: str, *,
     """Write content to path if it differs from what is there, the way
     setup.sh changed a file: the diff shown, the question asked (see
     confirm), the old file copied to <path>.bak-<stamp> first. True when
-    the file was written. Under --check it says what would change and
-    writes nothing."""
+    the file was written, or, under --check, when it would be: --check
+    says what would change and writes nothing, and a caller's "anything
+    to do?" is answered the same either way."""
     path = Path(path)
     name = tilde(path)
     old = path.read_text() if path.exists() else None
@@ -200,6 +201,8 @@ def write_file(opts: Options, path: str | os.PathLike, content: str, *,
     else:
         say("would change" if opts.check else "change", name, out)
         print(diff(old, content, name), end="", file=out or sys.stdout)
+    if opts.check:
+        return True
     if not confirm(opts, f"write {name}?", True, ask):
         return False
     if old is not None:
@@ -213,14 +216,16 @@ def write_file(opts: Options, path: str | os.PathLike, content: str, *,
 
 def remove_file(opts: Options, path: str | os.PathLike, why: str = "", *,
                 ask=None, out=None) -> bool:
-    """Remove a file of ours, asking first; True when it went. Under
-    --check it says what would go. No backup: this is for files the kit
-    wrote itself and can write again."""
+    """Remove a file of ours, asking first; True when it went, or under
+    --check when it would. No backup: this is for files the kit wrote
+    itself and can write again."""
     path = Path(path)
     name = tilde(path)
     if not path.exists() and not path.is_symlink():
         return False
     say("would remove" if opts.check else "remove", f"{name}{': ' + why if why else ''}", out)
+    if opts.check:
+        return True
     if not confirm(opts, f"remove {name}?", True, ask):
         return False
     path.unlink()

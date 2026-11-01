@@ -88,10 +88,14 @@ class WriteFile(unittest.TestCase):
         self.assertEqual(os.listdir(self.path.parent), ["rc"])
 
     def test_check_reports_and_writes_nothing(self):
+        # True: it would change, so a caller knows there is something to do
         changed = cmdline.write_file(Options(check=True), self.path, "a\n", ask=answers(), out=self.out)
-        self.assertFalse(changed)
+        self.assertTrue(changed)
         self.assertFalse(self.path.exists())
         self.assertIn("would create", self.out.getvalue())
+        self.path.parent.mkdir()
+        self.path.write_text("a\n")
+        self.assertFalse(cmdline.write_file(Options(check=True), self.path, "a\n", out=self.out))
 
     def test_mode(self):
         cmdline.write_file(Options(yes=True), self.path, "#!/bin/sh\n", mode=0o755, out=self.out)
