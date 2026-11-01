@@ -77,10 +77,12 @@ def wayland_display(env: os._Environ | dict = os.environ) -> str | None:
 def describe(info: dict[str, str] | None = None,
              env: os._Environ | dict = os.environ) -> str:
     """One phrase for messages: "the Frame's host, in Desktop Mode",
-    "a distrobox on the Frame", "a PC (CachyOS Linux)"."""
+    "a container", "a PC (CachyOS Linux)". A distrobox sees its own
+    /etc/os-release, so from inside one the Frame can't be told apart
+    from any other host; the refusals say what to do instead."""
     info = os_release() if info is None else info
     if in_container(env):
-        return "a distrobox on the Frame" if is_frame(info, env) else "a container"
+        return "a container"
     if is_frame(info, env):
         where = {"stock": "in Desktop Mode", "frametop": "in Frametop's desktop"}
         d = desktop(env)
@@ -90,16 +92,22 @@ def describe(info: dict[str, str] | None = None,
 
 
 def require_frame(what: str = "this command") -> None:
-    """Raise Error unless this is the Frame (any desktop, host or box)."""
-    if not is_frame():
-        raise Error(f"{what} runs on the Frame; this is {describe()}")
+    """Raise Error unless this is the Frame's host. (A box can't be told
+    to be on the Frame, see describe; so this is require_host under
+    another name, kept for the reading: "needs the Frame" versus "needs
+    the host".)"""
+    require_host(what)
 
 
 def require_host(what: str = "this command") -> None:
-    """Raise Error unless this is the Frame's host: not a PC, not a box."""
-    require_frame(what)
+    """Raise Error unless this is the Frame's host: not a PC, not a box.
+    From a distrobox the message names the way through to the host, as
+    the scripts used to take it themselves."""
     if in_container():
-        raise Error(f"{what} runs on the Frame's host, not in a distrobox")
+        raise Error(f"{what} runs on the Frame's host, not in a container; "
+                    f"from a distrobox: distrobox-host-exec cjf {what}")
+    if not is_frame():
+        raise Error(f"{what} runs on the Frame; this is {describe()}")
 
 
 def require_pc(what: str = "this command") -> None:

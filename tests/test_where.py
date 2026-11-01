@@ -70,8 +70,7 @@ class Describe(unittest.TestCase):
 
     def test_in_a_box(self):
         with unittest.mock.patch.object(where, "CONTAINER_MARK", NOWHERE):
-            self.assertEqual(where.describe(FRAME, {"CONTAINER_ID": "arch"}),
-                             "a distrobox on the Frame")
+            self.assertEqual(where.describe(FRAME, {"CONTAINER_ID": "arch"}), "a container")
 
 
 class Requirements(unittest.TestCase):
@@ -81,12 +80,14 @@ class Requirements(unittest.TestCase):
                 where.require_frame("status")
             self.assertEqual(str(cm.exception), "status runs on the Frame; this is a PC (CachyOS Linux)")
 
-    def test_require_host_refuses_a_box(self):
-        with unittest.mock.patch.object(where, "os_release", return_value=FRAME), \
+    def test_require_host_refuses_a_box_and_names_the_way_through(self):
+        with unittest.mock.patch.object(where, "os_release", return_value=CACHY), \
              unittest.mock.patch.dict("os.environ", {"CONTAINER_ID": "arch"}):
             with self.assertRaises(cmdline.Error) as cm:
                 where.require_host("status")
-            self.assertIn("not in a distrobox", str(cm.exception))
+            self.assertEqual(str(cm.exception),
+                             "status runs on the Frame's host, not in a container; "
+                             "from a distrobox: distrobox-host-exec cjf status")
 
     def test_require_pc(self):
         with unittest.mock.patch.object(where, "os_release", return_value=FRAME), \

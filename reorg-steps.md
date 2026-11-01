@@ -42,6 +42,15 @@ point is the checkout half-migrated in a way the Frame notices.
 
 ## Stage 1: the skeleton
 
+**Done 2026-10-31** (`7fb282a`, `2b1f375` and the refusal fix after
+them). Verified on the Frame over SSH: `cjf status` prints what
+`frame-versions` printed, line for line; the picker draws and quits;
+the suite passes under both the system Python 3.12 and mise's 3.15,
+which is what the tool venv runs on; inside the `dev` distrobox the
+command runs and refuses, naming `distrobox-host-exec`. Not run from a
+Desktop Mode terminal, since that needs the headset on: `cjf status`
+there is the one check left to you.
+
 Goal: `cjf --help` and `cjf status` run on the Frame from an editable
 install, and the shared plumbing every later port uses is in place.
 

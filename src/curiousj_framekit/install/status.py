@@ -5,8 +5,8 @@ one's build and update channel.
     cjf status
 
 Runs on the Frame's host; a distrobox sees its own /etc/os-release, so
-from one run `distrobox-host-exec cjf status`. More rows come as the
-catalog does.
+from one run `distrobox-host-exec cjf status`, which the refusal says.
+More rows come as the catalog does.
 """
 
 from __future__ import annotations
