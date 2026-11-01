@@ -32,10 +32,11 @@ nothing; homeify's `PKGBUILD.upstream` is kept either way). Keep them
 while a PKGBUILD is being adjusted, since `makepkg -R` repackages from
 them in seconds. `cjf install emacs` and `cjf install pacman` build
 when `pacman-home` doesn't have the PKGBUILD's version, so `cjf install
---all` rebuilds what you bump after a SteamOS update. `pc/pkgbuilds/`
-is the other kind, ordinary `/usr` packages for an Arch PC, which
-nothing here builds or offers: `krdpserver-embed-cursor` and
-`frame-control-bin` (see [the PC side](../pc/README.md)).
+--all` rebuilds what you bump after a SteamOS update.
+`pc/pkgbuilds/frame-control-bin` is the other kind, an ordinary `/usr`
+package for an Arch PC, which nothing here builds or offers; the PC's
+`krdpserver-embed-cursor` is a `~/.local` build by script (see [the PC
+side](../pc/README.md)).
 
 Any package whose build takes a prefix can be set up the same way.
 `cjf pkg homeify NAME` fetches Arch's PKGBUILD for NAME, or the

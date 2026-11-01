@@ -51,16 +51,18 @@ gets on the headset.
   prompt shows on the PC's screen, and KRDC gets a blank blue screen
   until someone answers it there. KRdp sends KRDC the pointer's shape,
   drawn at the Frame's own pointer, so a mouse moved at the PC shows
-  only as focus changes. `pkgbuilds/pc/krdpserver-embed-cursor/` is
-  krdpserver from the Plasma release pacman has, with one patch, as an
-  Arch package beside `krdp` (`makepkg -sri` on the PC): with
+  only as focus changes. `pc/krdpserver-embed-cursor/krdp-embed-cursor.sh
+  install` builds krdpserver from the Plasma release the PC runs, with one
+  patch, into
+  `~/.local` as a second server beside `krdp` on port 3390, on any
+  distribution with Plasma 6: with
   `EmbedCursor=true` in `[General]` of `~/.config/krdpserverrc`, KWin
   paints the PC's pointer into the stream and KRDC draws none, so the
   headset sees where the PC's mouse is (turn off KRDC's View → Show
   Local Cursor, or it draws its own on top). Off, it is upstream's
-  server. Pointing the drop-in's `ExecStart` at
-  `/usr/bin/krdpserver-embed-cursor` switches to it; the PKGBUILD's
-  header has the commands and the rebuild after a Plasma update.
+  server. KRDC picks a server by port, and the stock one on 3389 is
+  never touched; [the PC side](../pc/README.md) has the commands and
+  the rebuild after a Plasma update.
 - **Deskflow** makes the Frame a client of the PC's mouse and keyboard,
   with no streaming: the pointer crosses an edge of the PC's screen into
   the Frametop desktop. Run it on the host. It uses the KDE runtime 6.11

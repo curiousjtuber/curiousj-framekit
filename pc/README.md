@@ -1,74 +1,95 @@
 # The PC side
 
-What a PC does for a Steam Frame, as far as this kit is concerned: two
-Arch packages, and the commands the kit's own docs assume on the PC.
-Nothing here runs on the Frame, and nothing in the kit's catalog looks
-under `pc/`. The PC is an Arch or CachyOS machine; other distros get
-the same programs by other means and the same instructions otherwise.
+What a PC does for a Steam Frame, as far as this kit is concerned: a
+build script, an Arch package, and the commands the kit's own docs
+assume on the PC. Nothing here runs on the Frame, and nothing in the
+kit's catalog looks under `pc/`. The PC runs Plasma 6 on Wayland; the
+script builds on any distribution, Frame Control's package is Arch's,
+and other distros get it by other means.
 
 If a PC command ever comes, it is a second package in this repository,
 `curiousj-framekit-pc`, installed with `uv tool install
 "git+https://github.com/curiousjtuber/curiousj-framekit#subdirectory=pc"`;
 today there is none ([the plan](../docs/reorg/plan.md), Q9).
 
-## `pkgbuilds/krdpserver-embed-cursor`
+## `krdpserver-embed-cursor/`
 
-krdpserver, KDE's RDP server, with an `EmbedCursor` option, as a
-package beside the distro's `krdp`. KRdp sends a viewer the pointer's
-shape, which the viewer draws at its own pointer, so moving the mouse
-at the PC shows in the stream on the Frame only as focus changes. With
-`EmbedCursor=true` in `[General]` of `~/.config/krdpserverrc`, KWin
+krdpserver, KDE's RDP server, with an `EmbedCursor` option, built from
+the krdp release that matches your Plasma and installed under
+`~/.local` as a second server beside the distribution's `krdp`, on its
+own port. KRdp sends a viewer the pointer's shape, which the viewer
+draws at its own pointer, so moving the mouse at the PC shows in the
+stream on the Frame only as focus changes. With `EmbedCursor=true` in
+`[General]` of `~/.config/krdpserverrc`, which the script sets, KWin
 paints the PC's pointer into the frames and the viewer draws none, so
 the headset sees where the PC's mouse is. Off, the server is upstream's
-exactly. For the Frame + Deskflow + Frametop + KRDC scenario.
+exactly, and the stock one ignores the key. For the Frame + Deskflow +
+Frametop + KRDC scenario; any distribution with Plasma 6 on Wayland.
+
+Two servers, not a switch: the distribution's
+`app-org.kde.krdpserver.service` keeps port 3389 for viewers that draw
+their own pointer, and the user unit the script writes,
+`krdpserver-embed-cursor.service`, listens on 3390 for the one that
+wants the pointer in the stream. A viewer picks by port, and the stock
+unit is never touched. Both read `krdpserverrc`, so users, passwords
+and the certificate are shared, and each puts its own RDP Server icon
+in the tray.
 
 ```bash
-cd pc/pkgbuilds/krdpserver-embed-cursor && makepkg -sri
+pc/krdpserver-embed-cursor/krdp-embed-cursor.sh install
 ```
 
-makepkg verifies the tarball's signature with your keyring, so import
-KDE's release keys once (`validpgpkeys` in the PKGBUILD), or pass
-`--skippgpcheck`; the sha256 is checked either way.
+downloads the krdp release `krdpserver --version` reports, checks its
+signature against the Plasma release keys (fetching a missing one by
+fingerprint), applies the patch, builds, installs the binary and its
+private `libKRdp` under `~/.local`, writes the unit, and runs `start`.
+`--port N` picks another port, `--help` lists the rest. The build needs
+the distribution's development packages for Qt 6, KF6, FreeRDP 3,
+kpipewire, libei, xkbcommon, PAM and qtkeychain, plus
+extra-cmake-modules and plasma-wayland-protocols; when cmake can't
+find one, the script prints the package list for Arch, Fedora or
+Debian/Ubuntu. KRDC on the Frame then connects to the PC's port 3390,
+with View → Show Local Cursor off, or it draws its own on top.
 
-Switching is a user systemd drop-in, beside the one that adds
-`--plasma` to krdpserver (without `--plasma`, KRdp goes through the
-desktop portal, whose permission prompt shows on the PC's screen while
-KRDC on the Frame sees a blank blue screen):
+`start`, `stop` and `status` pair the unit with the firewall: a PC that
+lets 3389 in usually has a rule for it and none for 3390, and the
+server logs nothing for a packet it never gets. `start` enables the
+unit, now and at login, and opens the port in ufw or firewalld; `stop`
+disables the unit and closes the port; `status` shows the unit, the
+port, the firewall, and whether the installed build still matches the
+Plasma running. The firewall step is the one that needs root, through
+sudo, so run these in a terminal; when sudo can't ask, the script
+prints the command for you to run. Another firewall is yours to open.
+
+The unit passes `--plasma`: without it, KRdp goes through the desktop
+portal, whose permission prompt shows on the PC's screen while KRDC on
+the Frame sees a blank blue screen. The stock server needs the same,
+through a drop-in of its own:
 
 ```bash
 d=~/.config/systemd/user/app-org.kde.krdpserver.service.d
 ```
 
 ```bash
-printf '[Service]\nExecStart=\nExecStart=/usr/bin/krdpserver-embed-cursor --plasma\n' > "$d/zz-embed-cursor.conf"
+mkdir -p "$d" && printf '[Service]\nExecStart=\nExecStart=/usr/bin/krdpserver --plasma\n' > "$d/plasma.conf"
 ```
 
 ```bash
 systemctl --user daemon-reload && systemctl --user restart app-org.kde.krdpserver.service
 ```
 
-Removing `zz-embed-cursor.conf` and running the last line again goes
-back to the stock server; remove it before uninstalling the package.
-The option itself:
-
-```bash
-kwriteconfig6 --file krdpserverrc --group General --key EmbedCursor --type bool true
-```
-
-then restart the service; it reads the key once at start. In KRDC on
-the Frame, turn off View → Show Local Cursor, or it draws its own on
-top.
-
-**After a Plasma update.** `pkgver` must equal `pacman -Q krdp`: the
-private libKRdp is compiled against that release's kpipewire, so the
-package pins `krdp` to it, and a Plasma point release makes `pacman
--Syu` refuse until this is rebuilt. Bump `pkgver`, run `updpkgsums`,
-`makepkg -sri`, restart the service; or update first with
-`--assume-installed krdp=<old version>`. If the patch no longer
-applies, upstream moved the code and the patch needs refreshing. The
-PKGBUILD's header has the layout decisions (a private library
-directory with a RUNPATH, so the patched library loads rather than
-`/usr/lib/libKRdp.so.6`).
+**After a Plasma update.** The private `libKRdp` is built against that
+release's kpipewire, so run `install` again: it sees the installed
+version differ from Plasma's and rebuilds, then restarts the unit
+(`status` says when). If the patch no longer applies, upstream moved
+the code and the patch needs refreshing. `uninstall` stops the server,
+closes the port and removes everything `install` put in place. The
+script's header has the layout decisions (a private library directory
+with a RUNPATH, so the patched library loads rather than the
+distribution's `libKRdp.so.6`). An earlier form of this was an Arch
+package, `krdpserver-embed-cursor` beside `krdp`, pinned to krdp's
+version; if it is still installed, the user unit overrides its unit of
+the same name, and `sudo pacman -R krdpserver-embed-cursor` retires it.
 
 ## `pkgbuilds/frame-control-bin`
 
