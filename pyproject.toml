@@ -1,6 +1,6 @@
 [project]
 name = "curiousj-framekit"
-version = "0.1.0"
+version = "0.2.0"
 description = "curiousj's kit for the Steam Frame: one command for its desktops, controllers, remote desktop and the things installed on it"
 readme = "README.md"
 license = "MIT"
