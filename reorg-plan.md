@@ -609,6 +609,13 @@ curiousj-framekit/
 
 ## Revision history
 
+- **Rev 11, 2026-11-01.** Stages 1 to 6 of `reorg-steps.md` are done
+  and on `dev`; stage 7, the rename, is left to you. Three deviations
+  taken while implementing, each recorded in the steps: the KRdp
+  manifest lives in the package's data rather than `flatpak/krdp/`;
+  the ports do not read other processes' environments to find a nested
+  desktop's session bus (a size change from SSH is saved, not applied);
+  the completion scripts are files of their own, one per shell.
 - **Rev 10, 2026-10-31.** From the second scenario review: `status`
   and `installed` (D23), `after-update`'s state file (D24).
 - **Rev 9, 2026-10-31.** From the scenario review: the base grows to

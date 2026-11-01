@@ -59,7 +59,8 @@ def write_record(info: dict[str, str], path: Path | None = None, now: float | No
     path = path or state_path()
     path.parent.mkdir(parents=True, exist_ok=True)
     seen = time.strftime("%Y-%m-%d %H:%M", time.localtime(now))
-    path.write_text(config.dumps({"steamos": {k: info.get(k, "?") for k in RECORD_KEYS} | {"seen": seen}}))
+    path.write_text(config.dumps({"steamos": {k: info.get(k, "?") for k in RECORD_KEYS} | {"seen": seen}},
+                                 header="what `cjf after-update` last saw; it rewrites this each run."))
 
 
 def steamos_line(info: dict[str, str], recorded: dict[str, str]) -> str:

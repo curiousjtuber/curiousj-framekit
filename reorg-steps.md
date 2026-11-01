@@ -237,8 +237,11 @@ SSH session open across the first run.
 
 ## Stage 4: the catalog
 
-**Done 2026-11-01**, but for the CI run (`b6cc09c`, `82f2e72`,
-`4344ee5`, and the deletion commit). Verified on the Frame over SSH:
+**Done 2026-11-01** (`b6cc09c`, `82f2e72`, `4344ee5`, `fb9d124`). The
+KRdp workflow run for `82f2e72` succeeded: the runner installed the kit
+and `cjf install krdp --bundle` built the bundle from the manifest in
+the package's data, with `CJF_ASSUME_FRAME=1`. Verified on the Frame
+over SSH:
 `cjf installed` reports all nineteen items with the versions the
 scripts knew (Tailscale running on the tailnet, Homebrew 7.0.11, rust
 1.99.1, Nerd Fonts v3.5.1, waypipe 0.11.2-1, emacs 31.1-1, pacman
@@ -375,6 +378,21 @@ Done when: on the Frame, `pacman-home -Q` lists what it listed before;
 
 ## Stage 6: documentation, the PC side, and the extras
 
+**Done 2026-11-01** (`a95fafc`). `cjf after-update` ran on the Frame
+twice: the first run recorded SteamOS 0.5.6 and found the Tailscale
+unit in place, every pacman-home package's binaries resolving, the
+cursor file matching the config, KRdp's build matching the manifest,
+and noted that the Desktop launcher starts the `~/frametop` checkout
+rather than the 0.2.2 release; the second compared against the record.
+`pc/` holds the two PKGBUILDs and a README of the PC side. The README
+is a map; the old sections are `docs/install.md`, `apps.md`,
+`tailscale.md`, `shell-init.md`, `cursor.md` and `packages.md`, moved
+with their links adjusted and a lead paragraph each saying the text is
+the scripts' and the reasons hold. Every relative link in the docs
+resolves (checked by a script, not by eye). What was not done: a real
+rewrite of those pages in the kit's words; they read as history with
+corrections, which stage 7's release can follow.
+
 Goal: the README is a map again, the PC side has its directory, and
 the two commands the plan added exist.
 
@@ -403,6 +421,15 @@ Done when: the README fits on a screen or two, every `docs/` link
 resolves, and `cjf after-update` has been run on the Frame once.
 
 ## Stage 7: the rename
+
+**Left to you, 2026-11-01.** Everything before it is on `dev`, pulled
+and installed on the Frame. The rename is outward-facing (the GitHub
+repository's name) and the merge to `main` is yours by the workflow, so
+neither was done unasked. The steps below are exact; `cjf migrate` has
+already run on the Frame, so step 3 is only the directory move and the
+reinstall. After step 1, `install.sh`'s default source and the README's
+install line still say `steam-frame-utils` and are covered by GitHub's
+redirect; change them to the new name in the same commit as step 4.
 
 Goal: the repo, the checkouts and the Frame carry the new name.
 

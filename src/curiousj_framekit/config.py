@@ -70,10 +70,11 @@ def _literal(value: Any) -> str:
     raise TypeError(f"can't write {type(value).__name__} to the config file")
 
 
-def dumps(data: dict[str, Any]) -> str:
+def dumps(data: dict[str, Any], header: str | None = None) -> str:
     """The config as text: a header, then one [table] per section with
     its keys, each value a TOML literal, in the order given."""
-    out = [f"# {NAME}: the kit's choices. Its commands edit this; edits by hand are kept.\n"]
+    header = header or "the kit's choices. Its commands edit this; edits by hand are kept."
+    out = [f"# {NAME}: {header}\n"]
     for section, values in data.items():
         if not isinstance(values, dict):
             raise TypeError(f"top-level values go in a section, not {section!r}")
