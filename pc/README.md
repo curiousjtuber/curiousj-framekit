@@ -8,7 +8,7 @@ the same programs by other means and the same instructions otherwise.
 
 If a PC command ever comes, it is a second package in this repository,
 `curiousj-framekit-pc`, installed with `uv tool install
-"git+https://github.com/curiousjtuber/steam-frame-utils#subdirectory=pc"`;
+"git+https://github.com/curiousjtuber/curiousj-framekit#subdirectory=pc"`;
 today there is none (reorg-plan.md, Q9).
 
 ## `pkgbuilds/krdpserver-embed-cursor`

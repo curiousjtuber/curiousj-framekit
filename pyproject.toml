@@ -16,7 +16,7 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/curiousjtuber/steam-frame-utils"
+Homepage = "https://github.com/curiousjtuber/curiousj-framekit"
 
 [project.scripts]
 curiousj-framekit = "curiousj_framekit.cli:main"

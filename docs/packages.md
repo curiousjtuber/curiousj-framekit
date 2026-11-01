@@ -13,7 +13,7 @@ alternative. The header of each PKGBUILD says what it leaves out and
 why.
 
 ```bash
-cd ~/steam-frame-utils/pkgbuilds/frame/emacs && makepkg -f
+cd ~/curiousj-framekit/pkgbuilds/frame/emacs && makepkg -f
 ```
 
 ```bash

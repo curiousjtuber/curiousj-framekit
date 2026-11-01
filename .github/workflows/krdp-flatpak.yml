@@ -7,7 +7,7 @@
 # hand. Each bundle gets a signed build attestation, so a download can
 # be traced to this workflow and commit: gh attestation verify
 # io.github.curiousjtuber.Krdp.flatpak --repo
-# curiousjtuber/steam-frame-utils
+# curiousjtuber/curiousj-framekit
 name: krdp flatpak
 
 on:

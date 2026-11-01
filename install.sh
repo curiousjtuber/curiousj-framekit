@@ -3,8 +3,8 @@
 # through it, then the kit as a uv tool (cjf and curiousj-framekit in
 # ~/.local/bin), and finally `cjf init` for the base.
 #
-#   curl -LsSf https://raw.githubusercontent.com/curiousjtuber/steam-frame-utils/main/install.sh | sh
-#   wget -qO- https://raw.githubusercontent.com/curiousjtuber/steam-frame-utils/main/install.sh | sh
+#   curl -LsSf https://raw.githubusercontent.com/curiousjtuber/curiousj-framekit/main/install.sh | sh
+#   wget -qO- https://raw.githubusercontent.com/curiousjtuber/curiousj-framekit/main/install.sh | sh
 #
 # It says what it is about to install, only what is missing, and asks
 # once on the terminal before doing anything; `cjf init` then asks
@@ -14,7 +14,7 @@
 #
 #   CURIOUSJ_FRAMEKIT_SOURCE  what to install, replacing any install
 #                             already there: a git URL (default
-#                             git+https://github.com/curiousjtuber/steam-frame-utils,
+#                             git+https://github.com/curiousjtuber/curiousj-framekit,
 #                             '@TAG' pins one) or a checkout's directory
 #   CURIOUSJ_FRAMEKIT_YES     set: don't ask (as when there is no
 #                             terminal to ask on)
@@ -25,7 +25,7 @@
 
 main() {
     set -eu
-    default_source=git+https://github.com/curiousjtuber/steam-frame-utils
+    default_source=git+https://github.com/curiousjtuber/curiousj-framekit
     bin=${XDG_BIN_HOME:-$HOME/.local/bin}
     shims=${MISE_DATA_DIR:-$HOME/.local/share/mise}/shims
     PATH=$bin:$shims:$PATH

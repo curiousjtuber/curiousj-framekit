@@ -16,7 +16,7 @@ part is also a worked answer to "how do I put X on the Frame".
 On the Frame, over SSH or from a Konsole in Desktop Mode:
 
 ```bash
-curl -LsSf https://raw.githubusercontent.com/curiousjtuber/steam-frame-utils/main/install.sh | sh
+curl -LsSf https://raw.githubusercontent.com/curiousjtuber/curiousj-framekit/main/install.sh | sh
 ```
 
 It says what it will install (mise, then uv and fzf through it, then
@@ -27,7 +27,7 @@ fix. No root. Run it again to upgrade. From a checkout, so that edits
 are live:
 
 ```bash
-uv tool install --editable ~/steam-frame-utils && cjf init
+uv tool install --editable ~/curiousj-framekit && cjf init
 ```
 
 A Frame set up by the old `setup.sh` moves over with `cjf migrate`.
