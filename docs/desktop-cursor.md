@@ -88,7 +88,7 @@ variable once, at its start (a function-local static in kwin 6.2's
 
 ## Re-checking on a new SteamOS
 
-`bin/frame-versions` gives the version. Then:
+`cjf status` gives the version. Then:
 
 1. Open the stock desktop without the software cursor (`sw-cursor off`,
    then a reboot) and move a real mouse, Deskflow's or a paired one, not

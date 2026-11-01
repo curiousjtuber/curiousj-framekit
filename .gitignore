@@ -3,6 +3,15 @@
 \#*\#
 .\#*
 
+# Python
+__pycache__/
+*.pyc
+.venv/
+dist/
+build/
+*.egg-info/
+.pytest_cache/
+
 # makepkg, run in a pkgbuilds/ directory
 pkgbuilds/*/*/src/
 pkgbuilds/*/*/pkg/
