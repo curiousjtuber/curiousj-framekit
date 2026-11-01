@@ -98,11 +98,13 @@ class Init(FakeHome):
         self.assertIn("export PATH=~/.local/bin:$PATH\n", bashrc)
         self.assertIn("export PATH=~/.local/bin:$PATH\n", (self.home / ".profile").read_text())
         self.assertFalse((self.home / ".zshrc").exists())
-        init_sh = (self.home / ".local/share/curiousj-framekit/init.sh").read_text()
+        share = self.home / ".local/share/curiousj-framekit"
+        init_sh = (share / "init.sh").read_text()
         self.assertIn("function waypipe", init_sh)
-        self.assertIn("# bash completion", init_sh)
-        self.assertIn("# zsh completion", init_sh)
         self.assertIn("command -v compdef", init_sh)
+        self.assertIn("source ~/.local/share/curiousj-framekit/completion.bash", init_sh)
+        self.assertIn("# bash completion", (share / "completion.bash").read_text())
+        self.assertIn("# zsh completion", (share / "completion.zsh").read_text())
         shim = self.home / ".local/share/curiousj-framekit/shims/podman"
         self.assertTrue(shim.stat().st_mode & 0o100)
         self.assertIn("curiousj-framekit: shims", (self.home / ".distroboxrc").read_text())
