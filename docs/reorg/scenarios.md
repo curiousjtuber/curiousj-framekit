@@ -1,7 +1,13 @@
 # curiousj-framekit: how it is used
 
+> **Closed 2026-11-01.** Written before the implementation, to check
+> the design against real days with the Frame. The scenarios were not
+> re-verified against what shipped and are
+> not updated after this date. What the kit does today is in the
+> [README](../../README.md) and [docs/](../).
+
 Usage scenarios of 2026-10-31, revision 3, for the design in
-[reorg-plan.md](reorg-plan.md), written before stage 2 so that the
+[plan.md](plan.md), written before stage 2 so that the
 shape can be checked against real days with the Frame. Each is a
 terminal session as it should look when all seven stages are done;
 `$` is the prompt, the rest is what the kit prints. Output formats are

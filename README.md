@@ -4,7 +4,8 @@ curiousj's kit for the Steam Frame: one command, `cjf`, for the things
 I do to the headset's arm64 SteamOS, with its immutable root and A/B
 updates. Everything lives in the home directory, the one partition an
 update keeps. Formerly `steam-frame-utils`, a set of shell scripts;
-[reorg-plan.md](reorg-plan.md) records why and how it became this.
+[docs/reorg/plan.md](docs/reorg/plan.md) records why and how it became
+this.
 
 The contents are personal: the catalog is my list of what goes on a
 Frame, the Beat Saber tools my habits, the Emacs build my editor. It is
@@ -89,9 +90,9 @@ what each one checks.
 | `pkgbuilds/frame/` | PKGBUILDs for the Frame host, built for `~/.local`: emacs, pacman |
 | `pc/` | the PC side: PKGBUILDs for an Arch PC (krdpserver with an embedded cursor, Frame Control) and what the Frame's docs assume there ([pc/README.md](pc/README.md)) |
 | `docs/` | [install.md](docs/install.md), [apps.md](docs/apps.md), [tailscale.md](docs/tailscale.md), [shell-init.md](docs/shell-init.md), [cursor.md](docs/cursor.md), [packages.md](docs/packages.md), [TRUST.md](docs/TRUST.md); and the memos: [the desktop cursor on 0.5.6](docs/desktop-cursor.md), [packages under ~/.local](docs/home-packages.md), [paru](docs/paru.md), [the proximity sensor](docs/proximity-sensor.md), [the screen reader](docs/orca-screen-reader.md), [Arch distrobox images](docs/arch-distrobox-images.md); `notes/` has the AA calibration data |
+| `docs/reorg/` | the reorganization from `steam-frame-utils`, closed 2026-11-01: [plan.md](docs/reorg/plan.md) (its decisions), [steps.md](docs/reorg/steps.md) (its stages), [scenarios.md](docs/reorg/scenarios.md) (the usage it aimed at) |
 | `install.sh` | the bootstrap: mise, uv, fzf, the kit, `cjf init` |
 | `tests/` | pytest, over the pure logic and the shell files (`bash -n`, `zsh -n`) |
-| `reorg-plan.md`, `reorg-steps.md`, `reorg-scenarios.md` | the reorganization: its decisions, its stages, and the usage it aimed at |
 
 ## Where things go on the Frame
 

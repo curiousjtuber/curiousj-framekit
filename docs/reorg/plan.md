@@ -1,5 +1,11 @@
 # Reorganizing steam-frame-utils: requirements and UX
 
+> **Closed 2026-11-01.** The reorganization this planned is done: all
+> seven stages of [steps.md](steps.md) ran, and the repository is
+> `curiousj-framekit`. Kept as the record of the decisions and why,
+> not updated after this date. What the kit does today is in the
+> [README](../../README.md) and [docs/](../).
+
 Draft of 2026-10-31, revision 10, written from the rough notes at the
 end of this file and a read of the whole repo, curiousj-tools and the
 Frame (SteamOS 0.5.6, Python 3.12). Every question is now decided and
@@ -67,8 +73,8 @@ revisions.
   and reports the change since.
 
 Nothing is open. The implementation plan is
-[reorg-steps.md](reorg-steps.md); the usage scenarios it should end in
-are [reorg-scenarios.md](reorg-scenarios.md).
+[steps.md](steps.md); the usage scenarios it should end in
+are [scenarios.md](scenarios.md).
 
 ## 1. What is wrong today
 
@@ -609,7 +615,7 @@ curiousj-framekit/
 
 ## Revision history
 
-- **Rev 11, 2026-11-01.** Stages 1 to 6 of `reorg-steps.md` are done
+- **Rev 11, 2026-11-01.** Stages 1 to 6 of `steps.md` are done
   and on `dev`; stage 7, the rename, is left to you. Three deviations
   taken while implementing, each recorded in the steps: the KRdp
   manifest lives in the package's data rather than `flatpak/krdp/`;
@@ -623,7 +629,7 @@ curiousj-framekit/
   (D9, Q5); dependencies between items and from commands to items are
   declared and named (D21, Q19); the headset's battery from the kernel
   (D22). The `mise` kind replaces the mise item in Q15.
-- **Rev 8, 2026-10-31.** Section 0 points at `reorg-steps.md`, the
+- **Rev 8, 2026-10-31.** Section 0 points at `steps.md`, the
   staged implementation plan.
 - **Rev 7, 2026-10-31.** The name becomes `curiousj-framekit`, with
   `cjf` as the short command; Q1 records why (personal contents, the

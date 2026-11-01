@@ -1,7 +1,12 @@
 # From steam-frame-utils to curiousj-framekit: the steps
 
+> **Closed 2026-11-01.** All seven stages are done. Kept as the record
+> of how the move was staged and what deviated along the way,
+> not updated after this date. What the kit does today is in the
+> [README](../../README.md) and [docs/](../).
+
 Implementation plan of 2026-10-31 for the decisions in
-[reorg-plan.md](reorg-plan.md). Seven stages, each leaving the Frame
+[plan.md](plan.md). Seven stages, each leaving the Frame
 working and each ending with a check on the Frame itself. Old scripts
 are deleted only after what replaces them has been run there, so at no
 point is the checkout half-migrated in a way the Frame notices.
