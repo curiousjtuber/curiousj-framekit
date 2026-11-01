@@ -1,7 +1,8 @@
 """The kit's own files: ~/.config/curiousj-framekit/config.toml for the
 choices that used to live in marker lines (the software cursor, the
 cursor size, the RDP port, the Flatpak scope), and
-~/.local/state/curiousj-framekit/ for what commands record.
+~/.local/state/curiousj-framekit/ for what commands record, and
+~/.cache/curiousj-framekit/ for what can be made again (builds).
 
 The config file is small and flat, one table per concern, so it is
 written here without a TOML library; tomllib reads it back. A write
@@ -37,6 +38,10 @@ def config_dir() -> Path:
 
 def state_dir() -> Path:
     return _xdg("XDG_STATE_HOME", Path.home() / ".local/state")
+
+
+def cache_dir() -> Path:
+    return _xdg("XDG_CACHE_HOME", Path.home() / ".cache")
 
 
 def config_path() -> Path:

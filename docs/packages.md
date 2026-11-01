@@ -3,40 +3,44 @@
 The Frame's image carries makepkg, gcc, meson, cmake and the headers of
 its libraries, so a package can be built on the host itself, against the
 exact libraries it will run with, with no distrobox and no cross
-toolchain. `pkgbuilds/frame/` holds PKGBUILDs configured with
+toolchain. The kit ships its PKGBUILDs inside the package,
+`src/curiousj_framekit/data/pkgbuilds/`, one directory each, so an
+install from git has them as a checkout does. They are configured with
 `--prefix=$HOME/.local`, so the result finds its data under `~/.local`
-instead of the read-only `/usr`. `pkgbuilds/frame/emacs/` is Emacs with
-PGTK, a host build that sees the Frame's own `/usr`, D-Bus and
-processes, which the distrobox one does not; `setup.sh --emacs` (or
-`--packages`) builds and installs it, and `--emacs=box` is the distrobox
-alternative. The header of each PKGBUILD says what it leaves out and
-why.
+instead of the read-only `/usr`. `emacs/` is Emacs with PGTK, a host
+build that sees the Frame's own `/usr`, D-Bus and processes, which the
+distrobox one did not; `cjf install emacs` builds and installs it. The
+header of each PKGBUILD says what it leaves out and why. By hand, from
+a checkout:
 
 ```bash
-cd ~/curiousj-framekit/pkgbuilds/frame/emacs && makepkg -f
+cd ~/curiousj-framekit/src/curiousj_framekit/data/pkgbuilds/emacs && makepkg -f
 ```
 
 ```bash
 pacman-home -U emacs-wayland-*.pkg.tar.zst
 ```
 
-`cjf pkg build emacs` is those two commands, from any directory, followed
-by an offer to delete what the build left: `src/`, `pkg/`, the package
-and the downloaded sources, about half a gigabyte for emacs, listed with
+`cjf pkg build emacs` is those two commands, from any directory, run in
+`~/.cache/curiousj-framekit/build/emacs/`, a copy of the PKGBUILD's
+directory, so that nothing lands inside the package. `cjf pkg build
+DIR` builds a directory of yours in place. Either way it ends with an
+offer to delete what the build left: `src/`, `pkg/`, the package and
+the downloaded sources, about half a gigabyte for emacs, listed with
 their size before the question (`--clean` deletes unasked, `--keep` asks
 nothing; homeify's `PKGBUILD.upstream` is kept either way). Keep them
 while a PKGBUILD is being adjusted, since `makepkg -R` repackages from
-them in seconds. `setup.sh --packages` builds every directory under
-`pkgbuilds/frame/` that `pacman-home` doesn't have at the PKGBUILD's
-version, in dependency order; a re-run builds nothing, and after a
-SteamOS update it rebuilds what you bump. `pkgbuilds/pc/` is the other
-kind, ordinary `/usr` packages for an Arch PC, which nothing here builds
-or offers: `krdpserver-embed-cursor` and `frame-control-bin` (see
-[Apps](apps.md#apps) and the table above).
+them in seconds. `cjf install emacs` and `cjf install pacman` build
+when `pacman-home` doesn't have the PKGBUILD's version, so `cjf install
+--all` rebuilds what you bump after a SteamOS update. `pc/pkgbuilds/`
+is the other kind, ordinary `/usr` packages for an Arch PC, which
+nothing here builds or offers: `krdpserver-embed-cursor` and
+`frame-control-bin` (see [the PC side](../pc/README.md)).
 
 Any package whose build takes a prefix can be set up the same way.
 `cjf pkg homeify NAME` fetches Arch's PKGBUILD for NAME, or the
-AUR's when Arch has none, rewrites it for the prefix (the configure,
+AUR's when Arch has none, writes `NAME/PKGBUILD` under the current
+directory (`--into DIR` for another), rewrites it for the prefix (the configure,
 cmake, meson and make prefix flags, `/usr` under `$pkgdir`, `aarch64` in
 `arch`, the rpath and pkg-config path for `~/.local/lib`, and for a Rust
 package the rpath in `RUSTFLAGS` too), unlists the `makedepends` that
@@ -47,8 +51,8 @@ PKGBUILD was homeify's output with no hand edit, while it was here
 ([docs/paru.md](paru.md)). The rewrite is the mechanical part: a
 build system that hardcodes `/usr` shows up afterwards as a file outside
 `~/.local`, which `pacman-home check PKG` lists and `pacman-home -U`
-refuses, and is fixed in the PKGBUILD by hand, as
-`pkgbuilds/frame/pacman/` and `pkgbuilds/frame/emacs/` were, for
+refuses, and is fixed in the PKGBUILD by hand, as the kit's `pacman`
+and `emacs` were, for
 features the host lacks and a layout that keeps out of the host's way.
 
 A program that needs no file outside its own tree, such as waypipe,
@@ -125,12 +129,12 @@ and `-R` work as usual within that database.
 
 `pacman-home outdated` compares every installed package, by version,
 with Arch Linux ARM's repositories, with the AUR for one they lack, and
-with its PKGBUILD in `pkgbuilds/frame/`, so a bump upstream shows up
+with the kit's PKGBUILD for it, so a bump upstream shows up
 without a build. The release number after the dash is this repo's own
 and isn't compared; a packaging that tracks git, as Arch's pacman does,
 is marked as a snapshot.
 
-The pacman it runs is the host's until `pkgbuilds/frame/pacman/` is
+The pacman it runs is the host's until the kit's `pacman` package is
 installed. That is pacman 7 built for the prefix, with its programs
 under `~/.local/lib/pacman/bin` so that `pacman` on `PATH` keeps meaning
 the host's, and with `~/.local/etc/pacman.conf` and

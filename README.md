@@ -48,7 +48,7 @@ A Frame set up by the old `setup.sh` moves over with `cjf migrate`.
 | `cjf vr [off [left\|right]]` | the headset's battery from the kernel, then SteamVR's controllers with theirs (and the AA cell's voltage and NiMH charge worked back from the firmware's percentage); `off` as the dashboard's power menu does |
 | `cjf controllers [off [NAME]]` | the Steam Controllers paired over Bluetooth, with battery; `off` with Valve's own HID command |
 | `cjf rdp start\|stop\|status\|log\|password\|gui` | KRdp's server for a Plasma desktop on the Frame, for KRDC, Remmina or Windows Remote Desktop ([docs/apps.md](docs/apps.md)) |
-| `cjf pkg build\|homeify\|outdated` | packages built for `~/.local` from `pkgbuilds/`; `pacman-home` is their pacman ([docs/packages.md](docs/packages.md)) |
+| `cjf pkg build\|homeify\|outdated` | packages built for `~/.local` from the kit's PKGBUILDs; `pacman-home` is their pacman ([docs/packages.md](docs/packages.md)) |
 | `cjf after-update` | what to re-check after a SteamOS update, as one command, each check ending in ok or in the command that fixes it |
 | `cjf migrate` | move a Frame set up by `steam-frame-utils`' `setup.sh` to the kit |
 | `pacman-home` | pacman for the packages under `~/.local`: `-Q`, `-U`, `-R`, `check`, `outdated`, `relocate`, `keyring` |
@@ -67,10 +67,10 @@ a diff and asked about, and the file is backed up with a timestamp.
 | `cursor` | the software mouse cursor in Desktop Mode, and the cursor size entry |
 | `tailscale` | Tailscale as a system service that survives updates (sudo); `--trust` opens the tailnet past SSH ([docs/tailscale.md](docs/tailscale.md)) |
 | `homebrew`, `zsh` | Homebrew in `/home/linuxbrew` with wl-clipboard (sudo once), and zsh from it |
-| `rust` | rust through mise, for a Rust package in `pkgbuilds/` |
+| `rust` | rust through mise, for a Rust package built with `cjf pkg` |
 | `nerd-fonts` | JetBrainsMono and NerdFontsSymbolsOnly in `~/.local/share/fonts`, or the names you give |
 | `waypipe` | Arch Linux ARM's package, relocated under `~/.local` |
-| `emacs`, `pacman` | Emacs with PGTK, and pacman 7, built on the Frame for `~/.local` from `pkgbuilds/` |
+| `emacs`, `pacman` | Emacs with PGTK, and pacman 7, built on the Frame for `~/.local` from the kit's PKGBUILDs |
 | `distrobox` | distrobox under `~/.local`, working from Desktop Mode and Frametop's desktop |
 | `curiousj-tools` | my ssh, tmux and Emacs tools, as a uv tool |
 | `frametop` | [Frametop](https://github.com/Frametop/frametop), the multi-screen Plasma desktop and 3D mouse, from its release zip, checked against a recorded sha256 |
@@ -87,7 +87,7 @@ what each one checks.
 | Path | |
 |---|---|
 | `src/curiousj_framekit/` | the package: `frame/` (the Frame's own: cursor, wifi, vr, controllers, rdp, pkg, after-update), `install/` (the catalog and its kinds, init, migrate, status), `beatsaber/`, `shell/` (init.sh and the shims), `data/` (the KRdp manifest and patches, the RDP GUI) |
-| `pkgbuilds/frame/` | PKGBUILDs for the Frame host, built for `~/.local`: emacs, pacman |
+| `src/curiousj_framekit/data/pkgbuilds/` | the kit's PKGBUILDs, built for `~/.local` in `~/.cache/curiousj-framekit/build/`: emacs, pacman |
 | `pc/` | the PC side: PKGBUILDs for an Arch PC (krdpserver with an embedded cursor, Frame Control) and what the Frame's docs assume there ([pc/README.md](pc/README.md)) |
 | `docs/` | [install.md](docs/install.md), [apps.md](docs/apps.md), [tailscale.md](docs/tailscale.md), [shell-init.md](docs/shell-init.md), [cursor.md](docs/cursor.md), [packages.md](docs/packages.md), [TRUST.md](docs/TRUST.md); and the memos: [the desktop cursor on 0.5.6](docs/desktop-cursor.md), [packages under ~/.local](docs/home-packages.md), [paru](docs/paru.md), [the proximity sensor](docs/proximity-sensor.md), [the screen reader](docs/orca-screen-reader.md), [Arch distrobox images](docs/arch-distrobox-images.md); `notes/` has the AA calibration data |
 | `docs/reorg/` | the reorganization from `steam-frame-utils`, closed 2026-11-01: [plan.md](docs/reorg/plan.md) (its decisions), [steps.md](docs/reorg/steps.md) (its stages), [scenarios.md](docs/reorg/scenarios.md) (the usage it aimed at) |

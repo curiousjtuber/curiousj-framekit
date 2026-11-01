@@ -1,17 +1,17 @@
 """pacman-home, and cjf pkg -- packages that live under ~/.local: the ones
-built from pkgbuilds/frame/ and stock binary packages relocated there.
+built from the kit's PKGBUILDs and stock binary packages relocated there.
 pacman-home is pacman with its database, cache and log under ~/.local
 too, so the Frame's read-only root is never touched and no root is
 needed; cjf pkg builds and rewrites PKGBUILDs for that prefix.
 
-    pacman-home -U PKG.pkg.tar.zst     install or upgrade a package built from pkgbuilds/frame/
+    pacman-home -U PKG.pkg.tar.zst     install or upgrade a package built for ~/.local
     pacman-home -Q [-l PKG | -o FILE]   what is installed, a package's files, a file's owner
     pacman-home -R PKG                  remove one
     pacman-home check PKG...            which of a package's files fall outside ~/.local
                                         (-U refuses such a package)
     pacman-home outdated                every installed package against Arch Linux ARM's
                                         repositories, or the AUR for one they lack, and
-                                        against its PKGBUILD in pkgbuilds/frame/, by version
+                                        against the kit's PKGBUILD for it, by version
                                         (the release number after the dash is this repo's
                                         own, so it isn't compared)
     pacman-home relocate NAME|FILE [--allow-missing-libs] [-U options]
@@ -27,13 +27,16 @@ needed; cjf pkg builds and rewrites PKGBUILDs for that prefix.
     any other pacman operation and options pass through
 
     cjf pkg build [NAME|DIR] [--clean | --keep] [-- MAKEPKG-OPTIONS]
-                                        makepkg -f in pkgbuilds/frame/NAME (or DIR, or here),
-                                        pacman-home -U the result, then offer to delete what
-                                        the build left behind
-    cjf pkg homeify NAME [FILE]         Arch's PKGBUILD for NAME (or the AUR's, or FILE),
-                                        rewritten for a ~/.local prefix into
-                                        pkgbuilds/frame/NAME/, the original kept as
-                                        PKGBUILD.upstream and the diff printed
+                                        makepkg -f for the kit's PKGBUILD NAME (emacs,
+                                        pacman), in a copy of its directory under
+                                        ~/.cache/curiousj-framekit/build/, or in DIR, or
+                                        here; pacman-home -U the result, then offer to
+                                        delete what the build left behind
+    cjf pkg homeify NAME [FILE] [--into DIR]
+                                        Arch's PKGBUILD for NAME (or the AUR's, or FILE),
+                                        rewritten for a ~/.local prefix into NAME/ under
+                                        the current directory (or DIR), the original kept
+                                        as PKGBUILD.upstream and the diff printed
     cjf pkg outdated                    pacman-home outdated
 
 pacman refuses to install or remove unless it runs as root, whatever
@@ -46,7 +49,7 @@ relocate uses a second one, pacman-alarm.conf beside it, that adds Arch
 Linux ARM's repositories; the plain one has none, so that -U never
 pulls a /usr package from them to satisfy a dependency.
 
-The pacman run is the host's until pkgbuilds/frame/pacman is installed;
+The pacman run is the host's until the kit's pacman package is installed;
 then it is that one, under ~/.local/lib/pacman/bin, whose compiled-in
 defaults are these very paths, which skips the ldconfig run that fails
 on the read-only root, and whose libalpm is current. Host packages are
@@ -69,7 +72,7 @@ system D-Bus services), drops the install scriptlet, points absolute
 symlinks into /usr at ~/.local, and refuses a package whose libraries
 the host cannot supply, a glibc or Qt newer than the host's among them.
 What it cannot see is a program that looks for its data under /usr at
-run time; that one needs a build from pkgbuilds/frame/ instead.
+run time; that one needs a build from a PKGBUILD instead.
 
 homeify's rewrite: the prefix given to configure, cmake, meson
 (arch-meson too) and make, with sysconfdir and localstatedir under it;
@@ -430,7 +433,7 @@ def relocate_pkg(paths: Paths, pkg: Path, allow: bool) -> Path:
                 continue
             if top.name != "usr":
                 raise Error(f"{pkg.name} has files under /{top.name}, which have no place under ~/.local; "
-                            "it needs a build from pkgbuilds/frame/ instead")
+                            "it needs a build from a PKGBUILD instead")
         if not (tmp / "usr").is_dir():
             raise Error(f"{pkg.name} has no files under /usr")
         bad = usr_only_dirs(tmp)
@@ -492,16 +495,31 @@ def relocate_cmd(paths: Paths, args: list[str]) -> None:
 
 # --- outdated -------------------------------------------------------------
 
-def pkgbuilds_dir() -> Path | None:
-    """pkgbuilds/frame in the checkout: beside this package when installed
-    editable, else [pkg] checkout in the config."""
-    for parent in Path(__file__).resolve().parents:
-        if (parent / "pkgbuilds" / "frame").is_dir():
-            return parent / "pkgbuilds" / "frame"
-    conf = config.get("pkg", "checkout")
-    if conf and (Path(os.path.expanduser(conf)) / "pkgbuilds" / "frame").is_dir():
-        return Path(os.path.expanduser(conf)) / "pkgbuilds" / "frame"
-    return None
+def pkgbuilds_dir() -> Path:
+    """The kit's PKGBUILDs, one directory each (emacs, pacman): data/pkgbuilds
+    in the package, so an install from git has them as a checkout does."""
+    return Path(__file__).resolve().parent.parent / "data" / "pkgbuilds"
+
+
+def build_dir() -> Path:
+    """Where the kit's PKGBUILDs build, ~/.cache/curiousj-framekit/build:
+    makepkg writes src/, pkg/, its downloads and the package beside the
+    PKGBUILD, which must not happen inside the package."""
+    return config.cache_dir() / "build"
+
+
+def stage(directory: Path) -> tuple[Path, set[str]]:
+    """Copy a PKGBUILD directory's files into build_dir()/NAME: the work
+    directory, and the names copied, so that what the build adds can be
+    told apart afterwards. A copy already there is refreshed."""
+    work = build_dir() / directory.name
+    work.mkdir(parents=True, exist_ok=True)
+    names = set()
+    for f in directory.iterdir():
+        if f.is_file():
+            shutil.copy2(f, work / f.name)
+            names.add(f.name)
+    return work, names
 
 
 def pkgbuild_info(directory: Path) -> tuple[str, str, str, list[str]]:
@@ -644,16 +662,40 @@ def pacman_home_main(argv: list[str] | None = None) -> int:
 
 # --- cjf pkg build ------------------------------------------------------------
 
+def makepkg_wants(tool: str) -> str | None:
+    """The makepkg config file that leaves BUILDENV's `tool` (ccache,
+    distcc) turned on, the files read in makepkg's order: the system
+    one, /etc/makepkg.conf.d, the XDG one, ~/.makepkg.conf. None when it
+    is off at the end. A makepkg.conf shared with a PC turns ccache on
+    for a Frame that has none, and makepkg then stops with only a
+    missing-binary line."""
+    script = (
+        'on=; for f in "${MAKEPKG_CONF:-/etc/makepkg.conf}" /etc/makepkg.conf.d/*.conf '
+        '"${XDG_CONFIG_HOME:-$HOME/.config}/pacman/makepkg.conf" "$HOME/.makepkg.conf"; do '
+        '[ -r "$f" ] || continue; was="${BUILDENV[*]-}"; source "$f" >/dev/null 2>&1; '
+        '[ "${BUILDENV[*]-}" = "$was" ] && continue; '
+        'for e in "${BUILDENV[@]}"; do [ "$e" = "$1" ] && on=$f; [ "$e" = "!$1" ] && on=; done; done; '
+        'printf "%s" "$on"')
+    out = subprocess.run(["bash", "-c", script, "_", tool], text=True, capture_output=True).stdout
+    return out or None
+
+
 def build(opts: Options, directory: Path, clean: bool | None, extra: list[str]) -> None:
     """makepkg -f in directory, pacman-home -U the result, then offer to
     delete the build artifacts (what the directory's .gitignore covers,
-    less PKGBUILD.upstream): yes with clean True, never with False, asked
-    when None."""
+    less PKGBUILD.upstream; in a staged copy, whatever the build added):
+    yes with clean True, never with False, asked when None. One of the
+    kit's own PKGBUILDs is copied to build_dir() first and built there."""
     if not (directory / "PKGBUILD").is_file():
         raise Error(f"no PKGBUILD in {cmdline.tilde(directory)}")
     for cmd in ("makepkg", "fakeroot"):
         if not shutil.which(cmd):
             raise Error(f"missing required command: {cmd}")
+    staged: set[str] | None = None
+    if pkgbuilds_dir() in directory.resolve().parents:
+        work, staged = stage(directory.resolve())
+        say("stage", f"{directory.name}/ -> {work}")
+        directory = work
     env = dict(os.environ)
     env.setdefault("MAKEFLAGS", f"-j{os.cpu_count() or 2}")
     # cargo, for a Rust package, comes from mise's shims; they go after the
@@ -661,6 +703,11 @@ def build(opts: Options, directory: Path, clean: bool | None, extra: list[str]) 
     shims = Path.home() / ".local/share/mise/shims"
     if shims.is_dir():
         env["PATH"] = env.get("PATH", "") + ":" + str(shims)
+    for tool in ("ccache", "distcc"):
+        conf = makepkg_wants(tool)
+        if conf and not shutil.which(tool, path=env["PATH"]):
+            raise Error(f"makepkg's BUILDENV turns {tool} on in {cmdline.tilde(Path(conf))}, and this host has no "
+                        f"{tool}; put !{tool} in BUILDENV in ~/.makepkg.conf (read last) or install {tool}")
     say("build", str(directory))
     if subprocess.run(["makepkg", "-f", *extra], cwd=directory, env=env).returncode != 0:
         raise Error(f"makepkg failed in {cmdline.tilde(directory)}")
@@ -675,9 +722,11 @@ def build(opts: Options, directory: Path, clean: bool | None, extra: list[str]) 
                            "-U", *built, "--noconfirm"])
     if proc.returncode != 0:
         raise Error("pacman-home -U failed")
-    in_git = subprocess.run(["git", "-C", str(directory), "rev-parse", "--is-inside-work-tree"],
-                            capture_output=True).returncode == 0
-    if in_git:
+    in_git = staged is None and subprocess.run(
+        ["git", "-C", str(directory), "rev-parse", "--is-inside-work-tree"], capture_output=True).returncode == 0
+    if staged is not None:
+        junk = [f.name + ("/" if f.is_dir() else "") for f in sorted(directory.iterdir()) if f.name not in staged]
+    elif in_git:
         out = subprocess.run(["git", "-C", str(directory), "clean", "-ndX", "-e", "!PKGBUILD.upstream", "."],
                              text=True, capture_output=True).stdout
         junk = [l.removeprefix("Would remove ") for l in out.splitlines() if l.startswith("Would remove ")]
@@ -787,14 +836,10 @@ def fetch_text(url: str) -> str | None:
         return None
 
 
-def homeify(opts: Options, name: str, given: str | None) -> None:
+def homeify(opts: Options, name: str, given: str | None, into: Path | None = None) -> None:
     if not re.fullmatch(r"[a-z0-9@._+-]+", name):
         raise Error(f"not a package name: {name}")
-    directory = pkgbuilds_dir()
-    if not directory:
-        raise Error("homeify writes into the checkout's pkgbuilds/frame/, which isn't found; "
-                    "set [pkg] checkout in the config")
-    target = directory / name
+    target = (into or Path.cwd()) / name
     target.mkdir(parents=True, exist_ok=True)
     upstream = target / "PKGBUILD.upstream"
     if given:
@@ -860,12 +905,12 @@ def homeify(opts: Options, name: str, given: str | None) -> None:
         deps.update(re.split(r"[<>=]", d, 1)[0] for d in bash_array(target / "PKGBUILD", var))
     missing = sorted(d for d in deps if d and subprocess.run([HOST_PACMAN, "-T", d], capture_output=True).returncode != 0)
     if missing:
-        print("   not installed, so the build needs them first, from pkgbuilds/frame/ or dropped:")
+        print("   not installed, so the build needs them first, homeified too or dropped:")
         for d in missing:
             print(f"     {d}")
     else:
         print("   every makedepends and depends is installed")
-    print(f"   next: cjf pkg build {name}")
+    print(f"   next: cjf pkg build {name if target.parent == pkgbuilds_dir() else cmdline.tilde(target)}")
 
 
 # --- the cjf pkg group --------------------------------------------------------
@@ -876,7 +921,8 @@ def pkg() -> None:
     pass
 
 
-@pkg.command(cls=cmdline.Command, help="makepkg -f in pkgbuilds/frame/NAME (or DIR, or here), then pacman-home -U.",
+@pkg.command(cls=cmdline.Command, help="makepkg -f for the kit's PKGBUILD NAME, in a copy under "
+                                        "~/.cache/curiousj-framekit/build/ (or in DIR, or here), then pacman-home -U.",
              context_settings={"ignore_unknown_options": True})
 @click.argument("target", required=False)
 @click.option("--clean", "clean", flag_value=True, default=None, help="Delete the build artifacts without asking.")
@@ -891,11 +937,11 @@ def build_cmd(opts: Options, target: str | None, clean: bool | None, extra: tupl
         directory = Path(target).resolve()
     else:
         base = pkgbuilds_dir()
-        if base and (base / target).is_dir():
+        if (base / target / "PKGBUILD").is_file():
             directory = base / target
         else:
-            have = " ".join(sorted(p.name for p in base.iterdir() if p.is_dir())) if base else "none found"
-            raise Error(f"no directory {target}, and no pkgbuilds/frame/{target} (have: {have})")
+            have = " ".join(sorted(d.name for d in base.iterdir() if (d / "PKGBUILD").is_file()))
+            raise Error(f"no directory {target}, and no PKGBUILD {target} in the kit (it has: {have})")
     build(opts, directory, clean, [a for a in extra if a != "--"])
     return 0
 
@@ -907,10 +953,12 @@ build_cmd.name = "build"
              help="Arch's (or the AUR's, or FILE's) PKGBUILD for NAME rewritten for ~/.local.")
 @click.argument("name")
 @click.argument("file", required=False)
+@click.option("--into", type=click.Path(file_okay=False, path_type=Path),
+              help="Write NAME/ under this directory instead of the current one.")
 @pass_options
-def homeify_cmd(opts: Options, name: str, file: str | None) -> int:
+def homeify_cmd(opts: Options, name: str, file: str | None, into: Path | None) -> int:
     where.require_host("pkg homeify")
-    homeify(opts, name, file)
+    homeify(opts, name, file, into)
     return 0
 
 

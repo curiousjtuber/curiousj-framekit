@@ -13,10 +13,6 @@ build/
 .pytest_cache/
 
 # makepkg, run in a PKGBUILD's directory
-pkgbuilds/frame/*/src/
-pkgbuilds/frame/*/pkg/
-pkgbuilds/frame/*/*.pkg.tar.*
-pkgbuilds/frame/*/*.tar.xz
 pc/pkgbuilds/*/src/
 pc/pkgbuilds/*/pkg/
 pc/pkgbuilds/*/*.pkg.tar.*

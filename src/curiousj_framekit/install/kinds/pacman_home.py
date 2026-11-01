@@ -1,9 +1,10 @@
 """The `pacman-home` kind: a package under ~/.local in pacman-home's
 database, either relocated from Arch Linux ARM's binary package
-(waypipe) or built here with makepkg from pkgbuilds/frame/NAME (emacs,
-pacman). The work is frame/pkg.py's; this kind maps the catalog entry
-onto it. Building needs the checkout's pkgbuilds/frame, found beside an
-editable install or through `[pkg] checkout` in the config.
+(waypipe) or built here with makepkg from the kit's own PKGBUILD
+(emacs, pacman; data/pkgbuilds/NAME in the package, so every install
+has them). The work is frame/pkg.py's; this kind maps the catalog
+entry onto it. A build runs in ~/.cache/curiousj-framekit/build/NAME,
+a copy of the PKGBUILD's directory, not inside the package.
 
 A package built here is outdated when pacman-home's version differs
 from the PKGBUILD's pkgver-pkgrel; a relocated one is checked against
@@ -62,7 +63,7 @@ class Kind(Base):
             return Status(State.MISSING)
         if item.get("pkgbuild"):
             base = pkg.pkgbuilds_dir()
-            if base and (base / item["pkgbuild"] / "PKGBUILD").is_file():
+            if (base / item["pkgbuild"] / "PKGBUILD").is_file():
                 try:
                     _, ver, rel, _ = pkg.pkgbuild_info(base / item["pkgbuild"])
                     want = f"{ver}-{rel}"
@@ -104,11 +105,7 @@ class Kind(Base):
             pkg_install(pkg.relocate_pkg(p, found, allow=False))
             return True
 
-        base = pkg.pkgbuilds_dir()
-        if not base:
-            raise Error(f"building {item['package']} needs the checkout's "
-                        f"pkgbuilds/frame/{item['pkgbuild']}; set [pkg] checkout in the config")
-        directory = base / item["pkgbuild"]
+        directory = pkg.pkgbuilds_dir() / item["pkgbuild"]
         name, ver, rel, _ = pkg.pkgbuild_info(directory)
         want = f"{ver}-{rel}"
         if status.state == State.OK:
@@ -121,7 +118,7 @@ class Kind(Base):
         have = pkg.query_version(p, name)
         cmdline.say("would build" if opts.check else "build",
                     f"{name} {want}{', replacing ' + have if have else ''} "
-                    f"(makepkg in {cmdline.tilde(directory)}, pacman-home -U)")
+                    f"(makepkg in {cmdline.tilde(pkg.build_dir() / item['pkgbuild'])}, pacman-home -U)")
         if opts.check:
             return True
         if not cmdline.confirm(opts, f"build {name}? (emacs takes about three minutes)"):

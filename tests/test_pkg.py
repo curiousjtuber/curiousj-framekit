@@ -144,3 +144,52 @@ class WithoutPacman(unittest.TestCase):
             with self.assertRaises(pkg.Error) as cm:
                 pkg.pacman(p, p.conf, "-Q", "x", check=False)
             self.assertIn("not found", str(cm.exception))
+
+
+class Pkgbuilds(unittest.TestCase):
+    def test_shipped_with_the_package(self):
+        base = pkg.pkgbuilds_dir()
+        self.assertEqual(base.parts[-3:], ("curiousj_framekit", "data", "pkgbuilds"))
+        self.assertEqual(sorted(d.name for d in base.iterdir() if (d / "PKGBUILD").is_file()),
+                         ["emacs", "pacman"])
+        name, ver, rel, _ = pkg.pkgbuild_info(base / "pacman")
+        self.assertEqual(name, "pacman")
+        self.assertTrue(ver and rel)
+
+    def test_stage_copies_into_the_cache_dir(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict("os.environ", {"XDG_CACHE_HOME": tmp}):
+            self.assertEqual(pkg.build_dir(), Path(tmp) / "curiousj-framekit/build")
+            work, names = pkg.stage(pkg.pkgbuilds_dir() / "pacman")
+            self.assertEqual(work, pkg.build_dir() / "pacman")
+            self.assertIn("PKGBUILD", names)
+            self.assertTrue((work / "PKGBUILD").is_file())
+            self.assertEqual((work / "PKGBUILD").read_bytes(), (pkg.pkgbuilds_dir() / "pacman/PKGBUILD").read_bytes())
+            # what a build adds is told apart from what was copied
+            (work / "src").mkdir()
+            (work / "pacman-7.0.0-1-aarch64.pkg.tar.zst").write_bytes(b"")
+            junk = sorted(f.name for f in work.iterdir() if f.name not in names)
+            self.assertEqual(junk, ["pacman-7.0.0-1-aarch64.pkg.tar.zst", "src"])
+            # nothing landed beside the PKGBUILD in the package
+            self.assertFalse((pkg.pkgbuilds_dir() / "pacman/src").exists())
+
+
+class MakepkgConf(unittest.TestCase):
+    def test_which_file_turns_ccache_on(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            system = home / "makepkg.conf"
+            system.write_text("BUILDENV=(!distcc color !ccache check !sign)\n")
+            xdg = home / ".config/pacman/makepkg.conf"
+            xdg.parent.mkdir(parents=True)
+            with mock.patch.dict("os.environ", {"HOME": tmp, "MAKEPKG_CONF": str(system),
+                                                "XDG_CONFIG_HOME": str(home / ".config")}):
+                self.assertIsNone(pkg.makepkg_wants("ccache"))
+                xdg.write_text("BUILDENV=(!distcc color ccache check !sign)\n")
+                self.assertEqual(pkg.makepkg_wants("ccache"), str(xdg))
+                self.assertIsNone(pkg.makepkg_wants("distcc"))
+                # ~/.makepkg.conf is read last and wins
+                (home / ".makepkg.conf").write_text("BUILDENV=(!ccache)\n")
+                self.assertIsNone(pkg.makepkg_wants("ccache"))

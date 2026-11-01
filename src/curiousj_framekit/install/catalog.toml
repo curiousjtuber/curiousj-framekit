@@ -33,7 +33,7 @@ trust_checks = "the bottle against the sha256 in its formula"
 
 [item.rust]
 kind = "mise"
-description = "rust through mise, for a Rust package in pkgbuilds/"
+description = "rust through mise, for a Rust package built with `cjf pkg`"
 tool = "rust"
 command = "cargo"
 trust_root = "mise's download checks, rust-lang.org"
