@@ -23,10 +23,10 @@ that location.
 | `cjf vr [off [left\|right]]` | the headset's battery and charging state from the kernel, then the VR controllers SteamVR knows, with battery (for the Frame's AA controllers also an estimated cell voltage and NiMH charge), or turns them off from a shell as the dashboard's power menu does; this goes through a private SteamVR interface, so it refuses if SteamVR renames the interface |
 | `cjf controllers [off [NAME]]` | lists the Steam Controllers paired over Bluetooth that are on, with battery, or turns them off, with Valve's own HID power-off command sent to the hidraw node since the kernel's hid-steam doesn't take this controller yet |
 | `beat-saber-recent [-n N \| --all]` | the songs Beat Saber started in its recent launches, in order, from the Unity logs in its Proton prefix and from `~/.local/state/curiousj-framekit/beat-saber-songs.tsv`, which `beat-saber-recent --record` fills from those logs; Unity keeps only two, so the game's launch options run the hook before and after the game and every launch is kept; `beat-saber-recent --install-hook` sets that through the running Steam client, over the debug port the Frame's Steam has open, when nothing is set there yet |
-| `pkgbuilds/frame/` | PKGBUILDs for the Frame host itself, built with makepkg on the Frame for a `~/.local` prefix: `pkgbuilds/frame/emacs/` is Emacs with PGTK, `pkgbuilds/frame/pacman/` pacman 7 with a current libalpm, and `pkgbuilds/frame/homeify` rewrites a stock Arch PKGBUILD into one (see [Packages for the host](#packages-for-the-host)) |
+| `pkgbuilds/frame/` | PKGBUILDs for the Frame host itself, built with makepkg on the Frame for a `~/.local` prefix: `pkgbuilds/frame/emacs/` is Emacs with PGTK, `pkgbuilds/frame/pacman/` pacman 7 with a current libalpm, and `cjf pkg homeify NAME` rewrites a stock Arch PKGBUILD into one (see [Packages for the host](#packages-for-the-host)) |
 | `pkgbuilds/pc/` | PKGBUILDs for an Arch PC instead, ordinary `/usr` packages installed with `makepkg -si` there: `pkgbuilds/pc/krdpserver-embed-cursor/`, a krdpserver that can paint the PC's own pointer into the stream (see [Apps](#apps)), and `pkgbuilds/pc/frame-control-bin/`, [Frame Control](https://github.com/saphid/frame-control) as an Arch package built from its release `.deb` (the PKGBUILD's header says what it changes) |
-| `bin/pacman-home` | pacman for packages under `~/.local`, with its database there and no root: the ones built from `pkgbuilds/frame/`, and stock binary packages it relocates (same section) |
-| `bin/makepkg-home` | builds one of `pkgbuilds/frame/`, installs it with `pacman-home`, and offers to delete the build's leftovers (same section) |
+| `pacman-home` | pacman for packages under `~/.local`, with its database there and no root: the ones built from `pkgbuilds/frame/`, and stock binary packages it relocates (same section) |
+| `cjf pkg build NAME` | builds one of `pkgbuilds/frame/`, installs it with `pacman-home`, and offers to delete the build's leftovers (same section) |
 | `docs/` | memos on the surrounding ground: [Arch-based distrobox images for arm64](docs/arch-distrobox-images.md); [the proximity sensor](docs/proximity-sensor.md), on the `frame-prox` tool that SteamOS 0.4.4 made redundant and how its undocumented settings were found; [the desktop cursor](docs/desktop-cursor.md), what SteamOS 0.5.6 changed for the two cursor fixes and how to re-check on the next one; [packages under `~/.local`](docs/home-packages.md), what each one took to get there; [paru](docs/paru.md), tried on the home database and dropped; [the screen reader](docs/orca-screen-reader.md), the command that silences Orca's "dummy output module" message and why Steam restarts it at every boot; and [trust](docs/TRUST.md), what `setup.sh` fetches and who is trusted at the root (the apps have [apps/TRUST.md](apps/TRUST.md)) |
 
 ## Setup
@@ -765,7 +765,7 @@ cd ~/steam-frame-utils/pkgbuilds/frame/emacs && makepkg -f
 pacman-home -U emacs-wayland-*.pkg.tar.zst
 ```
 
-`makepkg-home emacs` is those two commands, from any directory, followed
+`cjf pkg build emacs` is those two commands, from any directory, followed
 by an offer to delete what the build left: `src/`, `pkg/`, the package
 and the downloaded sources, about half a gigabyte for emacs, listed with
 their size before the question (`--clean` deletes unasked, `--keep` asks
@@ -780,7 +780,7 @@ or offers: `krdpserver-embed-cursor` and `frame-control-bin` (see
 [Apps](#apps) and the table above).
 
 Any package whose build takes a prefix can be set up the same way.
-`pkgbuilds/frame/homeify NAME` fetches Arch's PKGBUILD for NAME, or the
+`cjf pkg homeify NAME` fetches Arch's PKGBUILD for NAME, or the
 AUR's when Arch has none, rewrites it for the prefix (the configure,
 cmake, meson and make prefix flags, `/usr` under `$pkgdir`, `aarch64` in
 `arch`, the rpath and pkg-config path for `~/.local/lib`, and for a Rust
@@ -838,8 +838,7 @@ pacman does.
    both: relocate accepts it, and the program works. waypipe passed;
    anything with data files, plugins, schemas or Python modules is
    likely to fail the second part.
-2. **`pkgbuilds/frame/homeify NAME`, then `makepkg -f` and `pacman-home
-   -U`.** Often the whole job too: jq and paru (while it was here) built
+2. **`cjf pkg homeify NAME`, then `cjf pkg build NAME`.** Often the whole job too: jq and paru (while it was here) built
    from homeify's output as it came.
 3. **Edit the PKGBUILD where two signals say so.** homeify's closing
    list of `makedepends` the host lacks is where emacs's libgccjit and
@@ -855,7 +854,7 @@ pacman does.
 [docs/home-packages.md](docs/home-packages.md) records which way each
 package so far went in, and what it took.
 
-`bin/pacman-home` is pacman with a configuration written to
+`pacman-home` is pacman with a configuration written to
 `~/.local/etc/pacman.conf` that keeps the database, cache and log under
 `~/.local`; `relocate` uses a second one beside it that adds Arch Linux
 ARM's repositories, which the plain one lacks so that `-U` never pulls a

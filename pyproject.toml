@@ -23,6 +23,7 @@ curiousj-framekit = "curiousj_framekit.cli:main"
 cjf = "curiousj_framekit.cli:main"
 beat-saber-recent = "curiousj_framekit.beatsaber.recent:main"
 bsmanager = "curiousj_framekit.beatsaber.manager:main"
+pacman-home = "curiousj_framekit.frame.pkg:pacman_home_main"
 
 [dependency-groups]
 dev = ["pytest>=8"]
