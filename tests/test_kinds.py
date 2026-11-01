@@ -127,7 +127,8 @@ class StampIgnoresComments(unittest.TestCase):
         try:
             path.write_text("# a new note\n" + original.replace("\n#", "\n# changed", 1))
             self.assertEqual(flatpak_build.stamp(item), before)
-            path.write_text(original.replace("--port", "--porx", 1))
+            self.assertIn("runtime-version: '6.11'", original)
+            path.write_text(original.replace("runtime-version: '6.11'", "runtime-version: '6.12'", 1))
             self.assertNotEqual(flatpak_build.stamp(item), before)
         finally:
             path.write_text(original)
