@@ -156,6 +156,24 @@ and a `beat-saber-recent` that lists it.
 
 ## Stage 3: the base, the shell side, and `migrate`
 
+**Done 2026-11-01** (`c9f45b5`, `b48e26a`, `29010d7`). `cjf migrate`
+ran on the Frame with `--yes` after a `--check` review: the old blocks
+went from `~/.bashrc`, `~/.zshrc` and `~/.distroboxrc` (backed up), the
+init block and `init.sh` came in, the song history moved. A login bash
+afterwards starts clean, has `cjf`'s completion registered, the podman
+shim first on `PATH`, the `waypipe` function and the `tailscale` alias;
+`distrobox enter dev` sees the shims first. A second `migrate` finds
+nothing to do. `install.sh` was run in a fake home on the PC with a
+bare `PATH`: it listed mise, uv and the kit, installed all three, and
+stopped before `cjf init` as told. Not verified: zsh on the Frame (its
+host has no zsh), and the mise-first installer against a Frame with
+nothing on it. Settled on the way: the rc line sources a static file,
+as Q5 leaned; the completion scripts live in files of their own, one
+per shell, since bash parses a whole `if` block before running it and
+zsh's script is not bash. One bug found by the Frame, not the tests,
+and now covered by them: the shell files are run through `bash -n` and
+`zsh -n`.
+
 Goal: the rc files, `~/.distroboxrc` and the autostart entry no longer
 name the checkout; `setup.sh`'s always-on part is `cjf init`; a Frame
 set up by the old `setup.sh` is moved over by `cjf migrate`.
