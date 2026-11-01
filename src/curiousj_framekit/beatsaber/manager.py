@@ -12,7 +12,7 @@ From the PC, the session and the command in one line:
 --no-gpu turns off BSManager's GPU rendering, for a blank or crashing
 window; pass waypipe -n on the PC as well, so the window travels as
 plain pixels instead of GPU buffers. The Frame needs waypipe (`cjf
-install waypipe`) and BSManager (apps/install-bsmanager.sh).
+install waypipe`) and BSManager (`cjf install bsmanager`).
 
 BSManager allows one instance: a second hands off to the first and
 exits, with no new window, so this refuses while one runs. Its Electron
@@ -61,7 +61,8 @@ def cli(opts: Options, no_gpu: bool, args: tuple[str, ...]) -> int:
                             "the PC: waypipe --remote-bin /home/steamos/.local/bin/waypipe "
                             "ssh steamos@frame.local bsmanager")
     if not os.access(APPIMAGE, os.X_OK):
-        raise cmdline.Error(f"no {APPIMAGE}; install it with apps/install-bsmanager.sh")
+        from ..install import catalog
+        catalog.needs("bsmanager", "bsmanager", opts)
     if is_running(opts):
         raise cmdline.Error("BSManager is already running, in the window it was started in; "
                             "quit it first")

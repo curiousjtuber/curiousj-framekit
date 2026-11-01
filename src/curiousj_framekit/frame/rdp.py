@@ -225,7 +225,8 @@ def start(opts: Options, desktop: str | None, port: int | None, user: str | None
     port = port or default_port()
     user = user or pwd.getpwuid(os.getuid()).pw_name
     if not installed(opts):
-        raise cmdline.Error(f"{APP} isn't installed: run ~/steam-frame-utils/apps/install-krdp.sh")
+        from ..install import catalog
+        catalog.needs("krdp", "rdp", opts)
     if instance_pid(opts):
         raise cmdline.Error("already running (cjf rdp status); stop it first")
     if listening(opts, port):
@@ -323,7 +324,7 @@ def status(opts: Options, as_keys: bool) -> int:
     if installed(opts):
         print(f"installed: {APP}")
     else:
-        print(f"not installed: run ~/steam-frame-utils/apps/install-krdp.sh")
+        print("not installed: cjf install krdp")
     pid = instance_pid(opts)
     if not pid:
         print("not running")

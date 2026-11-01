@@ -33,13 +33,18 @@ class Status(unittest.TestCase):
         self.assertEqual(code, 1)
 
     def test_prints_rows_on_the_frame(self):
+        from curiousj_framekit.install import status as status_mod
         rows = [versions.Row("SteamOS", "0.5.6", "build 1, beta channel")]
         with mock.patch.object(where, "os_release", return_value=FRAME), \
              mock.patch.object(where, "in_container", return_value=False), \
-             mock.patch.object(versions, "rows", return_value=rows):
+             mock.patch.object(versions, "rows", return_value=rows), \
+             mock.patch.object(status_mod, "kit_line", return_value="kit           0.0.1       curiousj-framekit"), \
+             mock.patch.object(status_mod, "live_lines", return_value=["cursor        software on"]):
             result = CliRunner().invoke(cli.cli, ["status"])
         self.assertEqual(result.exit_code, 0, result.output)
-        self.assertEqual(result.output, "SteamOS       0.5.6       build 1, beta channel\n")
+        self.assertEqual(result.output, "SteamOS       0.5.6       build 1, beta channel\n"
+                                        "kit           0.0.1       curiousj-framekit\n\n"
+                                        "cursor        software on\n")
 
     def test_bare_without_a_terminal_is_a_usage_error(self):
         code = cli.main([])

@@ -23,8 +23,8 @@ artifact and your headset.
 
 ## KRdp's server
 
-`install-krdp.sh` builds from
-`apps/krdp/io.github.curiousjtuber.Krdp.yml`. Every source is a release
+`cjf install krdp` builds from
+the manifest the kit ships, `src/curiousj_framekit/data/krdp/io.github.curiousjtuber.Krdp.yml`. Every source is a release
 tarball from download.kde.org or GitHub with its sha256 in the manifest,
 and the two patches live in this repo. The build runs on KDE's SDK
 pulled from Flathub by flatpak-builder. A changed tarball fails the

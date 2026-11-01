@@ -3,7 +3,10 @@
     cjf [-v] [--yes] [--check] COMMAND [ARGS...]
     cjf                                 pick a command from a menu
 
-    status        the versions of SteamOS, SteamVR and the Steam client
+    status        the versions of SteamOS, SteamVR and the Steam client, the live state
+    install       install or update an optional item: apps, packages, services, fonts
+    installed     every catalog item's state
+    uninstall     remove one catalog item
     init          the base: PATH, init.sh, the shims, the rc blocks
     cursor        the mouse cursor in Desktop Mode and Frametop's desktop
     wifi          the saved Wi-Fi networks in range
@@ -30,7 +33,7 @@ import click
 from . import cmdline, pick
 from .cmdline import Options
 from .frame import controllers, cursor, rdp, vr, wifi
-from .install import init, migrate, status
+from .install import commands, init, migrate, status
 
 PROG = "cjf"
 
@@ -67,6 +70,9 @@ def pick_command(ctx: click.Context) -> str | None:
 
 
 cli.add_command(status.status)
+cli.add_command(commands.install)
+cli.add_command(commands.installed)
+cli.add_command(commands.uninstall)
 cli.add_command(init.init)
 cli.add_command(migrate.migrate)
 cli.add_command(cursor.cursor)

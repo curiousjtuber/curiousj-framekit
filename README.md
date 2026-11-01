@@ -415,7 +415,7 @@ gets on the headset.
   SteamOS's stock Desktop) from a PC. SteamOS has no krdp and Flathub
   only has the client, so `install-krdp.sh` builds it as a flatpak on
   KDE's runtime, with its own FreeRDP and kpipewire, pinned and patched
-  as the manifest in `apps/krdp/` explains (krdp 6.7.5 gets 6.8's NLA
+  as the manifest in the kit (`src/curiousj_framekit/data/krdp/`) explains (krdp 6.7.5 gets 6.8's NLA
   login, which works with FreeRDP 3.32 clients; kpipewire crashes on the
   256 px cursor gamescope sets). krdp 6.8 itself has to wait for a
   SteamOS with KWin 6.7 or later: it needs a newer screencast protocol

@@ -1,11 +1,12 @@
-# Builds KRdp's server flatpak (apps/krdp) natively on GitHub's arm64
-# runner, with the same install-krdp.sh the Frame runs, so nobody needs
-# the Frame or qemu to make the bundle. A push that touches the manifest
-# keeps the bundle as a workflow artifact; a krdp-* tag also uploads it
-# to that tag's release, created as a draft if there isn't one, to
-# publish by hand. Each bundle gets a signed build attestation, so a
-# download can be traced to this workflow and commit: gh attestation
-# verify io.github.curiousjtuber.Krdp.flatpak --repo
+# Builds KRdp's server flatpak natively on GitHub's arm64 runner, with
+# the same `cjf install krdp` the Frame runs (CJF_ASSUME_FRAME=1 tells
+# the kit to treat the runner as a Frame), so nobody needs the Frame or
+# qemu to make the bundle. A push that touches the manifest keeps the
+# bundle as a workflow artifact; a krdp-* tag also uploads it to that
+# tag's release, created as a draft if there isn't one, to publish by
+# hand. Each bundle gets a signed build attestation, so a download can
+# be traced to this workflow and commit: gh attestation verify
+# io.github.curiousjtuber.Krdp.flatpak --repo
 # curiousjtuber/steam-frame-utils
 name: krdp flatpak
 
@@ -14,8 +15,8 @@ on:
   push:
     branches: [dev, main]
     paths:
-      - apps/krdp/**
-      - apps/install-krdp.sh
+      - src/curiousj_framekit/data/krdp/**
+      - src/curiousj_framekit/install/kinds/flatpak_build.py
       - .github/workflows/krdp-flatpak.yml
     tags: ['krdp-*']
 
@@ -35,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@v7
 
-      - name: Install flatpak
+      - name: Install flatpak and the kit
         run: |
           sudo apt-get update -q
           sudo apt-get install -y -q flatpak dbus
@@ -49,14 +50,19 @@ jobs:
             sudo install -d -o "$USER" -m 700 "$d"
             echo "XDG_RUNTIME_DIR=$d" >> "$GITHUB_ENV"
           fi
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          ~/.local/bin/uv tool install .
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
 
       # The flatpak'd builder installs dependencies through the host's
       # flatpak over the session bus, which a runner doesn't have, so
       # the flatpak steps each get one.
       - name: Build and bundle
+        env:
+          CJF_ASSUME_FRAME: "1"
         run: |
           mkdir -p dist
-          dbus-run-session -- apps/install-krdp.sh --bundle "$PWD/dist/io.github.curiousjtuber.Krdp.flatpak"
+          dbus-run-session -- cjf --yes install krdp --bundle "$PWD/dist/io.github.curiousjtuber.Krdp.flatpak"
           (cd dist && sha256sum io.github.curiousjtuber.Krdp.flatpak > SHA256SUMS)
           cat dist/SHA256SUMS
 
@@ -83,6 +89,6 @@ jobs:
           gh release view "$GITHUB_REF_NAME" >/dev/null 2>&1 ||
             gh release create "$GITHUB_REF_NAME" --draft --verify-tag \
               --title "KRdp server flatpak (aarch64), $GITHUB_REF_NAME" \
-              --notes "Built by the krdp flatpak workflow from apps/krdp at this tag."
+              --notes "Built by the krdp flatpak workflow from the kit's manifest at this tag."
           gh release upload "$GITHUB_REF_NAME" --clobber \
             dist/io.github.curiousjtuber.Krdp.flatpak dist/SHA256SUMS
