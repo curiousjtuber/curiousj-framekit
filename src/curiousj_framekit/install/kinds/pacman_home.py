@@ -12,6 +12,7 @@ Arch Linux ARM by `pacman-home outdated`, which needs the network, so
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -47,8 +48,13 @@ class Kind(Base):
     updates = True
 
     def status(self, item: Item, opts: Options) -> Status:
+        p = pkg.Paths()
+        if not os.access(p.pacman, os.X_OK):
+            # No pacman, no database to ask, and nothing to write under
+            # ~/.local for the question.
+            return Status(State.UNKNOWN, f"no pacman here ({p.pacman})")
         try:
-            p = paths()
+            p.write_confs()
             have = pkg.query_version(p, item["package"])
         except Error as e:
             return Status(State.UNKNOWN, str(e))

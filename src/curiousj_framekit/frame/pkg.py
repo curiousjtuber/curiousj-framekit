@@ -187,7 +187,12 @@ def fakeroot() -> list[str]:
 def pacman(paths: Paths, conf: Path, *args: str, root: bool = False, check: bool = True,
            capture: bool = True) -> subprocess.CompletedProcess:
     argv = (fakeroot() if root else []) + [paths.pacman, "--config", str(conf), *args]
-    proc = subprocess.run(argv, text=True, capture_output=capture)
+    try:
+        proc = subprocess.run(argv, text=True, capture_output=capture)
+    except FileNotFoundError:
+        # A host without pacman (a CI runner standing in for the Frame)
+        # gets the kit's own error, which a status pass shows as `?`.
+        raise Error(f"can't run {argv[0]}: not found") from None
     if check and proc.returncode != 0:
         err = (proc.stderr or "").strip() if capture else ""
         raise Error(f"{' '.join(argv[-len(args) - 2:])} failed" + (f": {err}" if err else ""))

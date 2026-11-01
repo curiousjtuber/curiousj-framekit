@@ -133,3 +133,14 @@ class Rewrite(unittest.TestCase):
         with tempfile.NamedTemporaryFile("w", suffix="PKGBUILD", delete=False) as f:
             f.write(self.out)
         self.assertEqual(subprocess.run(["bash", "-n", f.name]).returncode, 0)
+
+
+class WithoutPacman(unittest.TestCase):
+    def test_missing_binary_is_the_kits_error(self):
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(pkg, "HOST_PACMAN", str(Path(tmp) / "no-pacman")):
+            p = pkg.Paths(Path(tmp))
+            with self.assertRaises(pkg.Error) as cm:
+                pkg.pacman(p, p.conf, "-Q", "x", check=False)
+            self.assertIn("not found", str(cm.exception))

@@ -149,3 +149,17 @@ class WantsUpdate(unittest.TestCase):
         self.assertFalse(commands.wants_update(items["cursor"], ok))
         self.assertTrue(commands.wants_update(items["krdp"], Status(State.OUTDATED, "x")))
         self.assertFalse(commands.wants_update(items["moonlight"], Status(State.MISSING)))
+
+
+class PacmanHome(unittest.TestCase):
+    def test_status_without_pacman_is_unknown_and_writes_nothing(self):
+        from curiousj_framekit.frame import pkg
+        from curiousj_framekit.install.kinds import pacman_home
+        item = next(it for it in catalog.load().values() if it.kind == "pacman-home")
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict("os.environ", {"HOME": tmp}), \
+                mock.patch.object(pkg, "HOST_PACMAN", str(Path(tmp) / "no-pacman")):
+            status = pacman_home.Kind().status(item, Options())
+            self.assertEqual(status.state, State.UNKNOWN)
+            self.assertIn("no pacman here", status.detail)
+            self.assertFalse((Path(tmp) / ".local/etc").exists())
