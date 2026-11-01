@@ -475,6 +475,15 @@ gets on the headset.
 
 ## Shell init
 
+Since stage 3 of the reorganization this is `cjf init`'s: it writes
+`~/.local/share/curiousj-framekit/init.sh`, one file for bash and zsh
+whose parts each guard themselves (Frametop terminals, Homebrew, the
+shims and `~/.local/bin` on `PATH`, mise, the `waypipe` function, the
+`tailscale` alias, and `cjf`'s completion from files beside it), and
+one marked block at the top of `~/.bashrc` and `~/.zshrc` that sources
+it. The text below describes the `shell-init/` scheme it replaced, kept
+for the reasons behind each part until the docs are rewritten.
+
 `shell-init/` holds one file per feature. `setup.sh` puts two marked
 blocks into `~/.bashrc`, and into `~/.zshrc` if that exists, each a
 short loop that sources the chosen files from this checkout:
@@ -632,6 +641,10 @@ over to the host's podman through `distrobox-host-exec`, so `podman ps`
 works there too.
 
 ### `~/.distroboxrc`
+
+Since stage 3 `cjf init` puts a marked block here that moves
+`~/.local/share/curiousj-framekit/shims` to the front of `PATH`, where
+the podman shim lives; the text below has the reason.
 
 The checkout's `bin/` is on `PATH` once an rc file has run, but not for
 a distrobox export started without one, such as one started from a
