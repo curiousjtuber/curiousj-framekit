@@ -6,7 +6,7 @@ import sys
 from collections import defaultdict
 from pathlib import Path
 
-CURRENT = (1.13, 1.48)
+CURRENT = (1.09, 1.48)  # cjf vr's line: the firmware's % against the AA's voltage under load
 SPLIT = 50  # the per-range scores split at this %
 
 path = Path(sys.argv[1]) if len(sys.argv) > 1 else Path(__file__).with_name("aa-voltage.csv")
@@ -30,11 +30,14 @@ def late(d, what, after=5):
     return vals[max(vals)] if vals else None
 
 
-def rest_v(d):
-    # A resting voltage: out of the controller, else in place after 15 minutes or more.
+def rest_v(d, after=15):
+    # A resting voltage: out of the controller, else the latest reading in place after `after`
+    # minutes or more. An untimed long rest (v_rest) counts as the latest of all.
     if "v_out" in d:
         return first(d, "v_out")
-    late = [m for m in d.get("v_in", {}) if m is not None and m >= 15]
+    if "v_rest" in d:
+        return first(d, "v_rest")
+    late = [m for m in d.get("v_in", {}) if m is not None and m >= after]
     return d["v_in"][max(late)] if late else None
 
 
@@ -44,8 +47,14 @@ PAIRINGS = [
      lambda d: (first(d, "pct_on", 0), first(d, "v_out"))),
     ("run/in0", "% running, then V in place at once (recent method)",
      lambda d: (first(d, "pct_run"), first(d, "v_in", 0))),
-    ("run/rest", "% running against resting V: what cjf vr means",
+    ("run/load", "% running against V in place at that moment: what the firmware sees, and cjf vr",
+     lambda d: (first(d, "pct_run"), first(d, "v_run"))),
+    ("run/rest", "% running against resting V (15 min or more)",
      lambda d: (first(d, "pct_run"), rest_v(d))),
+    ("run/rest2h", "% running against V after a rest of two hours or more",
+     lambda d: (first(d, "pct_run"), rest_v(d, after=120))),
+    ("on0/load0", "% right after power-on against V in place at that moment",
+     lambda d: (first(d, "pct_on", 0), first(d, "v_on", 0))),
     ("on5/rest", "% 5 min or more after power-on against resting V",
      lambda d: (late(d, "pct_on"), rest_v(d))),
     ("on/load", "% after power-on against V under load at the same minute",
@@ -100,24 +109,93 @@ for name, desc, pick in PAIRINGS:
         print(f"      below {SPLIT}%: {score(lo, a, b)}   from {SPLIT}%: {score(hi, a, b)}")
     print()
 
-# What the side-by-side tests show: recovery after load, and drift after power-on.
-for (test, side), d in sorted(cells.items()):
+# What each session shows: the % and V drop during use, recovery after turn-off, and the %
+# the firmware gives again at the next power-on.
+def session_order(item):
+    (test, side), _ = item
+    digits = "".join(c for c in test if c.isdigit())
+    return test[0], int(digits) if digits else 0, test, side
+
+
+print("session: on %/V  ->  run %/V  | off V, recovery mV at minutes (untimed rest as 'rest')")
+for (test, side), d in sorted(cells.items(), key=session_order):
     vin = {m: v for m, v in d.get("v_in", {}).items() if m is not None}
-    pon = {m: v for m, v in d.get("pct_on", {}).items() if m is not None}
-    von = {m: v for m, v in d.get("v_on", {}).items() if m is not None}
-    if len(vin) < 2 and len(pon) < 2:
+    if not vin:
         continue
-    print(f"{test} {side}: % running {first(d, 'pct_run')}")
-    if vin:
-        base = vin[min(vin)]
-        rec = ", ".join(f"{m:g} min {1000 * (v - base):+.0f}" for m, v in sorted(vin.items()))
-        out = first(d, "v_out")
-        extra = f", out {1000 * (out - base):+.0f}" if out is not None else ""
-        print(f"  V in place {base:.3f}, recovery mV: {rec}{extra}")
-    if pon:
-        print("  % after power-on: " + ", ".join(f"{m:g} min {v:g}" for m, v in sorted(pon.items())))
-    if von:
-        rest = rest_v(d)
-        sag = ", ".join(f"{m:g} min {v:.3f}" + (f" ({1000 * (v - rest):+.0f})" if rest else "")
-                        for m, v in sorted(von.items()))
-        print(f"  V under load (mV from resting): {sag}")
+    on_p, on_v = first(d, "pct_on", 0), first(d, "v_on", 0)
+    run_p, run_v = first(d, "pct_run"), first(d, "v_run")
+    on = f"{on_p:2.0f}%/{on_v:.3f}" if on_p is not None and on_v is not None else "    -    "
+    run = f"{run_p:2.0f}%/{run_v:.3f}" if run_p is not None and run_v is not None else "    -    "
+    base = vin[min(vin)]
+    rec = f"{base:.3f}" + "".join(f" {1000 * (v - base):+.0f}@{m:g}"
+                                 for m, v in sorted(vin.items()) if m > 0)
+    if "v_rest" in d:
+        rec += f" {1000 * (first(d, 'v_rest') - base):+.0f}@rest"
+    print(f"{test:>4} {side}: {on} -> {run} | {rec}")
+    von = {m: v for m, v in d.get("v_on", {}).items() if m is not None}
+    if len(von) > 1:  # a timed power-on series: the sag under load, minute by minute
+        series = " ".join(f"{v:.3f}@{m:g}" for m, v in sorted(von.items()))
+        print(f"        on, V at minutes: {series}")
+
+# The NiMH charge against the voltage under load, from this one pair of cells played from full
+# to nearly empty. Charge is taken as play time left. Each reading is the % at the end of use,
+# the steady voltage under load (a power-on reading after a rest still carries surface charge);
+# its play time is the sum of the sessions so far, each from the log's stamps (the rest reading
+# before a session is its power-on, the "after use" stamp its end) or UNDATED minutes where the
+# log has none. R got EXTRA minutes of unlogged use between u18 (10-28) and u19 (10-30), sized
+# from how its lead over L swung from +4 points to -3. What is left below R's last reading comes
+# from a fresh Eneloop's 0.1 A curve (eneloop-0.1A.csv), shifted down by OFFSET: these cells read
+# that much under it at the same depth. That curve's shape does not fit the log (13 mV rms at
+# best, 20-30 mV too high through the middle), so only its tail is used.
+UNDATED, EXTRA, OFFSET = 40, 130, 0.03
+SESSIONS = [  # (session, minutes or None if undated, R % at end of use, L % at end of use)
+    ("r9", 0, 79, 77), ("r10", None, 70, 68), ("r11", None, 71, 69), ("r12", None, 67, 64),
+    ("r13", None, 63, 59), ("e60", None, 62, 59), ("u1", None, 56, 52), ("u3", None, 54, 52),
+    ("u4", None, 52, 50), ("u5", None, 51, 49), ("u6", None, 50, 48), ("u7", 34, 49, 46),
+    ("u8", 22, 48, 45), ("u9", None, 48, 44), ("u9b", None, None, None), ("u10", 35, 42, 41),
+    ("u11", 94, 41, 39), ("u12", 22, 40, 37), ("u13", 56, 37, 34), ("u14", 34, 35, 31),
+    ("u15", 27, 33, 29), ("u16", 33, 32, 29), ("u17", 22, 32, 28), ("u18", None, 30, 26),
+    ("u19", None, 21, 24), ("u20", 90, 16, 21), ("u21", 54, 10, 19),
+]
+textbook = [(float(r["dod_pct"]), float(r["volts"])) for r in csv.DictReader(
+    line for line in path.with_name("eneloop-0.1A.csv").open() if not line.startswith("#"))]
+
+
+def textbook_left(volts):
+    # % of capacity a fresh Eneloop has left at this voltage under 0.1 A
+    for (d0, v0), (d1, v1) in zip(textbook, textbook[1:]):
+        if v1 <= volts <= v0:
+            return 100 - (d0 + (v0 - volts) / (v0 - v1) * (d1 - d0))
+    return 100 if volts > textbook[0][1] else 0
+
+
+def discharge(undated, extra):
+    played, r_extra = 0, 0
+    out = []  # (session, side, minutes played, V under load)
+    for name, minutes, r, l in SESSIONS:
+        played += undated if minutes is None else minutes
+        if name == "u19":
+            r_extra = extra
+        if r is not None:
+            out.append((name, "R", played + r_extra, ca + cb * r / 100))
+        if l is not None:
+            out.append((name, "L", played, ca + cb * l / 100))
+    r_end = next(m for n, s, m, _ in out if n == "u21" and s == "R")
+    tail = textbook_left(ca + cb * 0.10 + OFFSET)
+    return out, r_end / (1 - tail / 100), tail
+
+
+pts, total, tail = discharge(UNDATED, EXTRA)
+print(f"\ndischarge: {total:.0f} min of play in all ({total / 60:.1f} h) with {UNDATED} min per "
+      f"undated session,\n  {EXTRA} min extra on R, and {tail:.0f}% left at R's last reading by "
+      "the textbook")
+print("session   V under load   NiMH left")
+for name, side, played, volts in pts:
+    print(f"{name:>4} {side}   {volts:.3f}         {100 - 100 * played / total:5.1f}%")
+print("sensitivity:")
+for undated, extra in ((30, EXTRA), (50, EXTRA), (UNDATED, 90), (UNDATED, 170)):
+    pts2, total2, _ = discharge(undated, extra)
+    mid = next(100 - 100 * m / total2 for n, s, m, _ in pts2 if n == "u13" and s == "R")
+    end = next(100 - 100 * m / total2 for n, s, m, _ in pts2 if n == "u21" and s == "L")
+    print(f"  undated {undated}, extra {extra}: {total2 / 60:.1f} h in all, "
+          f"R at u13 {mid:.0f}% left, L at u21 {end:.0f}% left")

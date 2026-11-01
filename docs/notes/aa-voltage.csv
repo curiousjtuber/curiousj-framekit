@@ -5,8 +5,14 @@
 #        v_out    volts out of the controller (resting)
 #        pct_on   firmware %, <min> minutes after turning it back on
 #        v_on     volts in place, controller on (under load), <min> minutes after turning it on
+#        v_run    volts in place, controller running, read together with pct_run (under load)
+#        v_rest   volts in place, controller off, after an untimed rest of hours or overnight
 # A blank min means "not timed". Rows r1-r8 were taken out-then-on (v_out, then pct_on at 0);
 # rows r9-r13 run-then-in-place (pct_run, then v_in at 0). r9 is NiMH straight off the charger.
+# Rows u1-u21 are ordinary play sessions on the same pair of NiMH cells, 2026-10-16 to 11-01, as
+# they ran down from 60% to 10%: pct_on/v_on at power-on, pct_run/v_run at the end of use, v_in
+# at turn-off and after rests timed from the log's timestamps (the off time is the end-of-use
+# stamp), v_rest where a rest was only described ("next day", "hours later").
 test,side,what,min,value
 r1,R,v_out,,1.234
 r1,R,pct_on,0,36
@@ -84,3 +90,245 @@ e60,L,v_on,1,1.325
 e60,L,v_on,5,1.322
 e60,L,pct_on,6,58
 e60,L,v_on,6,1.320
+# u1 follows straight on from e60's last power-on (61/58%); u2 is a power-on with no use logged,
+# the next line of the log is another power-on (u3). Session dates, with the turn-off time and the
+# time of each later rest reading where the log stamps them:
+#   u1-u5 undated, between 10-16 and 10-19.   u6 10-19; rest read 10-20 13:11.
+#   u7 10-20 off 13:46; rest 18:55.           u8 10-20 off 19:18.
+#   u9 10-20 off 21:25; rest 10-21 20:11.     u10 10-21 off 20:46; rest 10-22 13:11.
+#   u11 10-22 off 14:45; rest 10-23 09:52.    u12 10-23 off 10:14; rest 12:52.
+#   u13 10-23 off 13:48; rests 16:31, 10-24 14:09.   u14 10-24 off 14:43; rest 18:44.
+#   u15 10-24 off 19:11; rest 10-26 13:52.    u16 10-26 off 14:25; rest 18:56.
+#   u17 10-26 off 19:18.                      u18 10-28 off 18:45 (no power-on reading).
+#   u19 10-30 off 16:46; rest 10-31 14:49.    u20 10-31 off 16:19; rest 11-01 13:00.
+#   u21 11-01 off 13:54.
+u1,R,pct_run,,56
+u1,L,pct_run,,52
+u1,R,v_run,,1.307
+u1,L,v_run,,1.298
+u1,R,v_in,0,1.311
+u1,L,v_in,0,1.305
+u1,R,v_in,20,1.317
+u1,L,v_in,20,1.311
+u2,R,pct_on,0,57
+u2,L,pct_on,0,54
+u2,R,v_on,0,1.312
+u2,L,v_on,0,1.304
+u3,R,pct_on,0,59
+u3,L,pct_on,0,56
+u3,R,v_on,0,1.319
+u3,L,v_on,0,1.311
+u3,R,pct_run,,54
+u3,L,pct_run,,52
+u3,R,v_run,,1.302
+u3,L,v_run,,1.295
+u3,R,v_in,0,1.306
+u3,L,v_in,0,1.300
+u3,R,v_in,30,1.311
+u3,L,v_in,30,1.306
+u3,R,v_rest,,1.320
+u3,L,v_rest,,1.314
+u4,R,pct_on,0,57
+u4,L,pct_on,0,55
+u4,R,v_on,0,1.314
+u4,L,v_on,0,1.306
+u4,R,pct_run,,52
+u4,L,pct_run,,50
+u4,R,v_run,,1.293
+u4,L,v_run,,1.287
+u4,R,v_in,0,1.298
+u4,L,v_in,0,1.293
+u4,R,v_rest,,1.313
+u4,L,v_rest,,1.306
+u5,R,pct_on,0,55
+u5,L,pct_on,0,53
+u5,R,v_on,0,1.304
+u5,L,v_on,0,1.299
+u5,R,pct_run,,51
+u5,L,pct_run,,49
+u5,R,v_run,,1.291
+u5,L,v_run,,1.283
+u5,R,v_in,0,1.294
+u5,L,v_in,0,1.289
+u5,R,v_in,20,1.300
+u5,L,v_in,20,1.294
+u5,R,v_rest,,1.306
+u5,L,v_rest,,1.300
+u6,R,pct_on,0,54
+u6,L,pct_on,0,52
+u6,R,v_on,0,1.300
+u6,L,v_on,0,1.293
+u6,R,pct_run,,50
+u6,L,pct_run,,48
+u6,R,v_run,,1.286
+u6,L,v_run,,1.279
+u6,R,v_in,0,1.290
+u6,L,v_in,0,1.285
+u6,R,v_in,25,1.296
+u6,L,v_in,25,1.291
+u6,R,v_rest,,1.305
+u6,L,v_rest,,1.300
+u7,R,pct_on,0,54
+u7,L,pct_on,0,52
+u7,R,v_on,0,1.300
+u7,L,v_on,0,1.292
+u7,R,pct_run,,49
+u7,L,pct_run,,46
+u7,R,v_run,,1.281
+u7,L,v_run,,1.274
+u7,R,v_in,0,1.285
+u7,L,v_in,0,1.280
+u7,R,v_in,310,1.298
+u7,L,v_in,310,1.292
+u8,R,pct_on,0,52
+u8,L,pct_on,0,50
+u8,R,v_on,0,1.293
+u8,L,v_on,0,1.286
+u8,R,pct_run,,48
+u8,L,pct_run,,45
+u8,R,v_run,,1.275
+u8,L,v_run,,1.271
+u8,R,v_in,0,1.283
+u8,L,v_in,0,1.277
+u9,R,pct_run,,48
+u9,L,pct_run,,44
+u9,R,v_run,,1.274
+u9,L,v_run,,1.265
+u9,R,v_in,0,1.278
+u9,L,v_in,0,1.271
+# The log has an empty "after use" line between u9's turn-off and the 10-21 reading, so the
+# cells were most likely used again unlogged: that reading is u9b, not u9's rest.
+u9b,R,v_rest,,1.276
+u9b,L,v_rest,,1.277
+u10,R,pct_on,0,47
+u10,L,pct_on,0,46
+u10,R,v_on,0,1.272
+u10,L,v_on,0,1.270
+u10,R,pct_run,,42
+u10,L,pct_run,,41
+u10,R,v_run,,1.254
+u10,L,v_run,,1.252
+u10,R,v_in,0,1.259
+u10,L,v_in,0,1.258
+u10,R,v_in,985,1.277
+u10,L,v_in,985,1.275
+u11,R,pct_on,0,47
+u11,L,pct_on,0,45
+u11,R,v_on,0,1.272
+u11,L,v_on,0,1.268
+u11,R,pct_run,,41
+u11,L,pct_run,,39
+u11,R,v_run,,1.250
+u11,L,v_run,,1.245
+u11,R,v_in,0,1.253
+u11,L,v_in,0,1.250
+u11,R,v_in,1148,1.270
+u11,L,v_in,1148,1.266
+u12,R,pct_on,0,45
+u12,L,pct_on,0,43
+u12,R,v_on,0,1.265
+u12,L,v_on,0,1.258
+u12,R,pct_run,,40
+u12,L,pct_run,,37
+u12,R,v_run,,1.244
+u12,L,v_run,,1.238
+u12,R,v_in,0,1.248
+u12,L,v_in,0,1.244
+u12,R,v_in,158,1.258
+u12,L,v_in,158,1.254
+u13,R,pct_on,0,43
+u13,L,pct_on,0,41
+u13,R,v_on,0,1.251
+u13,L,v_on,0,1.246
+u13,R,pct_run,,37
+u13,L,pct_run,,34
+u13,R,v_run,,1.235
+u13,L,v_run,,1.227
+u13,R,v_in,0,1.238
+u13,L,v_in,0,1.232
+u13,R,v_in,163,1.250
+u13,L,v_in,163,1.243
+u13,R,v_in,1462,1.253
+u13,L,v_in,1462,1.244
+u14,R,pct_on,0,41
+u14,L,pct_on,0,38
+u14,R,v_on,0,1.248
+u14,L,v_on,0,1.237
+u14,R,pct_run,,35
+u14,L,pct_run,,31
+u14,R,v_run,,1.225
+u14,L,v_run,,1.214
+u14,R,v_in,0,1.229
+u14,L,v_in,0,1.220
+u14,R,v_in,241,1.243
+u14,L,v_in,241,1.233
+u15,R,pct_on,0,38
+u15,L,pct_on,0,35
+u15,R,v_on,0,1.238
+u15,L,v_on,0,1.226
+u15,R,pct_run,,33
+u15,L,pct_run,,29
+u15,R,v_run,,1.220
+u15,L,v_run,,1.210
+u15,R,v_in,0,1.224
+u15,L,v_in,0,1.215
+u15,R,v_in,2561,1.251
+u15,L,v_in,2561,1.240
+u16,R,pct_on,0,41
+u16,L,pct_on,0,37
+u16,R,v_on,0,1.246
+u16,L,v_on,0,1.233
+u16,R,pct_run,,32
+u16,L,pct_run,,29
+u16,R,v_run,,1.215
+u16,L,v_run,,1.203
+u16,R,v_in,0,1.219
+u16,L,v_in,0,1.208
+u16,R,v_in,271,1.236
+u16,L,v_in,271,1.225
+u17,R,pct_on,0,36
+u17,L,pct_on,0,32
+u17,R,v_on,0,1.231
+u17,L,v_on,0,1.218
+u17,R,pct_run,,32
+u17,L,pct_run,,28
+u17,R,v_run,,1.207
+u17,L,v_run,,1.201
+u17,R,v_in,0,1.216
+u17,L,v_in,0,1.207
+u18,R,pct_run,,30
+u18,L,pct_run,,26
+u18,R,v_run,,1.207
+u18,L,v_run,,1.196
+u18,R,v_in,0,1.210
+u18,L,v_in,0,1.202
+u19,R,pct_run,,21
+u19,L,pct_run,,24
+u19,R,v_run,,1.172
+u19,L,v_run,,1.188
+u19,R,v_in,0,1.176
+u19,L,v_in,0,1.193
+u19,R,v_in,1323,1.214
+u19,L,v_in,1323,1.221
+u20,R,pct_on,0,31
+u20,L,pct_on,0,32
+u20,R,v_on,0,1.202
+u20,L,v_on,0,1.213
+u20,R,pct_run,,16
+u20,L,pct_run,,21
+u20,R,v_run,,1.151
+u20,L,v_run,,1.176
+u20,R,v_in,0,1.155
+u20,L,v_in,0,1.181
+u20,R,v_in,1241,1.199
+u20,L,v_in,1241,1.215
+u21,R,pct_on,0,27
+u21,L,pct_on,0,30
+u21,R,v_on,0,1.177
+u21,L,v_on,0,1.207
+u21,R,pct_run,,10
+u21,L,pct_run,,19
+u21,R,v_run,,1.124
+u21,L,v_run,,1.167
+u21,R,v_in,0,1.130
+u21,L,v_in,0,1.172

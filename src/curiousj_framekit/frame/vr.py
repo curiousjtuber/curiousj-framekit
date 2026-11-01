@@ -15,11 +15,11 @@ Game Mode.
 
 The Frame's controllers run on one AA each, and their firmware reports
 a percentage made for alkaline cells, which reads a full NiMH cell as
-about 78%. So beside it the list gives the cell's voltage worked back
-from that percentage, and what that voltage means for a NiMH cell. Both
-are estimates: the firmware's mapping was fitted to cells measured out
-of the controller with a multimeter (docs/notes/aa-voltage.csv), and
-SteamVR never reports a voltage.
+about 79%. So beside it the list gives the cell's voltage under load
+worked back from that percentage, and the charge a NiMH cell has left at
+that voltage. Both are estimates fitted to one pair of NiMH cells read
+with a multimeter while the controllers ran (docs/notes/aa-voltage.csv,
+with the fit in aa-voltage-fit.py); SteamVR never reports a voltage.
 
 SteamVR has no public call for turning a controller off. The
 dashboard's "Turn off controller" goes through the private
@@ -56,17 +56,25 @@ PROP_BATTERY = 1012            # Prop_DeviceBatteryPercentage_Float
 PROP_HAS_BATTERY = 1026        # Prop_DeviceProvidesBatteryStatus_Bool
 FRAME_MODEL = "roy_"           # Roy_Left, Roy_Right: the Frame's AA controllers
 
-# The firmware's percentage is close to linear in the cell's resting
-# voltage, 0% at 1.13 V and 100% at 1.48 V: a line fitted to twenty
-# readings between 9% and 79% against a multimeter (10 mV rms, 20 mV at
-# worst, and one percentage was seen 13 mV apart on two days), so above
-# 79% it is extrapolated.
-AA_EMPTY_V, AA_FULL_V = 1.13, 1.48
-# A NiMH cell's resting voltage against its charge, a typical curve for
-# low self-discharge cells such as Eneloop: high just off the charger,
-# then flat around 1.25 V for most of its life.
-NIMH_CURVE = [(1.15, 0), (1.20, 10), (1.22, 20), (1.235, 30), (1.245, 40), (1.255, 50),
-              (1.265, 60), (1.28, 70), (1.30, 80), (1.33, 90), (1.38, 100)]
+# The firmware's percentage is linear in the cell's voltage under load,
+# the voltage a meter reads on the running controller: 0% at 1.09 V and
+# 100% at 1.48 V, a line fitted to 76 readings between 10% and 61%
+# (3.6 mV rms, 18 mV at worst), so above 61% it is extrapolated. The
+# voltage after a rest runs 15 to 50 mV higher, more so as the cell
+# empties.
+AA_EMPTY_V, AA_FULL_V = 1.09, 1.48
+# A NiMH cell's charge against that voltage under load, from one pair of
+# cells played from fresh off the charger (79%, 1.40 V) to one of them
+# at 10% (1.13 V), charge taken as the play time left: about 21 hours
+# in all. Half the sessions were timed, the rest assumed at 40 minutes,
+# so the middle is good to seven points or so, and the estimate is
+# rounded to 5. The bottom, below where the cells went, follows a fresh
+# Eneloop's 0.1 A curve down to its 1.0 V cutoff (the curve is in
+# docs/notes/eneloop-0.1A.csv); the rest of that curve does not fit
+# these cells, which slope through the middle where a fresh cell stays
+# flat.
+NIMH_CURVE = [(1.00, 0), (1.10, 2), (1.13, 5), (1.15, 9), (1.17, 18), (1.19, 28), (1.21, 34),
+              (1.23, 42), (1.25, 53), (1.27, 64), (1.29, 75), (1.32, 85), (1.36, 95), (1.40, 100)]
 APP_BACKGROUND = 3            # VRApplication_Background: fails unless SteamVR already runs
 ERR_NO_SERVER = 121            # VRInitError_Init_NoServerForBackgroundApp
 
@@ -224,14 +232,14 @@ def describe(vr, index):
 
 
 def aa_estimate(level: float) -> tuple[float, int]:
-    """The AA's resting voltage from the firmware's 0-1 level, and the
-    NiMH charge it would mean."""
+    """The AA's voltage under load from the firmware's 0-1 level, and the
+    NiMH charge left at that voltage, to the nearest 5%."""
     volts = AA_EMPTY_V + level * (AA_FULL_V - AA_EMPTY_V)
     if volts <= NIMH_CURVE[0][0]:
         return volts, 0
     for (v0, p0), (v1, p1) in zip(NIMH_CURVE, NIMH_CURVE[1:]):
         if volts <= v1:
-            return volts, round(p0 + (volts - v0) / (v1 - v0) * (p1 - p0))
+            return volts, 5 * round((p0 + (volts - v0) / (v1 - v0) * (p1 - p0)) / 5)
     return volts, 100
 
 

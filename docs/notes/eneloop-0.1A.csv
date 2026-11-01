@@ -1,0 +1,33 @@
+# A fresh Eneloop AA (BK-3MCCE, 2019) discharged at 0.1 A, traced off the chart in
+# https://lygte-info.dk/review/batteries2012/Eneloop%20AA%20BK-3MCCE%201900mAh%20(White)%202019%20UK.html
+# (the "Discharge, capacity scale" image, yellow A:0.1A curve, read by pixel: about 3 mV and
+# 0.5% of capacity). Depth of discharge is a share of the 1.911 Ah the cell gave down to 1.0 V.
+# Used by aa-voltage-fit.py for the tail of the NiMH curve only: the logged cells slope
+# through the middle where this fresh cell stays flat, so its shape does not fit them.
+dod_pct,volts
+0,1.428
+5,1.372
+10,1.341
+15,1.319
+20,1.308
+25,1.301
+30,1.297
+35,1.297
+40,1.293
+45,1.290
+50,1.288
+55,1.284
+60,1.277
+65,1.268
+70,1.257
+75,1.246
+80,1.233
+85,1.216
+90,1.193
+92,1.182
+94,1.168
+96,1.149
+97,1.138
+98,1.115
+99,1.085
+100,0.998

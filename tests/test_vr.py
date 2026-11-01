@@ -7,16 +7,24 @@ from curiousj_framekit.frame import vr
 
 class AaEstimate(unittest.TestCase):
     def test_ends_of_the_line(self):
-        self.assertEqual(vr.aa_estimate(0.0), (1.13, 0))
+        self.assertEqual(vr.aa_estimate(0.0), (1.09, 0))
         volts, nimh = vr.aa_estimate(1.0)
         self.assertAlmostEqual(volts, 1.48)
         self.assertEqual(nimh, 100)
 
     def test_middle_of_the_curve(self):
-        level = (1.255 - 1.13) / (1.48 - 1.13)
-        volts, nimh = vr.aa_estimate(level)
-        self.assertAlmostEqual(volts, 1.255)
-        self.assertEqual(nimh, 50)
+        # 47% from the firmware is 1.27 V under load, where the logged cells had 64% left.
+        volts, nimh = vr.aa_estimate(0.4615)
+        self.assertAlmostEqual(volts, 1.27, places=3)
+        self.assertEqual(nimh, 65)
+
+    def test_rounds_to_five(self):
+        # The firmware's 10% is 1.129 V under load, 5% of NiMH charge; its 0% is still 2%,
+        # shown as 0.
+        volts, nimh = vr.aa_estimate(0.10)
+        self.assertAlmostEqual(volts, 1.129)
+        self.assertEqual(nimh, 5)
+        self.assertEqual(vr.aa_estimate(0.0), (1.09, 0))
 
 
 def power_supply(root: Path, battery=True, charger=True):

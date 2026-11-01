@@ -45,7 +45,7 @@ A Frame set up by the old `setup.sh` moves over with `cjf migrate`.
 | `cjf init` | the base, again: it changes only what differs |
 | `cjf cursor size\|theme\|apply\|software` | the mouse cursor in Desktop Mode and Frametop's desktop: its size and theme, and Desktop Mode's software cursor ([docs/cursor.md](docs/cursor.md)) |
 | `cjf wifi [--all]` | the saved Wi-Fi networks in range, strongest first; Desktop Mode has no network applet |
-| `cjf vr [off [left\|right]]` | the headset's battery from the kernel, then SteamVR's controllers with theirs (and the AA cell's voltage and NiMH charge worked back from the firmware's percentage); `off` as the dashboard's power menu does |
+| `cjf vr [off [left\|right]]` | the headset's battery from the kernel, then SteamVR's controllers with theirs (and the AA cell's voltage under load and the NiMH charge left, worked back from the firmware's percentage); `off` as the dashboard's power menu does |
 | `cjf controllers [off [NAME]]` | the Steam Controllers paired over Bluetooth, with battery; `off` with Valve's own HID command |
 | `cjf rdp start\|stop\|status\|log\|password\|gui` | KRdp's server for a Plasma desktop on the Frame, for KRDC, Remmina or Windows Remote Desktop ([docs/apps.md](docs/apps.md)) |
 | `cjf pkg build\|homeify\|outdated` | packages built for `~/.local` from the kit's PKGBUILDs; `pacman-home` is their pacman ([docs/packages.md](docs/packages.md)) |
