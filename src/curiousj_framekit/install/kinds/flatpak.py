@@ -51,6 +51,8 @@ def info(opts: Options, scope: str, ref: str) -> dict[str, str]:
 
 
 class Kind(Base):
+    updates = True
+
     options = "[--user|--system]  (the installation; default [flatpak] scope, else user)"
 
     def status(self, item: Item, opts: Options) -> Status:

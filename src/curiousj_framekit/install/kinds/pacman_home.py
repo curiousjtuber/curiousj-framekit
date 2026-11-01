@@ -69,6 +69,8 @@ def pkgbuild_info(directory: Path) -> tuple[str, str, list[str]]:
 
 
 class Kind(Base):
+    updates = True
+
     def status(self, item: Item, opts: Options) -> Status:
         try:
             have = installed_version(opts, item["package"])

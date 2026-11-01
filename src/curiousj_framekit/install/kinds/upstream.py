@@ -111,8 +111,6 @@ def keyboard_install(item: Item, opts: Options, args: list[str]) -> bool:
         raise Error(f"full-keyboard takes --version X.Y.Z; got {' '.join(rest)}")
     repo = item["repo"]
     release = f"download/{version}" if version else "latest/download"
-    if cmdline.run(opts, ["pgrep", "-x", "framekeyboard"], check=False, capture=True).returncode == 0:
-        raise Error("Full Keyboard is running: close it from its toolbar first")
     sums_url = f"{repo}/releases/{release}/SHA256SUMS"
     sums = fetch_text(sums_url)
     archive = next((m.group(0) for line in sums.splitlines()
@@ -130,6 +128,10 @@ def keyboard_install(item: Item, opts: Options, args: list[str]) -> bool:
     cmdline.say("would install" if opts.check else "install", f"Full Keyboard {found} ({archive})")
     if opts.check:
         return True
+    # The running binary is current/bin/framekeyboard, and the launcher
+    # execs it; the installer switches the link.
+    if cmdline.run(opts, ["pgrep", "-x", "framekeyboard"], check=False, capture=True).returncode == 0:
+        raise Error("Full Keyboard is running: close it from its toolbar first")
     if not cmdline.confirm(opts, "download and run its install.sh?"):
         return False
     expected = sum_for(sums, archive)
@@ -195,12 +197,18 @@ def frametop_install(item: Item, opts: Options, args: list[str]) -> bool:
     require_user()
     where.require_host("frametop")
     version, flags = take_version(args, "frametop")
+    reinstall = "--reinstall" in flags
+    flags = [f for f in flags if f != "--reinstall"]
     bad = [f for f in flags if f not in FRAMETOP_FLAGS]
     if bad:
-        raise Error(f"frametop takes --version X.Y.Z and {' '.join(FRAMETOP_FLAGS)}; got {' '.join(bad)}")
+        raise Error(f"frametop takes --version X.Y.Z, --reinstall and {' '.join(FRAMETOP_FLAGS)}; "
+                    f"got {' '.join(bad)}")
     version = version or item["version"]
     recorded = item["sha256"] if version == item["version"] else None
     have = current_release(FRAMETOP_RELEASES)
+    if have == version and not reinstall and not flags:
+        cmdline.say("ok", f"Frametop {version} (--reinstall runs its installer again)")
+        return False
     cmdline.say("would install" if opts.check else "install",
                 f"Frametop {version}" + (f", replacing {have}" if have and have != version else
                                          ", again" if have == version else "")
@@ -297,9 +305,11 @@ INSTALLERS = {
                   "[--uninstall | --appimage FILE]"),
     "full-keyboard": (keyboard_status, keyboard_install, keyboard_uninstall, "[--version X.Y.Z]"),
     "frametop": (frametop_status, frametop_install, frametop_uninstall,
-                 "[--version X.Y.Z] [--yes] [--no-eye-tracker] [--no-bluetooth | --bluetooth] "
+                 "[--version X.Y.Z] [--reinstall] [--yes] [--no-eye-tracker] [--no-bluetooth | --bluetooth] "
                  "[--any-steamos] [--unpack-only]"),
 }
+# full-keyboard checks the latest release each time, so --all may run it.
+UPDATES = {"full-keyboard"}
 
 
 class Kind(Base):
@@ -320,3 +330,6 @@ class Kind(Base):
 
     def options_for(self, item: Item) -> str:
         return self._routines(item)[3]
+
+    def updates_item(self, item: Item) -> bool:
+        return item.get("installer") in UPDATES

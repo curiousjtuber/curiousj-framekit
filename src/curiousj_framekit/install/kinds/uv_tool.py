@@ -30,6 +30,8 @@ def installed_version(opts: Options, tool: str) -> str | None:
 
 
 class Kind(Base):
+    updates = True
+
     def status(self, item: Item, opts: Options) -> Status:
         try:
             ver = installed_version(opts, item["tool"])

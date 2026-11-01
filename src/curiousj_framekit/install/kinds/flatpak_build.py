@@ -42,11 +42,15 @@ def state_dir() -> Path:
 
 
 def stamp(item: Item) -> str:
-    """The first 16 hex digits of the sha256 over the manifest and the
-    patches beside it, as install-krdp.sh computed it."""
+    """The first 16 hex digits of the sha256 over the manifest's lines
+    that build something (comment and blank lines left out, so a note
+    added to the manifest doesn't force a half-hour rebuild) and the
+    patches beside it."""
     manifest = manifest_path(item)
     h = hashlib.sha256()
-    h.update(manifest.read_bytes())
+    for line in manifest.read_text().splitlines():
+        if line.strip() and not line.lstrip().startswith("#"):
+            h.update(line.encode() + b"\n")
     for patch in sorted(manifest.parent.glob("*.patch")):
         h.update(patch.read_bytes())
     return h.hexdigest()[:16]

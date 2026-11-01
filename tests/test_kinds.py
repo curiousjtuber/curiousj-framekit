@@ -116,3 +116,35 @@ class Flatpak(unittest.TestCase):
         with mock.patch("curiousj_framekit.config.get", return_value="odd"):
             with self.assertRaises(cmdline.Error):
                 flatpak.scope_of(Options(), [])
+
+
+class StampIgnoresComments(unittest.TestCase):
+    def test_comment_change_keeps_the_stamp(self):
+        item = catalog.load()["krdp"]
+        before = flatpak_build.stamp(item)
+        path = flatpak_build.manifest_path(item)
+        original = path.read_text()
+        try:
+            path.write_text("# a new note\n" + original.replace("\n#", "\n# changed", 1))
+            self.assertEqual(flatpak_build.stamp(item), before)
+            path.write_text(original.replace("--port", "--porx", 1))
+            self.assertNotEqual(flatpak_build.stamp(item), before)
+        finally:
+            path.write_text(original)
+
+
+class WantsUpdate(unittest.TestCase):
+    def test_which_items_all_runs(self):
+        from curiousj_framekit.install import commands
+        from curiousj_framekit.install.catalog import Status
+        items = catalog.load()
+        ok = Status(State.OK, "x")
+        self.assertTrue(commands.wants_update(items["moonlight"], ok))
+        self.assertTrue(commands.wants_update(items["curiousj-tools"], ok))
+        self.assertTrue(commands.wants_update(items["full-keyboard"], ok))
+        self.assertFalse(commands.wants_update(items["frametop"], ok))
+        self.assertFalse(commands.wants_update(items["bsmanager"], ok))
+        self.assertFalse(commands.wants_update(items["krdp"], ok))
+        self.assertFalse(commands.wants_update(items["cursor"], ok))
+        self.assertTrue(commands.wants_update(items["krdp"], Status(State.OUTDATED, "x")))
+        self.assertFalse(commands.wants_update(items["moonlight"], Status(State.MISSING)))

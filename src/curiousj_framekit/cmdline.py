@@ -113,18 +113,22 @@ def tilde(path: str | os.PathLike) -> str:
 
 
 def say(what: str, detail: str = "", out=None) -> None:
-    """A two-column progress line: `ok  ~/.config/x`, `copy  ...`."""
-    print(f"{what:<14} {detail}".rstrip(), file=out or sys.stdout)
+    """A two-column progress line: `ok  ~/.config/x`, `copy  ...`.
+    Flushed, so that it keeps its place among stderr lines and the
+    output of commands run in between."""
+    print(f"{what:<14} {detail}".rstrip(), file=out or sys.stdout, flush=True)
 
 
 def note(message: str) -> None:
-    print(f"note: {message}", file=sys.stderr)
+    sys.stdout.flush()
+    print(f"note: {message}", file=sys.stderr, flush=True)
 
 
 def log(opts: Options, message: str, level: int = 1) -> None:
     """Printed to stderr when -v is given `level` times or more."""
     if opts.verbose >= level:
-        print(message, file=sys.stderr)
+        sys.stdout.flush()
+        print(message, file=sys.stderr, flush=True)
 
 
 # --- questions ------------------------------------------------------------

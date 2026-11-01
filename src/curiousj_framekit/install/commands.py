@@ -90,8 +90,11 @@ def install(opts: Options, all_: bool, words: tuple[str, ...]) -> int:
     items = catalog.load()
     statuses = catalog.all_status(items, opts)
     if all_:
-        names = [n for n, s in statuses.items() if s.state in (State.OK, State.OUTDATED)]
+        names = [n for n, s in statuses.items() if wants_update(items[n], s)]
         item_args: list[str] = []
+        if not names:
+            print("nothing to update")
+            return 0
     else:
         names, item_args = split_words(items, list(words))
         if not names:
@@ -109,16 +112,42 @@ def install(opts: Options, all_: bool, words: tuple[str, ...]) -> int:
         if not opts.check and not cmdline.confirm(opts, "continue?"):
             return cmdline.EXIT_ABORT
     changed = 0
+    failed: list[str] = []
     for it in chosen:
         kind = kinds.for_item(it)
-        print(f"--- {it.name}")
-        if kind.install(it, opts, item_args if it.name == (names[0] if len(names) == 1 else None) else []):
-            changed += 1
+        print(f"--- {it.name}", flush=True)
+        args_for = item_args if len(names) == 1 and it.name == names[0] else []
+        try:
+            if kind.install(it, opts, args_for):
+                changed += 1
+        except Error as e:
+            if len(chosen) == 1:
+                raise
+            # One item's trouble shouldn't stop the others; it is said
+            # here and the run ends with 1.
+            cmdline.say("failed", f"{it.name}: {e}")
+            failed.append(it.name)
     if opts.check:
         print("run without --check to apply" if changed else "nothing to change")
     else:
         print(f"done: {changed} changed" if changed else "nothing to do")
+    if failed:
+        print(f"failed: {' '.join(failed)}")
+        return 1
     return 0
+
+
+def wants_update(item: catalog.Item, status: catalog.Status) -> bool:
+    """Whether `install --all` runs this item: outdated items always;
+    ok items when their kind updates by installing again."""
+    if status.state == State.OUTDATED:
+        return True
+    if status.state != State.OK:
+        return False
+    kind = kinds.for_item(item)
+    if hasattr(kind, "updates_item"):
+        return kind.updates_item(item)
+    return bool(getattr(kind, "updates", False))
 
 
 @click.command(cls=cmdline.Command, help="Every catalog item's state.",

@@ -43,6 +43,8 @@ def installed_version(name: str) -> str | None:
 
 
 class Kind(Base):
+    updates = True
+
     options = "[NAME...]  (fonts other than the catalog's two: FiraCode, Hack, Meslo, ...)"
 
     def status(self, item: Item, opts: Options) -> Status:

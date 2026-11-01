@@ -18,6 +18,12 @@ from ..catalog import Item, State, Status
 
 class Base:
     options = ""
+    # Whether `cjf install --all` runs an item of this kind that is ok,
+    # because installing again is how it updates (a Flatpak, a uv tool).
+    # Kinds where that would redo a long install for nothing (Frametop's
+    # 1.1 GB, a build) leave it False and are run by --all only when
+    # outdated.
+    updates = False
 
     def status(self, item: Item, opts: Options) -> Status:
         return Status(State.UNKNOWN)
