@@ -51,15 +51,17 @@ find one, the script prints the package list for Arch, Fedora or
 Debian/Ubuntu. KRDC on the Frame then connects to the PC's port 3390,
 with View → Show Local Cursor off, or it draws its own on top.
 
-`start`, `stop` and `status` pair the unit with the firewall: a PC that
-lets 3389 in usually has a rule for it and none for 3390, and the
-server logs nothing for a packet it never gets. `start` enables the
-unit, now and at login, and opens the port in ufw or firewalld; `stop`
-disables the unit and closes the port; `status` shows the unit, the
-port, the firewall, and whether the installed build still matches the
-Plasma running. The firewall step is the one that needs root, through
-sudo, so run these in a terminal; when sudo can't ask, the script
-prints the command for you to run. Another firewall is yours to open.
+`start` enables the unit, now and at login; `stop` disables it; `status`
+shows the unit, the port, the firewall, and whether the installed build
+still matches the Plasma running. The firewall is handled apart from
+the unit: a PC that lets 3389 in usually has a rule for it and none
+for 3390, and the server logs nothing for a packet it never gets.
+`start` checks and opens the port when it is closed, in ufw or
+firewalld, the one step that needs root (sudo, so run it in a
+terminal; when sudo can't ask, the script prints the command for you).
+`stop` leaves the rule, so stopping and starting again asks for no
+password; `firewall close` removes it, `firewall open` adds it, and
+`firewall` alone says which it is. Another firewall is yours to open.
 
 The unit passes `--plasma`: without it, KRdp goes through the desktop
 portal, whose permission prompt shows on the PC's screen while KRDC on

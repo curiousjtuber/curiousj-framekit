@@ -43,11 +43,13 @@
 # the unit. The tarball's signature is checked against the Plasma
 # release keys below; a missing key is fetched by fingerprint.
 #
-# start and stop pair the unit with the firewall: a PC that lets 3389
-# in usually has a rule for it and none for 3390, and the server logs
-# nothing for a packet it never gets. Opening and closing the port is
-# the one step that needs root, through sudo (ufw or firewalld; another
-# firewall is left to you, with a note). When sudo can't ask for a
+# The firewall is handled apart from the unit: a PC that lets 3389 in
+# usually has a rule for it and none for 3390, and the server logs
+# nothing for a packet it never gets. start checks and opens the port
+# when it is closed, the one step that needs root (sudo; ufw or
+# firewalld, another firewall is left to you, with a note); stop leaves
+# the rule, so stopping and starting again asks for no password, and
+# `firewall close` removes it when wanted. When sudo can't ask for a
 # password, the script prints the command instead of running it.
 #
 # Usage: krdp-embed-cursor.sh COMMAND [options]
@@ -56,14 +58,18 @@
 #                 build krdp with the patch, install under --prefix
 #                 (default ~/.local), write the unit for --port
 #                 (default 3390), set EmbedCursor=true, then start
-#   start         enable the unit, now and at login, and open its
-#                 port in the firewall
-#   stop          disable the unit and close the port
+#   start         enable the unit, now and at login; open its port in
+#                 the firewall if it is closed (sudo only then)
+#   stop          disable the unit; the firewall rule stays
+#   firewall [open|close]
+#                 show whether the port is open, or open or close it
+#                 in ufw or firewalld (sudo)
 #   status        the unit, the port, the firewall, and whether the
 #                 installed build matches the Plasma running
 #   uninstall [--no-enable]
-#                 stop, then remove the unit, the binary, the library
-#                 and the build cache; krdpserverrc keeps EmbedCursor
+#                 stop, close the port, then remove the unit, the
+#                 binary, the library and the build cache;
+#                 krdpserverrc keeps EmbedCursor
 #   --version V   the krdp release to build (default: the host's)
 #   --force       rebuild even when the installed version matches
 #   --no-verify   skip the signature check
@@ -100,8 +106,15 @@ usage() { sed -n '/^# Usage:/,/^$/p' "$0" | sed 's/^# \{0,1\}//'; }
 
 command=${1:-}
 [ $# -gt 0 ] && shift
+action=
 case $command in
   install|start|stop|status|uninstall) ;;
+  firewall)
+    case ${1:-} in
+      open|close) action=$1; shift ;;
+      ''|-*) ;;
+      *) die "firewall takes open or close, not '$1'" ;;
+    esac ;;
   -h|--help|help|'') usage; [ -n "$command" ] && exit 0 || exit 1 ;;
   *) die "unknown command $command (see --help)" ;;
 esac
@@ -242,7 +255,7 @@ do_start() {
   # reenable, not enable: an enable symlink left by a packaged copy of
   # this unit points at its /usr/lib file and would dangle once the
   # package goes; reenable makes it point at the unit written here.
-  systemctl --user reenable "$name.service"
+  systemctl --user -q reenable "$name.service"
   # install restarts, to run what it just built; start leaves a running
   # server, and its viewer, alone.
   if [ "${1:-}" = restart ] || ! systemctl --user is-active --quiet "$name.service"; then
@@ -256,18 +269,27 @@ do_start() {
 }
 
 do_stop() {
-  if systemd; then
-    if systemctl --user list-unit-files --quiet "$name.service" 2>/dev/null | grep -q .; then
-      systemctl --user disable --now "$name.service"
-      say "$name.service stopped and disabled"
-    else
-      say "no $name.service known to systemd"
-    fi
-  else
-    say "--no-enable: leaving systemd and the firewall alone"
+  if ! systemd; then
+    say "--no-enable: leaving systemd alone"
     return
   fi
-  close_port
+  if systemctl --user list-unit-files --quiet "$name.service" 2>/dev/null | grep -q .; then
+    systemctl --user -q disable --now "$name.service"
+    say "$name.service stopped and disabled"
+  else
+    say "no $name.service known to systemd"
+  fi
+  case $(port_open) in
+    "open in "*) say "port $port stays open in the firewall; \`firewall close\` removes the rule" ;;
+  esac
+}
+
+do_firewall() {
+  case $action in
+    open) open_port ;;
+    close) close_port ;;
+    '') say "port $port: $(port_open)" ;;
+  esac
 }
 
 do_status() {
@@ -303,6 +325,7 @@ do_status() {
 
 do_uninstall() {
   do_stop
+  if systemd; then close_port; fi
   rm -f "${unit:?}" "${bindir:?}/${name:?}"
   rm -rf "${libdir:?}" "${cache:?}"
   if systemd; then systemctl --user daemon-reload; fi
@@ -455,6 +478,7 @@ case $command in
   install) do_install ;;
   start) do_start ;;
   stop) do_stop ;;
+  firewall) do_firewall ;;
   status) do_status ;;
   uninstall) do_uninstall ;;
 esac
