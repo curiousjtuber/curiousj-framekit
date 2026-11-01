@@ -1,6 +1,6 @@
 # Reorganizing steam-frame-utils: requirements and UX
 
-Draft of 2026-10-31, revision 8, written from the rough notes at the
+Draft of 2026-10-31, revision 10, written from the rough notes at the
 end of this file and a read of the whole repo, curiousj-tools and the
 Frame (SteamOS 0.5.6, Python 3.12). Every question is now decided and
 says so; section 0 lists the decisions. Numbers stay fixed across
@@ -28,8 +28,10 @@ revisions.
 - **D7. Of the thirteen current names three survive**: `pacman-home`
   (Q3), `beat-saber-recent` and `bsmanager` (Q17).
 - **D8. A picker, not a TUI** (Q4).
-- **D9. The base is the package, `~/.local/bin` on `PATH`, and one rc
-  line** (Q5).
+- **D9. The base is mise, with uv and fzf through it, the package,
+  `~/.local/bin` on `PATH`, and one rc line** (Q5). `install.sh` puts
+  the first three in place, says what it will install and asks once,
+  then runs `cjf init` for the rest.
 - **D10. Every kind in the Q15 table is code or a doc line as its
   lean says**, decided per item when the catalog is written out.
 - **D11. No recommended set** (Q16). No flag, no "fresh Frame"
@@ -51,9 +53,22 @@ revisions.
   yet**; when the first PC command is written, `pc/` becomes a uv
   workspace member, `curiousj-framekit-pc`, without moving anything
   (Q9).
+- **D21. Dependencies are declared and named, never silent** (Q19): a
+  catalog item lists the items it needs and `install` asks for them
+  with it, up front; a command that needs an item refuses in one line
+  that gives the `cjf install` to run.
+- **D22. The headset's battery shows in `cjf vr` and `cjf status`**,
+  read from the kernel, so it needs no SteamVR.
+- **D23. `cjf status` is the Frame's live state, `cjf installed` the
+  catalog's, and `status --all` both.** `status` also shows the kit's
+  own version and where it is installed from.
+- **D24. `cjf after-update` records the SteamOS version and build at
+  each run**, in `~/.local/state/curiousj-framekit/after-update.toml`,
+  and reports the change since.
 
 Nothing is open. The implementation plan is
-[reorg-steps.md](reorg-steps.md).
+[reorg-steps.md](reorg-steps.md); the usage scenarios it should end in
+are [reorg-scenarios.md](reorg-scenarios.md).
 
 ## 1. What is wrong today
 
@@ -212,14 +227,22 @@ installed on its own (`cjf install NAME`) or from the picker
 installed, missing or out of date, which is what `setup.sh --check`
 and the "ok / missing" lines do today.
 
-**Q5. What is in the base?** Decided: three things. The package
-itself, bootstrapped by a POSIX `install.sh` as curiousj-tools is;
+**Q5. What is in the base?** Decided (revised 2026-10-31 from the
+scenario review): mise, and through it uv and fzf, since every
+install needs uv and every menu wants fzf; the package itself;
 `~/.local/bin` on `PATH`; and one rc line that brings in the shell
-side (brew's shellenv, mise, the waypipe function, the tailscale alias,
-the Frametop XDG fix), each part guarding itself at source time as the
-`shell-init/` files do now, so the emitted file never has to be
-regenerated when an item is added or removed. The Desktop Mode cursor
-fix is a choice and so a catalog item.
+side (mise's activation, brew's shellenv, the waypipe function, the
+tailscale alias, the Frametop XDG fix), each part guarding itself at
+source time
+as the `shell-init/` files do now, so the emitted file never has to be
+regenerated when an item is added or removed. `install.sh` installs
+mise from mise.run when it is missing, runs `mise use -g uv fzf` for
+what is missing of those two, lists all it is about to install and
+asks once, installs the package as a uv tool, and ends by running `cjf
+init`, which asks per file as before and finds nothing to do on a
+re-run. Rust stays an item (`rust`, through mise), since only a Rust
+PKGBUILD needs it. The Desktop Mode cursor fix is a choice and so a
+catalog item.
 
 One point to settle while implementing, not a decision to take now: the
 rc files are shared with every distrobox, and inside a box the `uv tool`
@@ -263,7 +286,8 @@ lean under it is how each is decided when the catalog is written out.
 | `upstream-installer` | BSManager, Full Keyboard, Frametop | fetch the release, check a sum (recorded, or the release's `SHA256SUMS`), run the upstream installer with the right flags, handle `--uninstall` |
 | `pacman-home` | waypipe (relocate), emacs, pacman 7 | build or relocate, dependency order, version check against the PKGBUILD |
 | `brew` | Homebrew itself, zsh, wl-clipboard | create `/home/linuxbrew` with sudo once, run the installer, `brew install` |
-| `installer-script` | mise (and rust through it); distrobox (`--prefix ~/.local`) | `curl \| sh` into `~/.local/bin`, then the item's follow-up: `mise use -g`, or the podman shim and `~/.distroboxrc` block for distrobox |
+| `mise` | rust (for a Rust PKGBUILD) | `mise use -g NAME`; mise itself is base (Q5) |
+| `installer-script` | distrobox (`--prefix ~/.local`) | `curl \| sh` into `~/.local/bin`, then the podman shim and `~/.distroboxrc` block |
 | `uv-tool` | curiousj-tools | `uv tool install git+…` (uv is there after the bootstrap); upgrade with `uv tool upgrade` |
 | `system-service` | Tailscale | tarball to `/home/.tailscale`, unit, firewalld zone, all as root |
 | `fonts` | Nerd Fonts | per-font release check, sum, fontconfig rule |
@@ -272,10 +296,31 @@ lean under it is how each is decided when the catalog is written out.
 Each kind is one routine; each item is one entry. Implement
 `flatpak`, `upstream-installer`, `pacman-home`, `config`,
 `system-service` and `installer-script` as code, since each has
-checks, ordering or follow-up steps worth keeping; `brew`, `uv-tool`
-and `fonts` are code only if the entry's checks (sums, versions)
-justify it, else a doc line. A doc-line item still has a catalog entry
-so that `status` can report it.
+checks, ordering or follow-up steps worth keeping; `brew`, `mise`,
+`uv-tool` and `fonts` are code only if the entry's checks (sums,
+versions) justify it, else a doc line. A doc-line item still has a
+catalog entry so that `status` can report it.
+
+**Q19 (new). How are dependencies handled?** Decided (D21). Two kinds
+of dependency exist, and each is declared where it belongs:
+
+- *An item needs an item.* The catalog entry says so (`needs =
+  ["homebrew"]` on `zsh` and `wl-clipboard`; a Rust PKGBUILD's entry
+  needs `rust`). `cjf install zsh` resolves the needs, lists what will
+  be installed as one question up front, and installs in dependency
+  order; `--check` lists the same. The picker shows "(needs X)" in the
+  description. Nothing is installed silently as a side effect.
+- *A command needs an item.* `cjf rdp` needs `krdp`; `bsmanager` needs
+  `bsmanager` and `waypipe`; `cjf pkg build` of a Rust PKGBUILD needs
+  `rust`; `cjf vr off` needs SteamVR running (a state, not an item,
+  but the same one-line shape). Each checks at its start and refuses
+  in one line that names the item and the `cjf install …` to run, the
+  way `where.py`'s refusals name the host. One helper, `needs(item)`,
+  reads the catalog's state so that command and `status` agree.
+
+Not a dependency: a Flatpak's runtime, which `flatpak install`
+resolves itself, and the host's own libraries, which `pacman-home`
+checks at build time; both stay inside their kinds.
 
 **Q16. Is there a recommended set?** Decided: no. No flag, and the
 "fresh Frame" one-liner goes. A first run opens the picker over the
@@ -458,10 +503,17 @@ All of these are decided (D19).
   the picker is a convenience, never the only way. In the install
   picker each catalog item shows its installed state, as `ujust`
   shows a recipe's description.
-- **`cjf status`**: one screen with the SteamOS, SteamVR and
-  client versions, every catalog item's state, the cursor settings in
-  effect, Tailscale's state, and the controllers that are on. It
-  replaces `setup.sh --check` and `frame-versions`.
+- **`cjf status`**: the SteamOS, SteamVR and client versions, the
+  kit's own version, the headset's battery and charging state, the
+  cursor settings in effect, Tailscale's state, and whether the RDP
+  server runs. **`cjf installed`**: every catalog item's state, as the
+  install picker shows it. `status --all` is both (D23). Together they
+  replace `setup.sh --check` and `frame-versions`.
+- **The headset's battery** (D22) in `cjf vr` beside the controllers',
+  and in `status`, from `/sys/class/power_supply/max1720x_bat_7-36`
+  (capacity, status, voltage); the charger and USB-C source there say
+  whether it is plugged in. No SteamVR needed, unlike the controllers'
+  percentage.
 - **`cjf after-update`**: the checklist that is scattered through
   the README today, run as one command after a SteamOS update: is the
   Tailscale unit still there, do the `~/.local` packages still resolve
@@ -557,6 +609,13 @@ curiousj-framekit/
 
 ## Revision history
 
+- **Rev 10, 2026-10-31.** From the second scenario review: `status`
+  and `installed` (D23), `after-update`'s state file (D24).
+- **Rev 9, 2026-10-31.** From the scenario review: the base grows to
+  mise, uv and fzf, and `install.sh` asks once and runs `cjf init`
+  (D9, Q5); dependencies between items and from commands to items are
+  declared and named (D21, Q19); the headset's battery from the kernel
+  (D22). The `mise` kind replaces the mise item in Q15.
 - **Rev 8, 2026-10-31.** Section 0 points at `reorg-steps.md`, the
   staged implementation plan.
 - **Rev 7, 2026-10-31.** The name becomes `curiousj-framekit`, with

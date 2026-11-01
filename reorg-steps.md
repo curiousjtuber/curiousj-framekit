@@ -104,6 +104,10 @@ In order of risk, lowest first, one commit each:
 3. `steam-controller` → `cjf controllers` (already Python; moves in).
 4. `vr-controllers` → `cjf vr` (already Python; moves in, with
    `notes/aa-voltage*` tracked under `docs/notes/` and the fit's test).
+   Gains a headset row with the battery from
+   `/sys/class/power_supply/max1720x_bat_7-36` and whether it is
+   plugged in (D22), which also feeds `status`; the controllers' rows
+   still need SteamVR, and `vr` says so when it isn't running.
 5. `krdpd` → `cjf rdp start|stop|status|log|password` (208 lines of
    bash around flatpak run and a password file; the port that most
    wants the `run()` wrapper). `krdpd-gui` becomes
@@ -152,6 +156,13 @@ set up by the old `setup.sh` is moved over by `cjf migrate`.
   directory; the autostart entry if the software cursor is on. Each
   change shown as a diff and asked about, backed up first, as
   `setup.sh` does. `--check` reports.
+- `install.sh` reworked for the base as D9 now has it: find or install
+  mise (mise.run), `mise use -g uv fzf` for what is missing, list what
+  it is about to install and ask once on the tty, `uv tool install`,
+  then run `cjf init`. The stage 1 version only installs the package.
+  Tested with a fake `HOME` on the PC, where mise, uv and fzf are all
+  absent from that home, and on the Frame, where all three are present
+  and the list should be empty but the package.
 - `cjf migrate`: finds and removes the `# >>> steam-frame-utils: …`
   blocks in `~/.bashrc`, `~/.zshrc`, `~/.profile` and `~/.distroboxrc`
   (both the two-block form and the older one-per-file form `setup.sh`
@@ -215,8 +226,8 @@ Goal: every optional install is a catalog entry, `cjf install` and
   5. `system-service`: Tailscale, from `install-tailscale.sh`'s logic
      with its keep-list and firewalld handling; `--trust-tailnet` as
      an entry option. Deletes that script.
-  6. `installer-script`: mise (then `mise use -g rust`) and distrobox
-     (then the shims entry and the `~/.distroboxrc` block). Deletes
+  6. `installer-script`: distrobox (then the shims entry and the
+     `~/.distroboxrc` block); and the `mise` kind for `rust`. Deletes
      `setup.sh`'s `--mise` and distrobox parts.
   7. `brew`: Homebrew itself, zsh, wl-clipboard. Deletes `--brew` and
      `--zsh`.
@@ -228,8 +239,16 @@ Goal: every optional install is a catalog entry, `cjf install` and
       `install-waypipe.sh` and `setup.sh`'s `--packages`, `--emacs`
       and `--waypipe`; with that, `setup.sh` is empty and goes.
 - `cjf install [NAME…] | --check`, `cjf install` bare (the picker over
-  the catalog, each item with its state), `cjf status` extended with
-  every item's state.
+  the catalog, each item with its state), and `cjf installed`, the
+  same list as a command; `cjf status --all` appends it (D23).
+- Dependencies (D21): `needs = […]` in catalog entries, resolved into
+  one up-front question and dependency order by `install`; and a
+  `needs(item)` helper that commands call at their start (`rdp` →
+  `krdp`, `bsmanager` → `bsmanager` and `waypipe`, `pkg build` of a
+  Rust PKGBUILD → `rust`), refusing in one line with the `cjf install`
+  to run. The stage 2 ports of `rdp` and `bsmanager` check for the
+  flatpak and the AppImage directly until this lands, then switch to
+  the helper.
 - `TRUST.md` regenerated from the catalog, or a test that fails when
   the two disagree; `docs/TRUST.md` and `apps/TRUST.md` merge into it.
 
@@ -285,7 +304,9 @@ the two commands the plan added exist.
   binaries resolve (`ldd … not found`); the `environment.d` file and
   autostart entry match the config; the Frametop launcher's `Exec`
   points at the release the catalog knows; SteamOS version against the
-  one recorded at the last run.
+  one recorded at the last run in
+  `~/.local/state/curiousj-framekit/after-update.toml`, which each run
+  rewrites (D24).
 - `README.md` rewritten: what this is and whose, "formerly
   steam-frame-utils", the install one-liner, the command map, the
   catalog as a table, links. Each present section becomes a `docs/`
