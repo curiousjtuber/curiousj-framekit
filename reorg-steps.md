@@ -89,6 +89,30 @@ package must run on both it and 3.12, so CI tests both.
 
 ## Stage 2: the tools
 
+**Done 2026-11-01** (`2c7d212` the ports, `afffdbb` the deletions).
+Verified on the Frame over SSH, each port beside its script: `wifi`,
+`wifi --all`, `cursor size`, `controllers`, `rdp status`, `rdp status
+--keys`, `beat-saber-recent` and `--all` gave identical output; `vr`
+the same rows plus the headset's; `cursor software` the same state in
+the new words. `beat-saber-recent --install-hook` recognized the hook
+through the debug port, and the launch options, the two autostart
+entries and the KRdp menu entry were switched to the new commands
+before the scripts went. Not verified, since no desktop was running
+and no controller was on: `vr off`, `controllers off`, `rdp start` and
+`stop`, `cursor apply` from inside a desktop, `rdp gui`, and `bsmanager`
+in a waypipe session. Those are the first things to try when you next
+have the headset on.
+
+One deliberate omission from the port: the scripts found a running
+desktop's session bus by reading its plasmashell's environment, which
+let `cursor-size` apply a change from SSH and `sw-cursor` report what
+the running desktop was given. The ports do not read other processes'
+environments. A running desktop is known by its Wayland socket; from
+SSH a size change is saved and applies at the desktop's next start, or
+at once from a terminal inside it, which is where the autostart entry
+runs. If applying from SSH turns out to matter, it is a small addition
+to `desktops.py`, and your call.
+
 Goal: every `bin/` tool but the package managers is a `cjf` subcommand
 or its own entry point, and `bin/` is empty of them.
 
