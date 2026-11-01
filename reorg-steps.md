@@ -237,6 +237,37 @@ SSH session open across the first run.
 
 ## Stage 4: the catalog
 
+**Done 2026-11-01**, but for the CI run (`b6cc09c`, `82f2e72`,
+`4344ee5`, and the deletion commit). Verified on the Frame over SSH:
+`cjf installed` reports all nineteen items with the versions the
+scripts knew (Tailscale running on the tailnet, Homebrew 7.0.11, rust
+1.99.1, Nerd Fonts v3.5.1, waypipe 0.11.2-1, emacs 31.1-1, pacman
+7.1.0-1, distrobox 1.8.2.5, curiousj-tools, Frametop 0.2.2, the four
+Flatpaks, KRdp's build, BSManager, Full Keyboard 0.12.0); `--check
+install` of every item shows the step its script took and nothing else;
+`cjf install nerd-fonts` against fonts at the latest release finds
+nothing to do; `--check install --all` lists only what updates by
+installing again, and found Full Keyboard 0.12.1 waiting. Not run on
+the Frame, since each needs your password or a long download: a
+Tailscale reinstall, a Homebrew install, a Frametop reinstall, a KRdp
+build, and any actual Flatpak update. The KRdp workflow started on the
+push that moved the manifest; its result decides whether the stage is
+closed.
+
+Two deviations from the plan, both deliberate. The KRdp manifest and
+patches live in the package's data, `src/curiousj_framekit/data/krdp/`,
+not in a `flatpak/krdp/` directory at the repo root, so that a kit
+installed from git can build it; the workflow triggers on that path.
+And the stamp that says whether the build matches the manifest now
+ignores comment and blank lines, so a note added to the manifest does
+not force a half-hour rebuild; the Frame's recorded stamp was refreshed
+once by hand for the comment edit that moved the file. One fix the
+Frame found: an error in one item (Full Keyboard was running) stopped
+`install --all`; now it is reported and the run goes on, ending with 1.
+And one lesson recorded: a `pytest | tail` chain committed on a red
+suite once (`82f2e72`), since the pipeline's status was tail's; chains
+run with `pipefail` since.
+
 Goal: every optional install is a catalog entry, `cjf install` and
 `cjf status` read the catalog, and `setup.sh`, the three top-level
 `install-*.sh` and the eight `apps/*.sh` are gone.
