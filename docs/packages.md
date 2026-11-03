@@ -9,9 +9,11 @@ install from git has them as a checkout does. They are configured with
 `--prefix=$HOME/.local`, so the result finds its data under `~/.local`
 instead of the read-only `/usr`. `emacs/` is Emacs with PGTK, a host
 build that sees the Frame's own `/usr`, D-Bus and processes, which the
-distrobox one did not; `cjf install emacs` builds and installs it. The
-header of each PKGBUILD says what it leaves out and why. By hand, from
-a checkout:
+distrobox one did not; `cjf install emacs` builds and installs it.
+`krdc/` is KRDC with the kit's "Remote pointer" patch, in place of the
+Flathub flatpak; it carries the two build dependencies the host lacks
+([krdc-embed-cursor.md](krdc-embed-cursor.md)). The header of each
+PKGBUILD says what it leaves out and why. By hand, from a checkout:
 
 ```bash
 cd ~/curiousj-framekit/src/curiousj_framekit/data/pkgbuilds/emacs && makepkg -f
@@ -30,7 +32,7 @@ the downloaded sources, about half a gigabyte for emacs, listed with
 their size before the question (`--clean` deletes unasked, `--keep` asks
 nothing; homeify's `PKGBUILD.upstream` is kept either way). Keep them
 while a PKGBUILD is being adjusted, since `makepkg -R` repackages from
-them in seconds. `cjf install emacs` and `cjf install pacman` build
+them in seconds. `cjf install emacs`, `pacman` and `krdc` build
 when `pacman-home` doesn't have the PKGBUILD's version, so `cjf install
 --all` rebuilds what you bump after a SteamOS update.
 `pc/pkgbuilds/frame-control-bin` is the other kind, an ordinary `/usr`

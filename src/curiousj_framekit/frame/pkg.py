@@ -496,7 +496,7 @@ def relocate_cmd(paths: Paths, args: list[str]) -> None:
 # --- outdated -------------------------------------------------------------
 
 def pkgbuilds_dir() -> Path:
-    """The kit's PKGBUILDs, one directory each (emacs, pacman): data/pkgbuilds
+    """The kit's PKGBUILDs, one directory each (emacs, pacman, krdc): data/pkgbuilds
     in the package, so an install from git has them as a checkout does."""
     return Path(__file__).resolve().parent.parent / "data" / "pkgbuilds"
 

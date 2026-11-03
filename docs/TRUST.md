@@ -24,7 +24,7 @@ is Arch Linux ARM.
 | `frametop` | GitHub's TLS and the Frametop organization's account | the release zip against the sha256 recorded here, then the image inside against the zip's own metadata |
 | `stream-frame` | Boxtree's GPG key, fetched once over HTTPS from streamframe.app | every commit's signature, by flatpak |
 | `moonlight` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
-| `krdc` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
+| `krdc` | download.kde.org's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patch | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
 | `deskflow` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
 | `krdp` | KDE and FreeRDP's release tarballs, your own review of the manifest and patches | every source pinned by sha256 in the manifest; patches in this kit; built on KDE's SDK from Flathub |
 | `bsmanager` | GitHub's TLS and DaVarga's account, continuously | nothing: the fork's latest install.sh, then an AppImage that updates itself |
@@ -32,8 +32,9 @@ is Arch Linux ARM.
 
 Nothing runs as root except Tailscale, the one-time creation of
 `/home/linuxbrew`, and Frametop's two optional parts. The common root
-of trust is TLS to GitHub, gnu.org, pkgs.tailscale.com, Flathub,
-streamframe.app and one ALARM mirror, plus each project's own account.
+of trust is TLS to GitHub, gnu.org, download.kde.org,
+pkgs.tailscale.com, Flathub, streamframe.app and one ALARM mirror, plus
+each project's own account.
 Everything is in the open: the kit's kinds are in `install/kinds/`, the
 flatpaks have public manifests, and the GitHub apps have public source.
 What differs is whether anything stands between a changed upstream
@@ -117,7 +118,21 @@ runner carries an attestation as well. The sandbox holds the network,
 the GPU, flatpak's Wayland socket, PipeWire and `~/.config/krdpd`
 read-only.
 
-## Moonlight, KRDC and Deskflow
+## KRDC
+
+`cjf install krdc` builds KRDC from the kit's PKGBUILD,
+`src/curiousj_framekit/data/pkgbuilds/krdc/`, the same tier as Emacs
+and pacman: the KDE Gear tarball and the extra-cmake-modules tarball
+come from download.kde.org with their BLAKE2 sums in the PKGBUILD,
+recorded after a check against the KDE release signatures, so a
+changed tarball fails makepkg; qtkeychain is a git source pinned to a
+commit, which makepkg checks out and nothing else. The patch is in
+this repo for review, with its own sum. The package installs under
+`~/.local` through `pacman-home -U`, unsandboxed, as a distribution's
+KRDC would be. Until 2026-11-03 this item was the Flathub flatpak,
+under the trust below; a copy of it stays installed and shadowed.
+
+## Moonlight and Deskflow
 
 The remote is added from Flathub's `.flatpakrepo` file over HTTPS. That
 file carries Flathub's GPG key, and flatpak checks every commit it pulls

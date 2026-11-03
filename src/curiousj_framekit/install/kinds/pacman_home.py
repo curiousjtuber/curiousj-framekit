@@ -1,7 +1,7 @@
 """The `pacman-home` kind: a package under ~/.local in pacman-home's
 database, either relocated from Arch Linux ARM's binary package
 (waypipe) or built here with makepkg from the kit's own PKGBUILD
-(emacs, pacman; data/pkgbuilds/NAME in the package, so every install
+(emacs, pacman, krdc; data/pkgbuilds/NAME in the package, so every install
 has them). The work is frame/pkg.py's; this kind maps the catalog
 entry onto it. A build runs in ~/.cache/curiousj-framekit/build/NAME,
 a copy of the PKGBUILD's directory, not inside the package.
@@ -121,7 +121,7 @@ class Kind(Base):
                     f"(makepkg in {cmdline.tilde(pkg.build_dir() / item['pkgbuild'])}, pacman-home -U)")
         if opts.check:
             return True
-        if not cmdline.confirm(opts, f"build {name}? (emacs takes about three minutes)"):
+        if not cmdline.confirm(opts, f"build {name}? (a few minutes)"):
             return False
         pkg.build(opts, directory, clean=False if opts.yes else None, extra=[])
         return True

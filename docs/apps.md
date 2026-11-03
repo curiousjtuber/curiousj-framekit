@@ -15,7 +15,7 @@ gets on the headset.
 |---|---|---|
 | `install-stream-frame.sh [--yes]` | [Stream Frame](https://streamframe.app), for watching, recording and screenshotting the headset from another device | Flatpak `com.boxtree.StreamFrame`, in the user installation, from Boxtree's repo; no root |
 | `install-moonlight.sh [--yes]` | [Moonlight](https://moonlight-stream.org), for streaming games from a Sunshine or GeForce Experience host | Flatpak `com.moonlight_stream.Moonlight`, in the user installation, from Flathub; no root |
-| `install-krdc.sh [--yes]` | [KRDC](https://apps.kde.org/krdc), KDE's RDP and VNC client, for a Plasma desktop shared with KRdp | Flatpak `org.kde.krdc`, in the user installation, from Flathub; no root |
+| `install-krdc.sh [--yes]` | [KRDC](https://apps.kde.org/krdc), KDE's RDP and VNC client, for a Plasma desktop shared with KRdp | was Flatpak `org.kde.krdc` from Flathub; since 2026-11-03 `cjf install krdc` builds KRDC with the kit's patch from the kit's PKGBUILD, a pacman-home package under `~/.local`, and the flatpak, if installed, is shadowed ([krdc-embed-cursor.md](krdc-embed-cursor.md)) |
 | `install-deskflow.sh [--yes]` | [Deskflow](https://deskflow.org), keyboard and mouse sharing, so a PC's mouse and keyboard reach the Frametop desktop | Flatpak `org.deskflow.deskflow`, in the user installation, from Flathub; no root |
 | `install-bsmanager.sh` | [BSManager](https://github.com/DaVarga/bs-manager), DaVarga's arm64 fork, for Beat Saber versions, mods and maps | `~/Applications/BSManager.AppImage`, with a menu entry and the BeatSaver OneClick links |
 | `install-full-keyboard.sh [--version X.Y.Z \| --uninstall]` | [Full Keyboard](https://github.com/TaiKeid/steam-frame-full-keyboard), TaiKeid's full-size virtual keyboard for the dashboard and local apps | `~/.local/share/framekeyboard`, with the launcher `~/.local/bin/framekeyboard` and a menu entry |
@@ -55,18 +55,19 @@ gets on the headset.
   meant for upstream: `pc/krdpserver-embed-cursor/krdp-embed-cursor.sh
   install` builds krdpserver from the Plasma release the PC runs into
   `~/.local` as a second server beside `krdp` on port 3390, on any
-  distribution with Plasma 6, and `krdc-embed-cursor/krdc-embed-cursor.sh
-  install` builds KRDC with a "Remote pointer: painted into the video by
-  the server" option per host, on the PC and on the Frame alike (there
-  it shadows the flatpak's menu entry and takes over its hosts and
-  bookmarks). With the option on, KRDC advertises no pointer cache, and
+  distribution with Plasma 6, and `cjf install krdc` on the Frame (the
+  same script, `krdc-embed-cursor.sh install`, on the PC) builds KRDC
+  with a "Remote pointer: painted into the video by the server" option
+  per host; on the Frame it shadows the flatpak's menu entry and takes
+  over its hosts and bookmarks. With the option on, KRDC advertises no
+  pointer cache, and
   the patched server paints the PC's pointer into the video for that
   connection and tells KRDC to draw none, so the headset sees where the
   PC's mouse is; a stock KRDC is served as upstream does. Turn off
   KRDC's View → Show Local Cursor unless you want your own pointer over
   the PC's. KRDC picks a server by port, and the stock one on 3389 is
   never touched; [the PC side](../pc/README.md) and
-  [krdc-embed-cursor/](../krdc-embed-cursor/README.md) have the commands
+  [krdc-embed-cursor.md](krdc-embed-cursor.md) have the commands
   and the rebuild after an update.
 - **Deskflow** makes the Frame a client of the PC's mouse and keyboard,
   with no streaming: the pointer crosses an edge of the PC's screen into

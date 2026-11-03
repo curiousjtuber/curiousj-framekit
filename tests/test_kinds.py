@@ -6,7 +6,7 @@ from unittest import mock
 from curiousj_framekit import cmdline
 from curiousj_framekit.cmdline import Options
 from curiousj_framekit.install import catalog
-from curiousj_framekit.install.catalog import Item, State
+from curiousj_framekit.install.catalog import Item, State, Status
 from curiousj_framekit.install.kinds import base, flatpak, flatpak_build, tailscale, upstream, uv_tool
 
 SUMS = ("abc123  other.tar.gz\n"
@@ -64,6 +64,24 @@ class Upstream(unittest.TestCase):
                 (root / "current").unlink()
                 (root / "current").symlink_to("releases/0.1.0")
                 self.assertEqual(upstream.frametop_status(item, Options()).state, State.OUTDATED)
+
+
+class KrdcPkgbuild(unittest.TestCase):
+    def test_patch_sum_matches_the_shared_patch(self):
+        """The PKGBUILD's last b2sum is the patch beside it, a link to the
+        PC script's; a changed patch needs the sum and a pkgrel bump."""
+        import hashlib
+        import re
+        from curiousj_framekit.frame import pkg
+        directory = pkg.pkgbuilds_dir() / "krdc"
+        patch = directory / "krdc-embed-cursor.patch"
+        self.assertEqual(patch.resolve(), (pkg.pkgbuilds_dir().parent / "krdc-embed-cursor/krdc-embed-cursor.patch").resolve())
+        sums = re.findall(r"'([0-9a-f]{128}|SKIP)'", (directory / "PKGBUILD").read_text())
+        self.assertEqual(len(sums), 4)
+        self.assertEqual(sums[-1], hashlib.blake2b(patch.read_bytes()).hexdigest())
+        name, ver, rel, deps = pkg.pkgbuild_info(directory)
+        self.assertEqual((name, ver), ("krdc", "26.08.2"))
+        self.assertIn("freerdp", deps)
 
 
 class FlatpakBuild(unittest.TestCase):

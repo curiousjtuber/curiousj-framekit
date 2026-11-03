@@ -1,0 +1,167 @@
+# KRDC, KDE's RDP client, with the kit's "Remote pointer: painted into
+# the video by the server" option (krdc-embed-cursor.patch, the same
+# file the PC's build script applies), built for ~/.local on the Steam
+# Frame host, in place of the Flathub flatpak.
+#
+# The host has KDE Frameworks 6, Qt 6 and FreeRDP 3 with their headers,
+# which is most of what KRDC needs. It lacks the two others, so the
+# build carries them: extra-cmake-modules, needed at configure time
+# only, goes in a staging directory and never in the package;
+# qtkeychain, a library KRDC links, is built from its repository at a
+# pinned commit and installed with the rest. ECM 6.20.0 is the last
+# release that takes the host's CMake 3.29 (6.24 wants 3.27, 6.31
+# 3.30). VNC is off: the host has no libvncclient.
+#
+# Everything goes under one directory, ~/.local/lib/krdc-embed-cursor,
+# a prefix of its own, because KRDC's RDP backend is a Qt plugin that
+# Qt finds only through QT_PLUGIN_PATH: ~/.local/bin/krdc is a launcher
+# that sets it and runs the build's binary, and the menu entry points
+# at the launcher. A flatpak KRDC keeps its hosts and bookmarks under
+# ~/.var/app/org.kde.krdc; the launcher copies them to ~/.config and
+# ~/.local/share the first time, when there are none yet (the
+# passwords are in the wallet, which both use). The package holds files
+# under home/<user>/.local/ and is for this one user on this one
+# device; it is not a redistributable package.
+#
+# Build and install (on the Frame, a few minutes):
+#   cjf install krdc
+# or by hand, in this directory:
+#   makepkg -f && pacman-home -U krdc-*.pkg.tar.zst
+#
+# For a new KDE Gear release: bump pkgver, update the first b2sum
+# (checked against the tarball's signature from the KDE Gear release
+# keys), and make sure the patch still applies. A change to the patch
+# needs its b2sum here and a pkgrel bump, which is what tells
+# pacman-home the install is outdated.
+
+pkgname=krdc
+pkgver=26.08.2
+pkgrel=1
+pkgdesc='KRDC with the "Remote pointer" option, built for ~/.local on the Steam Frame host'
+arch=('aarch64' 'x86_64')
+url='https://apps.kde.org/krdc'
+license=(GPL-2.0-or-later)
+depends=(
+  freerdp
+  kbookmarks
+  kcmutils
+  kcompletion
+  kconfig
+  kcrash
+  kdnssd
+  kguiaddons
+  ki18n
+  kiconthemes
+  kio
+  knotifications
+  knotifyconfig
+  kstatusnotifieritem
+  kwidgetsaddons
+  kwindowsystem
+  kxmlgui
+  libsecret
+  libssh
+  qt6-base
+  qt6-wayland
+)
+makedepends=(cmake gettext git ninja qt6-tools)
+options=(!debug !lto)
+_ecm=6.20.0
+_qtkeychain=0.17.0
+# The commit tag 0.17.0 pointed at on 2026-11-03.
+_qtkeychain_commit=875f77d9f61bd97fd84cca47ce3bc71186dfbd09
+source=(
+  https://download.kde.org/stable/release-service/${pkgver}/src/krdc-${pkgver}.tar.xz
+  https://download.kde.org/stable/frameworks/${_ecm%.*}/extra-cmake-modules-${_ecm}.tar.xz
+  qtkeychain::git+https://github.com/frankosterfeld/qtkeychain.git#commit=${_qtkeychain_commit}
+  krdc-embed-cursor.patch
+)
+# The tarballs as checked against their signatures: krdc's by Heiko
+# Becker's KDE Gear key, extra-cmake-modules' by Nicolas Fella's KDE
+# Frameworks key, on 2026-11-03.
+b2sums=('9b7df8de2b01384b07c35354a45a6755c44aecde65de743baec20f0cf9d3343827029c108209a42c71234a44c2e6125b46c3eecffb264de608058e4efdb2cb92'
+        '1e6cb0037a70bc3d40e29eff5b074808c317a113e0c634a6c196ce5a0558c5dcc0ef71f512ce469be3098cea596507795aeed63580c9488266224b7898845f48'
+        'SKIP'
+        'e5cba5b301d8c3a6b22aa316ffb989dab36eadb824700fa6df8495c3cdc97e263259f6f394e4a6d236838850390c8c7f7425543274a5ccb481bb6d816901d11e')
+
+_prefix=$HOME/.local
+_home=$_prefix/lib/krdc-embed-cursor
+
+prepare() {
+  cd krdc-${pkgver}
+  patch -p1 --forward < "$srcdir/krdc-embed-cursor.patch"
+}
+
+build() {
+  # extra-cmake-modules, for this build only.
+  cmake -S extra-cmake-modules-${_ecm} -B build-ecm -G Ninja \
+    -DCMAKE_INSTALL_PREFIX="$srcdir/ecm" \
+    -DBUILD_TESTING=OFF -DBUILD_HTML_DOCS=OFF -DBUILD_MAN_DOCS=OFF -DBUILD_QTHELP_DOCS=OFF
+  cmake --install build-ecm
+
+  # qtkeychain, for the package; KRDC configures against a staged copy.
+  cmake -S qtkeychain -B build-qtkeychain -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$_home" \
+    -DCMAKE_INSTALL_LIBDIR=lib \
+    -DBUILD_TEST_APPLICATION=OFF -DBUILD_TRANSLATIONS=OFF \
+    -DLIBSECRET_SUPPORT=ON
+  cmake --build build-qtkeychain
+  DESTDIR="$srcdir/stage" cmake --install build-qtkeychain
+
+  # The RUNPATH is set here rather than by ECM, whose default would add
+  # the staging directory beside the real one. Everything the package
+  # installs that KRDC loads is in $_home/lib.
+  cmake -S krdc-${pkgver} -B build-krdc -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$_home" \
+    -DCMAKE_PREFIX_PATH="$srcdir/ecm;$srcdir/stage$_home" \
+    -DKDE_SKIP_RPATH_SETTINGS=ON \
+    -DCMAKE_INSTALL_RPATH="$_home/lib" \
+    -DKDE_INSTALL_USE_QT_SYS_PATHS=OFF \
+    -DKDE_INSTALL_LIBDIR=lib \
+    -DKDE_INSTALL_PLUGINDIR=lib/plugins \
+    -DBUILD_TESTING=OFF \
+    -DWITH_RDP=ON -DWITH_VNC=OFF
+  cmake --build build-krdc
+}
+
+package() {
+  DESTDIR="$pkgdir" cmake --install build-qtkeychain
+  DESTDIR="$pkgdir" cmake --install build-krdc
+  [ -e "$pkgdir$_home/lib/plugins/krdc/krdc_rdpplugin.so" ] \
+    || { echo "the build left no RDP plugin" >&2; return 1; }
+
+  mkdir -p "$pkgdir$_prefix/bin" "$pkgdir$_prefix/share/applications"
+  cat > "$pkgdir$_prefix/bin/krdc" <<LAUNCHER
+#!/bin/sh
+# From curiousj-framekit's krdc package: the KRDC built under the
+# directory below, whose RDP plugin Qt finds only through
+# QT_PLUGIN_PATH. A flatpak KRDC's hosts and bookmarks are copied over
+# the first time, when there are none here yet.
+home=$_home
+config=\${XDG_CONFIG_HOME:-\$HOME/.config}
+data=\${XDG_DATA_HOME:-\$HOME/.local/share}
+flatpak=\$HOME/.var/app/org.kde.krdc
+if [ ! -e "\$config/krdcrc" ] && [ -s "\$flatpak/config/krdcrc" ]; then
+  mkdir -p "\$config" && cp "\$flatpak/config/krdcrc" "\$config/krdcrc"
+fi
+if [ ! -e "\$data/krdc/bookmarks.xml" ] && [ -s "\$flatpak/data/krdc/bookmarks.xml" ]; then
+  mkdir -p "\$data/krdc" && cp "\$flatpak/data/krdc/bookmarks.xml" "\$data/krdc/bookmarks.xml"
+fi
+export QT_PLUGIN_PATH="\$home/lib/plugins\${QT_PLUGIN_PATH:+:\$QT_PLUGIN_PATH}"
+export XDG_DATA_DIRS="\$home/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
+exec "\$home/bin/krdc" "\$@"
+LAUNCHER
+  chmod 755 "$pkgdir$_prefix/bin/krdc"
+
+  # The menu entry, pointed at the launcher; the build's own copy would
+  # run the binary without the plugin path, so it moves rather than
+  # stays beside it.
+  local built=$pkgdir$_home/share/applications/org.kde.krdc.desktop
+  sed "s|^Exec=$_home/bin/krdc|Exec=$_prefix/bin/krdc|" "$built" \
+    > "$pkgdir$_prefix/share/applications/org.kde.krdc.desktop"
+  grep -q "^Exec=$_prefix/bin/krdc" "$pkgdir$_prefix/share/applications/org.kde.krdc.desktop" \
+    || { echo "could not point the menu entry at the launcher" >&2; return 1; }
+  rm "$built"
+}

@@ -4,7 +4,9 @@
 # from a KRDC release and installed under ~/.local, on the PC and on the
 # Frame alike. Any distribution with KDE Frameworks 6 and FreeRDP 3;
 # SteamOS as it is: the two build dependencies it lacks, extra-cmake-
-# modules and qtkeychain, are built here when the host has no copy.
+# modules and qtkeychain, are built here when the host has no copy. On
+# the Frame the same build is a package, data/pkgbuilds/krdc (`cjf
+# install krdc`), which applies this directory's patch too.
 #
 # KRdp sends a viewer the pointer's shape to draw at its own pointer, so
 # a viewer that only watches never sees where the host's mouse is. With

@@ -21,7 +21,7 @@ beside the distribution's `krdp`, on its own port. KRdp sends a viewer
 the pointer's shape, which the viewer draws at its own pointer, so
 moving the mouse at the PC shows in the stream on the Frame only as
 focus changes. A viewer that advertises no pointer cache, which is
-what [KRDC with the kit's patch](../krdc-embed-cursor/) does when its
+what [KRDC with the kit's patch](../docs/krdc-embed-cursor.md) does when its
 "Remote pointer" option is on, is one that cannot draw shapes; upstream
 means to refuse it but checks too early and crashes on it instead,
 this build serves it with KWin painting the PC's pointer into the

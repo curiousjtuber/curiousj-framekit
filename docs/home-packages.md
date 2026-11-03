@@ -25,7 +25,7 @@ Checked and not taken, same day:
 
 Later (2026-11-03): krdc went in after all, built from source against
 the host's Qt 6.8 and KF 6.14 by
-[krdc-embed-cursor/](../krdc-embed-cursor/README.md), with a patch of
+[`cjf install krdc`](krdc-embed-cursor.md), with a patch of
 its own; its minimums are Qt 6.6 and KF 6.0, so "too old" was wrong,
 and the two dependencies the host lacks, extra-cmake-modules and
 qtkeychain, build in minutes. The plugin problem is real and is what

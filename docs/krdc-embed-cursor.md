@@ -1,4 +1,4 @@
-# `krdc-embed-cursor/`
+# KRDC with the Remote pointer option
 
 KRDC, KDE's RDP client, with one option added per host: "Remote
 pointer: painted into the video by the server". It is the viewer side
@@ -16,32 +16,48 @@ Off, the client is upstream's exactly.
 Both patches are meant for upstream, KRdp and KRDC, so they stay
 small: one preference and one condition on each side, no new protocol.
 The server's part is harmless alone, since nothing sends it a zero
-until the client's lands. Until then this script builds the client on
-any distribution with KDE Frameworks 6 and FreeRDP 3, and on the Frame
-as it is, where KRDC is a flatpak and the host lacks
-extra-cmake-modules and qtkeychain: the script builds those two as
-well.
+until the client's lands. Until then the kit builds the client, two
+ways from one patch. On the Frame it is the `krdc` catalog item, a
+package for `~/.local` from the kit's PKGBUILD
+(`src/curiousj_framekit/data/pkgbuilds/krdc/`), like Emacs:
 
 ```bash
-krdc-embed-cursor/krdc-embed-cursor.sh install
+cjf install krdc
 ```
 
-on the PC and on the Frame (in the kit's checkout there,
-`~/curiousj-framekit`). It downloads krdc 26.08.2 (`--version` for
-another), checks the signature against the KDE Gear release keys
-(fetching a missing one by fingerprint), applies the patch, and builds
-into `~/.local/lib/krdc-embed-cursor`, a prefix of its own: KRDC's RDP
+in place of the flatpak the item used to install. The host lacks
+extra-cmake-modules and qtkeychain, so the PKGBUILD carries both, the
+first for the build only. `cjf installed` shows pacman-home's version
+and says outdated once the PKGBUILD's moves on (a new release, or a
+`pkgrel` bump for a changed patch); `cjf install --all` rebuilds it
+then; `cjf uninstall krdc` is `pacman-home -R krdc`, and leaves the
+flatpak, if any, as the menu's KRDC again. On the PC, where cjf does
+not run, the script does the same build from the checkout, on any
+distribution with KDE Frameworks 6 and FreeRDP 3:
+
+```bash
+src/curiousj_framekit/data/krdc-embed-cursor/krdc-embed-cursor.sh install
+```
+
+It downloads krdc 26.08.2 (`--version` for another), checks the
+signature against the KDE Gear release keys (fetching a missing one by
+fingerprint), applies the patch, and builds into
+`~/.local/lib/krdc-embed-cursor`, a prefix of its own, the layout the
+package has too: KRDC's RDP
 and VNC backends are Qt plugins that Qt finds only through
 `QT_PLUGIN_PATH`, so `~/.local/bin/krdc` is a launcher that sets it and
 runs the build's binary. The launcher shadows a distribution's `krdc`
 on PATH, and `~/.local/share/applications/org.kde.krdc.desktop` shadows
 the distribution's or the flatpak's menu entry, so KRDC from the menu
-is this one. On the Frame a first install copies the flatpak's hosts
-and bookmarks to `~/.config/krdcrc` and `~/.local/share/krdc`; the
-passwords are in the wallet, which both use. `status` says what is
-installed and what the menu and PATH run; `uninstall` puts the
-distribution's or the flatpak's KRDC back and keeps the configuration;
-`--help` lists the options. On the PC the build needs the
+is this one. A flatpak KRDC's hosts and bookmarks are copied to
+`~/.config/krdcrc` and `~/.local/share/krdc` when there are none yet,
+by the package's launcher on its first run and by the script at
+install; the passwords are in the wallet, which both use. The flatpak
+itself stays until you remove it (`flatpak --user uninstall
+org.kde.krdc`). The script's `status` says what is installed and what
+the menu and PATH run; its `uninstall` puts the distribution's or the
+flatpak's KRDC back and keeps the configuration; `--help` lists the
+options. On the PC the build needs the
 distribution's development packages for Qt 6, KF6, FreeRDP 3, libssh
 and qtkeychain, plus extra-cmake-modules; when cmake can't find one,
 the script prints the package list for Arch, Fedora or Debian/Ubuntu.
@@ -57,4 +73,5 @@ so leave it off for that entry; other servers are untested.
 
 After a KDE Gear update on the PC, `install` again builds the release
 the script names; `--version` builds another, as long as the patch
-still applies.
+still applies. On the Frame a new release is a `pkgver` bump and a new
+sum in the PKGBUILD, then `cjf install krdc` again.
