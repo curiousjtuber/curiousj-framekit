@@ -552,40 +552,61 @@ def vercmp(paths: Paths, a: str, b: str) -> int:
         return 0
 
 
-def outdated_cmd(paths: Paths) -> int:
-    sync_alarm(paths)
-    pkgbuilds = {}
+def pkgbuild_versions() -> dict[str, str]:
+    """pkgname -> pkgver for each of the kit's PKGBUILDs that reads."""
+    versions = {}
     directory = pkgbuilds_dir()
-    if directory:
+    if directory.is_dir():
         for d in sorted(directory.iterdir()):
             if (d / "PKGBUILD").is_file():
                 try:
                     name, ver, _, _ = pkgbuild_info(d)
-                    pkgbuilds[name] = ver
+                    versions[name] = ver
                 except Error:
                     pass
+    return versions
+
+
+def upstream_version(paths: Paths, name: str) -> tuple[str, str] | None:
+    """(version, source) for the package upstream: Arch Linux ARM's
+    repositories first, the AUR for one they lack; None when neither has
+    it. The release after the dash is left out, since it is this repo's
+    own. sync_alarm first, or the repositories answer from a stale
+    database."""
+    info = pacman(paths, paths.alarm_conf, "-Si", name, check=False).stdout
+    up = next((l.split(":", 1)[1].strip() for l in info.splitlines() if l.startswith("Version")), "")
+    src = "Arch Linux ARM"
+    if not up:
+        up = aur_version(name) or ""
+        src = "AUR"
+    if not up:
+        return None
+    return up.rsplit("-", 1)[0], src
+
+
+def is_snapshot(version: str) -> bool:
+    """A git snapshot's version, as Arch's VCS packages number them."""
+    return bool(re.search(r"\.r\d+\.g[0-9a-f]+", version))
+
+
+def outdated_cmd(paths: Paths) -> int:
+    sync_alarm(paths)
+    pkgbuilds = pkgbuild_versions()
     print(f"{'package':<14} {'installed':<12} {'pkgbuild':<12} upstream")
     for line in pacman(paths, paths.conf, "-Q", check=False).stdout.splitlines():
         parts = line.split()
         if len(parts) < 2:
             continue
         name, have = parts[0], parts[1].rsplit("-", 1)[0]
-        # Arch Linux ARM first, the AUR for a package its repositories lack.
-        info = pacman(paths, paths.alarm_conf, "-Si", name, check=False).stdout
-        up = next((l.split(":", 1)[1].strip() for l in info.splitlines() if l.startswith("Version")), "")
-        src = "Arch Linux ARM"
-        if not up:
-            up = aur_version(name) or ""
-            src = "AUR"
-        up = up.rsplit("-", 1)[0]
+        found = upstream_version(paths, name)
         pb = pkgbuilds.get(name, "")
-        if not up:
+        if not found:
             up_text = "not found upstream"
-        elif vercmp(paths, up, have) > 0:
-            snapshot = ", a git snapshot" if re.search(r"\.r\d+\.g[0-9a-f]+", up) else ""
-            up_text = f"newer: {up} ({src}{snapshot})"
+        elif vercmp(paths, found[0], have) > 0:
+            snapshot = ", a git snapshot" if is_snapshot(found[0]) else ""
+            up_text = f"newer: {found[0]} ({found[1]}{snapshot})"
         else:
-            up_text = f"current ({src})"
+            up_text = f"current ({found[1]})"
         if pb and pb != have:
             pb += " <- differs"
         print(f"{name:<14} {have:<12} {pb or '-':<12} {up_text}")
