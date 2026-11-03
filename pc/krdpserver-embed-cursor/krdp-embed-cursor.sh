@@ -350,15 +350,22 @@ dependency_hint() {
   esac
 }
 
+# keys.openpgp.org serves only keys whose owner confirmed an address,
+# which two of the four signers have not, and gpg exits 0 when it got
+# any key at all; so the keyservers are tried in turn until the
+# signature verifies, and the verification is what decides.
 verify_tarball() {
-  local status fpr
+  local status fpr server missing
   status=$(gpg --status-fd 1 --verify "$1.sig" "$1" 2>/dev/null || true)
-  if grep -q '^\[GNUPG:\] NO_PUBKEY' <<<"$status"; then
-    say "fetching the Plasma release keys by fingerprint"
-    gpg --keyserver hkps://keys.openpgp.org --recv-keys "${release_keys[@]}" >/dev/null 2>&1 \
-      || die "could not fetch the keys; import them yourself (gpg --recv-keys ${release_keys[*]}) or pass --no-verify"
+  for server in hkps://keys.openpgp.org hkps://keyserver.ubuntu.com; do
+    grep -q '^\[GNUPG:\] NO_PUBKEY' <<<"$status" || break
+    say "fetching the Plasma release keys by fingerprint from ${server#hkps://}"
+    gpg --keyserver "$server" --recv-keys "${release_keys[@]}" >/dev/null 2>&1 || true
     status=$(gpg --status-fd 1 --verify "$1.sig" "$1" 2>/dev/null || true)
-  fi
+  done
+  missing=$(awk '/^\[GNUPG:\] NO_PUBKEY/ {print $3}' <<<"$status")
+  [ -z "$missing" ] \
+    || die "no keyserver had the key $missing that signed $(basename "$1"); import it yourself (gpg --recv-keys ${release_keys[*]}) or pass --no-verify"
   # VALIDSIG's last field is the primary key's fingerprint, whichever
   # subkey signed.
   fpr=$(awk '/^\[GNUPG:\] VALIDSIG/ {print $NF}' <<<"$status")
