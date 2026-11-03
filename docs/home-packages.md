@@ -22,6 +22,7 @@ Checked and not taken, same day:
 |---|---|---|
 | krdc 26.08.1 | built against Qt 6.11 where the host has 6.8.0 (`version Qt_6.11 not found` on the binary and every plugin); needs qtkeychain and libvncclient, neither on the host; its VNC and RDP backends are Qt plugins under `lib/qt6/plugins/krdc`, which a relocated tree isn't searched for | a KDE application against the host's KDE Frameworks, which a 26.08 release is likely to find too old; the flatpak carries its own Qt and frameworks |
 | moonlight-qt 6.2.0 | the same Qt 6.11 against 6.8.0, and ffmpeg 8's libraries (`libavcodec.so.63`, `libavutil.so.61`, `libswscale.so.10`) and libplacebo where the host has ffmpeg 7 and none of the last | buildable against the host's Qt and ffmpeg 7 in principle, but the flatpak already works and brings its own codecs |
+| xwayland-satellite 0.8.3 (2026-11-03) | two refusals in turn: a systemd user unit under `usr/lib/systemd/user`, which the `/usr`-only check refuses as a whole; then, with the unit moved aside, `libm.so.6: version GLIBC_2.43 not found` on the binary, Arch Linux ARM's build being newer than the host's glibc | it is worth it, just not yet: Arch's PKGBUILD is a cargo build with clang and rust as makedepends and no patches, so a kit PKGBUILD built on the Frame with mise's cargo (`needs = ["rust"]`) is the way in, when the program is wanted; set aside |
 
 Later (2026-11-03): krdc went in after all, built from source against
 the host's Qt 6.8 and KF 6.14 by
@@ -51,6 +52,27 @@ check for qtkeychain, for the wrong reason. The check now allows the
 package's own library directories, which will exist under
 `~/.local/lib`, captures what the loader says, and refuses;
 `--allow-missing-libs` is the override.
+
+Later (2026-11-03): xwayland-satellite was the first package that
+refusal caught on glibc rather than Qt. Arch Linux ARM builds against
+whatever glibc Arch ships that week (2.43 by then), and SteamOS pins
+its glibc as it pins its Qt, so every relocated package has a shelf
+life: the version on the mirror outruns the host's glibc at some point,
+and from then on `relocate` refuses the update while the installed
+version keeps working. waypipe 0.11.3 on the mirror is from the same
+weeks and is likely to be refused the same way at its next `cjf
+install`; 0.11.2, installed, is unaffected. The way past it is the same
+as for Qt: a build on the Frame against the host's libraries, which for
+a Rust program is cheap.
+
+The other refusal that run met is relocate's own, and is fixable. The
+`/usr`-only list names `usr/lib/systemd` whole, which is right for
+system units and wrong for user units: the user manager searches
+`~/.local/share/systemd/user`, so a unit from `usr/lib/systemd/user`
+can go there, with its `Exec` lines pointed at the prefix (the only
+rewrite of file contents relocate would do). Tried on the PC against
+the real package and it relocated, unit and all, up to the glibc
+refusal; dropped with the item, to come back with it.
 
 ## What separated the three groups
 
