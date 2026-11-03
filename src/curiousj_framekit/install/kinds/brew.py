@@ -13,7 +13,9 @@ from pathlib import Path
 
 from ... import cmdline, where
 from ...cmdline import Error, Options
-from ..catalog import Item, State, Status
+import json
+
+from ..catalog import Check, Fresh, Item, State, Status
 from .base import Base, TempDir, fetch
 
 PREFIX = Path("/home/linuxbrew/.linuxbrew")
@@ -30,6 +32,24 @@ def has_formula(opts: Options, name: str) -> bool:
     return BREW.exists() and brew(opts, "list", "--formula", name, check=False).returncode == 0
 
 
+def outdated_formulae(opts: Options, names: list[str]) -> dict[str, tuple[str, str]]:
+    """formula -> (installed, current) for those of `names` that brew
+    says are outdated; it fetches Homebrew's API data itself."""
+    proc = brew(opts, "outdated", "--formula", "--json", *names, check=False)
+    if proc.returncode != 0:
+        raise Error(f"brew outdated failed: {proc.stderr.strip()}")
+    return parse_outdated(proc.stdout)
+
+
+def parse_outdated(text: str) -> dict[str, tuple[str, str]]:
+    try:
+        data = json.loads(text or "{}")
+    except ValueError:
+        raise Error("brew outdated printed no JSON") from None
+    return {f["name"]: (", ".join(f.get("installed_versions", [])), f.get("current_version", ""))
+            for f in data.get("formulae", []) if "name" in f}
+
+
 class Kind(Base):
     def status(self, item: Item, opts: Options) -> Status:
         if where.in_container():
@@ -44,6 +64,32 @@ class Kind(Base):
             ver = brew(opts, "--version", check=False).stdout.split("\n")[0].replace("Homebrew ", "")
             return Status(State.OK, ver)
         return Status(State.OK)
+
+    def check(self, item: Item, opts: Options, status: Status) -> Check:
+        if where.in_container() or not BREW.exists():
+            return Check(Fresh.UNKNOWN, note=status.detail)
+        formulae = [f for f in item.get("formulae", []) if has_formula(opts, f)]
+        outdated = outdated_formulae(opts, formulae) if formulae else {}
+        if outdated:
+            return Check(Fresh.OUTDATED, " ".join(v[0] for v in outdated.values()),
+                         " ".join(v[1] for v in outdated.values()), "Homebrew", " ".join(outdated))
+        ver = brew(opts, "--version", check=False).stdout.split("\n")[0].replace("Homebrew ", "")
+        return Check(Fresh.CURRENT, ver if item.name == "homebrew" else " ".join(formulae), source="Homebrew")
+
+    def update(self, item: Item, opts: Options) -> bool:
+        """brew upgrade for the item's outdated formulae; the rest, a
+        missing formula say, is the install's."""
+        where.require_host(item.name)
+        formulae = [f for f in item.get("formulae", []) if has_formula(opts, f)]
+        outdated = outdated_formulae(opts, formulae) if formulae and BREW.exists() else {}
+        if not outdated:
+            return self.install(item, opts, [])
+        for name, (have, current) in outdated.items():
+            cmdline.say("would upgrade" if opts.check else "upgrade", f"{name} {have} -> {current} (brew upgrade)")
+        if opts.check:
+            return True
+        brew(opts, "upgrade", *outdated, capture=False)
+        return True
 
     def install(self, item: Item, opts: Options, args: list[str]) -> bool:
         self.no_args(item, args)

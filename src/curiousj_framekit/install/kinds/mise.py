@@ -9,7 +9,9 @@ from pathlib import Path
 
 from ... import cmdline
 from ...cmdline import Error, Options
-from ..catalog import Item, State, Status
+import json
+
+from ..catalog import Check, Fresh, Item, State, Status
 from .base import Base
 
 
@@ -24,7 +26,40 @@ def mise(opts: Options, *args: str, check: bool = True):
                        cwd=str(Path.home()))
 
 
+def parse_outdated(text: str, tool: str) -> tuple[str, str] | None:
+    """(current, latest) from `mise outdated --json TOOL`, None when it
+    is current (an empty object)."""
+    try:
+        data = json.loads(text or "{}")
+    except ValueError:
+        raise Error("mise outdated printed no JSON") from None
+    entry = data.get(tool)
+    if not entry:
+        return None
+    return str(entry.get("current", "")), str(entry.get("latest", ""))
+
+
 class Kind(Base):
+    def check(self, item: Item, opts: Options, status: Status) -> Check:
+        if status.state != State.OK:
+            return Check(Fresh.UNKNOWN, note=status.detail)
+        proc = mise(opts, "outdated", "--json", item["tool"], check=False)
+        if proc.returncode != 0:
+            raise Error(f"mise outdated failed: {proc.stderr.strip()}")
+        found = parse_outdated(proc.stdout, item["tool"])
+        if found:
+            return Check(Fresh.OUTDATED, found[0], found[1], "mise")
+        return Check(Fresh.CURRENT, status.detail, source="mise")
+
+    def update(self, item: Item, opts: Options) -> bool:
+        if self.status(item, opts).state != State.OK:
+            return self.install(item, opts, [])
+        cmdline.say("would upgrade" if opts.check else "upgrade", f"{item['tool']} (mise upgrade)")
+        if opts.check:
+            return True
+        cmdline.run(opts, [str(mise_path()), "upgrade", item["tool"]], cwd=str(Path.home()))
+        return True
+
     def status(self, item: Item, opts: Options) -> Status:
         if not mise_path().exists():
             return Status(State.MISSING, "mise itself is missing: run install.sh")

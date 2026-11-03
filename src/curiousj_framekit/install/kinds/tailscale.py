@@ -34,8 +34,8 @@ from pathlib import Path
 
 from ... import cmdline, where
 from ...cmdline import Error, Options
-from ..catalog import Item, State, Status
-from .base import Base, TempDir, fetch, fetch_text, require_commands, sha256_of
+from ..catalog import Check, Fresh, Item, State, Status
+from .base import Base, TempDir, fetch, fetch_text, newer, require_commands, sha256_of
 
 PREFIX = Path("/home/.tailscale")
 BIN = PREFIX / "bin"
@@ -98,6 +98,15 @@ def missing_parts(opts: Options, want_trust: bool) -> list[str]:
     return parts
 
 
+def stable_info() -> dict:
+    return json.loads(fetch_text(f"{PKGS}/?mode=json"))
+
+
+def installed_version(opts: Options) -> str:
+    out = cmdline.output(opts, [str(BIN / "tailscale"), "version"], default="") or ""
+    return out.splitlines()[0].strip() if out else ""
+
+
 def tailnet_ip(opts: Options) -> str:
     out = cmdline.output(opts, ["ip", "-4", "-o", "addr", "show", "tailscale0"], default="") or ""
     for line in out.splitlines():
@@ -123,6 +132,35 @@ class Kind(Base):
         if backend == "Running":
             return Status(State.OK, f"running{', ' + ip if ip else ''}{', trusted zone' if trusted(opts) else ''}")
         return Status(State.OK, f"{backend}; log in: sudo {BIN}/tailscale up --qr --operator={pwd.getpwuid(os.getuid()).pw_name} --ssh")
+
+    def check(self, item: Item, opts: Options, status: Status) -> Check:
+        if where.in_container():
+            return Check(Fresh.UNKNOWN, note=status.detail)
+        have = installed_version(opts)
+        found = str(stable_info().get("Version", ""))
+        if not found:
+            raise Error(f"no version in {PKGS}/?mode=json")
+        if newer(found, have):
+            return Check(Fresh.OUTDATED, have, found, "pkgs.tailscale.com stable")
+        return Check(Fresh.CURRENT, have, source="pkgs.tailscale.com stable")
+
+    def update(self, item: Item, opts: Options) -> bool:
+        """The newer build over the installed one, with sudo; the login
+        state stays. Missing parts are the install's job, run after."""
+        where.require_host(item.name)
+        check = self.check(item, opts, self.status(item, opts))
+        if check.fresh != Fresh.OUTDATED:
+            return self.install(item, opts, [])
+        keep_trust = trusted(opts)
+        cmdline.say("would upgrade" if opts.check else "upgrade",
+                    f"tailscale {check.installed} -> {check.available} (with sudo; the login state is kept)")
+        if opts.check:
+            return True
+        if not cmdline.confirm(opts, "go ahead (sudo asks for your password once)?"):
+            return False
+        self.reinstall(opts, keep_trust)
+        self.report_login(opts)
+        return True
 
     def install(self, item: Item, opts: Options, args: list[str]) -> bool:
         where.require_host(item.name)

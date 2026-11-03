@@ -18,8 +18,8 @@ from pathlib import Path
 
 from ... import cmdline
 from ...cmdline import Error, Options
-from ..catalog import Item, State, Status
-from .base import Base, TempDir, fetch, fetch_text, final_url, require_commands, require_user, sum_for, verify
+from ..catalog import Check, Fresh, Item, State, Status
+from .base import Base, TempDir, fetch, fetch_text, latest_tag, require_commands, require_user, sum_for, verify
 
 REPO = "https://github.com/ryanoasis/nerd-fonts"
 
@@ -42,9 +42,16 @@ def installed_version(name: str) -> str | None:
         return None
 
 
-class Kind(Base):
-    updates = True
+def release_tag() -> str:
+    """The latest release's tag; resolving it once keeps the checksums
+    and every archive from one release."""
+    tag = latest_tag(REPO)
+    if not tag.startswith("v"):
+        raise Error(f"unexpected latest release: {tag}")
+    return tag
 
+
+class Kind(Base):
     options = "[NAME...]  (fonts other than the catalog's two: FiraCode, Hack, Meslo, ...)"
 
     def status(self, item: Item, opts: Options) -> Status:
@@ -58,6 +65,15 @@ class Kind(Base):
         versions = sorted(set(have.values()))
         return Status(State.OK, versions[0] if len(versions) == 1 else " ".join(versions))
 
+    def check(self, item: Item, opts: Options, status: Status) -> Check:
+        tag = release_tag()
+        have = {n: installed_version(n) for n in item["fonts"]}
+        behind = [n for n, v in have.items() if v and v != tag]
+        if behind:
+            return Check(Fresh.OUTDATED, " ".join(sorted({have[n] for n in behind})), tag,
+                         "GitHub release", " ".join(behind))
+        return Check(Fresh.CURRENT, tag, source="GitHub release")
+
     def install(self, item: Item, opts: Options, args: list[str]) -> bool:
         require_user()
         require_commands("fc-cache", "fc-scan")
@@ -65,11 +81,7 @@ class Kind(Base):
         for name in names:
             if name.startswith("-"):
                 raise Error(f"nerd-fonts takes font names; got {name}")
-        # releases/latest redirects to .../releases/tag/<tag>; resolving
-        # it once keeps the checksums and every archive from one release.
-        tag = final_url(f"{REPO}/releases/latest").rstrip("/").rsplit("/", 1)[-1]
-        if not tag.startswith("v"):
-            raise Error(f"unexpected latest release: {tag}")
+        tag = release_tag()
         todo = [n for n in names if installed_version(n) != tag]
         for n in names:
             if n not in todo:

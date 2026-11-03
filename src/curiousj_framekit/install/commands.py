@@ -4,16 +4,16 @@ items: apps, host packages, services, fonts, and the cursor fix.
     cjf install                       pick items from the catalog (TAB marks several)
     cjf install NAME...               install or update the items named
     cjf install NAME [OPTIONS...]     one item, with its own options (see below)
-    cjf install --all                 update every item that is installed
     cjf installed [--trust]           every item's state; --trust adds the
                                       root of trust and what is checked
     cjf uninstall NAME                remove one item, or print the steps
 
 An installed item is updated by installing it again, as every script
-did on a re-run. An item that needs another (zsh needs homebrew) brings
-it along, listed up front as one question. The global options go first:
-`cjf --check install NAME` says what would happen, `cjf --yes install
-NAME` asks nothing.
+did on a re-run; `cjf outdated` says which have something newer, and
+`cjf update` installs those. An item that needs another (zsh needs
+homebrew) brings it along, listed up front as one question. The global
+options go first: `cjf --check install NAME` says what would happen,
+`cjf --yes install NAME` asks nothing.
 
 Items with options of their own:
 
@@ -82,25 +82,17 @@ def pick_items(items: dict[str, catalog.Item], statuses: dict[str, catalog.Statu
 
 @click.command(cls=cmdline.Command, help=__doc__, short_help="install or update an optional item: apps, packages, services, fonts",
                context_settings={"ignore_unknown_options": True, "allow_extra_args": True})
-@click.option("--all", "all_", is_flag=True, help="Update every item that is installed.")
 @click.argument("words", nargs=-1, type=click.UNPROCESSED)
 @pass_options
-def install(opts: Options, all_: bool, words: tuple[str, ...]) -> int:
+def install(opts: Options, words: tuple[str, ...]) -> int:
     where.require_frame("install")
     items = catalog.load()
     statuses = catalog.all_status(items, opts)
-    if all_:
-        names = [n for n, s in statuses.items() if wants_update(items[n], s)]
-        item_args: list[str] = []
+    names, item_args = split_words(items, list(words))
+    if not names:
+        names = pick_items(items, statuses)
         if not names:
-            print("nothing to update")
-            return 0
-    else:
-        names, item_args = split_words(items, list(words))
-        if not names:
-            names = pick_items(items, statuses)
-            if not names:
-                return cmdline.EXIT_ABORT
+            return cmdline.EXIT_ABORT
     chosen = catalog.resolve(items, names)
     needed = [it for it in chosen if it.name not in names and statuses[it.name].state == State.MISSING]
     chosen = [it for it in chosen if it.name in names or it.name in {n.name for n in needed}]
@@ -135,19 +127,6 @@ def install(opts: Options, all_: bool, words: tuple[str, ...]) -> int:
         print(f"failed: {' '.join(failed)}")
         return 1
     return 0
-
-
-def wants_update(item: catalog.Item, status: catalog.Status) -> bool:
-    """Whether `install --all` runs this item: outdated items always;
-    ok items when their kind updates by installing again."""
-    if status.state == State.OUTDATED:
-        return True
-    if status.state != State.OK:
-        return False
-    kind = kinds.for_item(item)
-    if hasattr(kind, "updates_item"):
-        return kind.updates_item(item)
-    return bool(getattr(kind, "updates", False))
 
 
 @click.command(cls=cmdline.Command, help="Every catalog item's state.",

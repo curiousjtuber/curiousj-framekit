@@ -30,8 +30,12 @@ is Arch Linux ARM.
 | `bsmanager` | GitHub's TLS and DaVarga's account, continuously | nothing: the fork's latest install.sh, then an AppImage that updates itself |
 | `full-keyboard` | GitHub's TLS and TaiKeid's account | the archive against the release's own SHA256SUMS |
 
-Nothing runs as root except Tailscale, the one-time creation of
-`/home/linuxbrew`, and Frametop's two optional parts. The common root
+`cjf outdated` asks the same sources for their newest version (and
+GitHub's release listing, for the items pinned here) and changes
+nothing; `cjf update` then installs through the same steps as `cjf
+install`, so the table holds for an update too. Nothing runs as root
+except Tailscale, the one-time creation of `/home/linuxbrew`, and
+Frametop's two optional parts. The common root
 of trust is TLS to GitHub, gnu.org, download.kde.org,
 pkgs.tailscale.com, Flathub, streamframe.app and one ALARM mirror, plus
 each project's own account.

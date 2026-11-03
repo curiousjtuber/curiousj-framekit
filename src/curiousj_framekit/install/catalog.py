@@ -48,6 +48,26 @@ class Status:
         return self.state.value + (f" ({self.detail})" if self.detail else "")
 
 
+class Fresh(Enum):
+    """An installed item against its upstream, which takes the network:
+    what `cjf outdated` shows and `cjf update` acts on."""
+    CURRENT = "current"
+    OUTDATED = "outdated"    # a newer one is there; cjf update installs it
+    BEHIND = "behind"        # upstream moved past what the kit pins (a
+                             # PKGBUILD, the catalog): a bump here, not an
+                             # install there
+    UNKNOWN = "?"            # no way to tell
+
+
+@dataclass
+class Check:
+    fresh: Fresh
+    installed: str = ""      # "1.102.4", "0.11.3-1", "582a119"
+    available: str = ""      # "1.104.5"; for BEHIND, the upstream version
+    source: str = ""         # "Flathub", "Arch Linux ARM", "the catalog"
+    note: str = ""           # "bump the PKGBUILD", "updates itself"
+
+
 KNOWN_KEYS = {"kind", "description", "needs", "needs_root"}
 
 
@@ -97,6 +117,22 @@ def status_of(item: Item, opts: Options) -> Status:
 
 def all_status(items: dict[str, Item], opts: Options) -> dict[str, Status]:
     return {name: status_of(item, opts) for name, item in items.items()}
+
+
+def check_of(item: Item, opts: Options, status: Status) -> Check:
+    """The installed item against its upstream, with the network. An
+    item whose local state is already outdated (the kit's PKGBUILD or
+    catalog moved, a part is missing) is outdated whatever upstream
+    says, with the local reason as the note."""
+    from . import kinds
+    try:
+        check = kinds.for_item(item).check(item, opts, status)
+    except Error as e:
+        check = Check(Fresh.UNKNOWN, status.detail, note=f"can't tell: {e}")
+    if status.state == State.OUTDATED and check.fresh in (Fresh.CURRENT, Fresh.UNKNOWN):
+        return Check(Fresh.OUTDATED, check.installed, check.available, check.source or "this kit",
+                     status.detail)
+    return check
 
 
 def needs(item_name: str, what: str, opts: Options | None = None) -> None:

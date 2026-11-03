@@ -6,6 +6,8 @@
     status        the versions of SteamOS, SteamVR and the Steam client, the live state
     install       install or update an optional item: apps, packages, services, fonts
     installed     every catalog item's state
+    outdated      every installed item against its upstream: current, outdated, behind
+    update        install the newer versions outdated finds
     uninstall     remove one catalog item
     init          the base: PATH, init.sh, the shims, the rc blocks
     cursor        the mouse cursor in Desktop Mode and Frametop's desktop
@@ -35,7 +37,7 @@ import click
 from . import cmdline, pick
 from .cmdline import Options
 from .frame import after_update, controllers, cursor, pkg, rdp, vr, wifi
-from .install import commands, init, migrate, status
+from .install import commands, init, migrate, status, update
 
 PROG = "cjf"
 
@@ -74,6 +76,8 @@ def pick_command(ctx: click.Context) -> str | None:
 cli.add_command(status.status)
 cli.add_command(commands.install)
 cli.add_command(commands.installed)
+cli.add_command(update.outdated)
+cli.add_command(update.update)
 cli.add_command(commands.uninstall)
 cli.add_command(init.init)
 cli.add_command(migrate.migrate)

@@ -30,8 +30,9 @@ from pathlib import Path
 
 from ... import cmdline, where
 from ...cmdline import Error, Options
-from ..catalog import Item, State, Status
-from .base import Base, TempDir, fetch, fetch_text, require_commands, require_user, sha256_of, sum_for, verify
+from ..catalog import Check, Fresh, Item, State, Status
+from .base import (Base, TempDir, fetch, fetch_text, latest_tag, newer, require_commands, require_user,
+                   sha256_of, sum_for, verify)
 
 APPIMAGE = Path("/home/steamos/Applications/BSManager.AppImage")
 KEYBOARD_ROOT = Path.home() / ".local/share/framekeyboard"
@@ -77,6 +78,10 @@ def bsmanager_status(item: Item, opts: Options) -> Status:
     return Status(State.OK, "AppImage; updates itself") if APPIMAGE.exists() else Status(State.MISSING)
 
 
+def bsmanager_check(item: Item, opts: Options, status: Status) -> Check:
+    return Check(Fresh.UNKNOWN, "AppImage", note="updates itself")
+
+
 def bsmanager_install(item: Item, opts: Options, args: list[str]) -> bool:
     require_user()
     require_commands("curl")
@@ -104,12 +109,9 @@ def keyboard_status(item: Item, opts: Options) -> Status:
     return Status(State.OK, ver) if ver else Status(State.MISSING)
 
 
-def keyboard_install(item: Item, opts: Options, args: list[str]) -> bool:
-    require_user()
-    version, rest = take_version(args, "full-keyboard")
-    if rest:
-        raise Error(f"full-keyboard takes --version X.Y.Z; got {' '.join(rest)}")
-    repo = item["repo"]
+def keyboard_latest(repo: str, version: str | None = None) -> tuple[str, str, str]:
+    """(version, archive name, sums text) of the latest release, or of
+    `version`, from its SHA256SUMS."""
     release = f"download/{version}" if version else "latest/download"
     sums_url = f"{repo}/releases/{release}/SHA256SUMS"
     sums = fetch_text(sums_url)
@@ -117,7 +119,25 @@ def keyboard_install(item: Item, opts: Options, args: list[str]) -> bool:
                     for m in [KEYBOARD_ARCHIVE.search(line)] if m), None)
     if not archive:
         raise Error(f"no arm64 archive listed in {sums_url}")
-    found = KEYBOARD_ARCHIVE.search(archive).group(1)
+    return KEYBOARD_ARCHIVE.search(archive).group(1), archive, sums
+
+
+def keyboard_check(item: Item, opts: Options, status: Status) -> Check:
+    have = current_release(KEYBOARD_ROOT) or ""
+    found, _, _ = keyboard_latest(item["repo"])
+    if newer(found, have):
+        return Check(Fresh.OUTDATED, have, found, "GitHub release")
+    return Check(Fresh.CURRENT, have, source="GitHub release")
+
+
+def keyboard_install(item: Item, opts: Options, args: list[str]) -> bool:
+    require_user()
+    version, rest = take_version(args, "full-keyboard")
+    if rest:
+        raise Error(f"full-keyboard takes --version X.Y.Z; got {' '.join(rest)}")
+    repo = item["repo"]
+    release = f"download/{version}" if version else "latest/download"
+    found, archive, sums = keyboard_latest(repo, version)
     if (KEYBOARD_ROOT / "releases" / found).exists():
         if current_release(KEYBOARD_ROOT) == found:
             cmdline.say("ok", f"Full Keyboard {found}")
@@ -191,6 +211,19 @@ def frametop_status(item: Item, opts: Options) -> Status:
     if ver != item["version"]:
         return Status(State.OUTDATED, f"{ver} installed, {item['version']} in the catalog")
     return Status(State.OK, ver)
+
+
+def frametop_check(item: Item, opts: Options, status: Status) -> Check:
+    have = current_release(FRAMETOP_RELEASES) or ""
+    pinned = item["version"]
+    found = latest_tag(item["repo"]).lstrip("v")
+    if newer(found, pinned):
+        return Check(Fresh.BEHIND, have, found, "GitHub release",
+                     f"the catalog records {pinned}: bump version and sha256 in catalog.toml "
+                     f"(cjf install frametop --version {found} takes it on its own sums)")
+    if have != pinned:
+        return Check(Fresh.OUTDATED, have, pinned, "the catalog")
+    return Check(Fresh.CURRENT, have, source="GitHub release")
 
 
 def frametop_install(item: Item, opts: Options, args: list[str]) -> bool:
@@ -302,14 +335,13 @@ def frametop_uninstall(item: Item, opts: Options) -> bool:
 INSTALLERS = {
     "bsmanager": (bsmanager_status, bsmanager_install,
                   lambda item, opts: bsmanager_install(item, opts, ["--uninstall"]),
-                  "[--uninstall | --appimage FILE]"),
-    "full-keyboard": (keyboard_status, keyboard_install, keyboard_uninstall, "[--version X.Y.Z]"),
+                  "[--uninstall | --appimage FILE]", bsmanager_check),
+    "full-keyboard": (keyboard_status, keyboard_install, keyboard_uninstall, "[--version X.Y.Z]",
+                      keyboard_check),
     "frametop": (frametop_status, frametop_install, frametop_uninstall,
                  "[--version X.Y.Z] [--reinstall] [--yes] [--no-eye-tracker] [--no-bluetooth | --bluetooth] "
-                 "[--any-steamos] [--unpack-only]"),
+                 "[--any-steamos] [--unpack-only]", frametop_check),
 }
-# full-keyboard checks the latest release each time, so --all may run it.
-UPDATES = {"full-keyboard"}
 
 
 class Kind(Base):
@@ -331,5 +363,5 @@ class Kind(Base):
     def options_for(self, item: Item) -> str:
         return self._routines(item)[3]
 
-    def updates_item(self, item: Item) -> bool:
-        return item.get("installer") in UPDATES
+    def check(self, item: Item, opts: Options, status: Status) -> Check:
+        return self._routines(item)[4](item, opts, status)

@@ -13,11 +13,41 @@ the config)."""
 from __future__ import annotations
 
 import sys
+import threading
 
 from ... import cmdline, config
 from ...cmdline import Error, Options
-from ..catalog import Item, State, Status
+from ..catalog import Check, Fresh, Item, State, Status
 from .base import Base, require_commands
+
+_updates: dict[str, dict[str, tuple[str, str]]] = {}
+_updates_lock = threading.Lock()
+
+
+def updates_available(opts: Options, scope: str) -> dict[str, tuple[str, str]]:
+    """app id -> (version, origin) for every app of the installation
+    with an update at its remote: one `flatpak remote-ls --updates` per
+    scope, which asks every remote, so it is asked once and shared by
+    the checks that run together. The system installation can be read
+    without root."""
+    with _updates_lock:
+        if scope not in _updates:
+            proc = cmdline.run(opts, ["flatpak", f"--{scope}", "remote-ls", "--updates", "--app",
+                                      "--columns=application,version,origin"],
+                               check=False, capture=True, timeout=120)
+            if proc.returncode != 0:
+                raise Error(f"flatpak --{scope} remote-ls failed: {proc.stderr.strip()}")
+            _updates[scope] = parse_updates(proc.stdout)
+        return _updates[scope]
+
+
+def parse_updates(text: str) -> dict[str, tuple[str, str]]:
+    found = {}
+    for line in text.splitlines():
+        parts = line.split("\t")
+        if len(parts) >= 3:
+            found[parts[0]] = (parts[1], parts[2])
+    return found
 
 
 def scope_of(opts: Options, args: list[str]) -> str:
@@ -51,8 +81,6 @@ def info(opts: Options, scope: str, ref: str) -> dict[str, str]:
 
 
 class Kind(Base):
-    updates = True
-
     options = "[--user|--system]  (the installation; default [flatpak] scope, else user)"
 
     def status(self, item: Item, opts: Options) -> Status:
@@ -63,6 +91,23 @@ class Kind(Base):
                 detail = found.get("Version") or found.get("Commit", "")[:12]
                 return Status(State.OK, f"{detail} ({scope})".strip())
         return Status(State.MISSING)
+
+    def check(self, item: Item, opts: Options, status: Status) -> Check:
+        app = item["app"]
+        for scope in ("user", "system"):
+            found = info(opts, scope, app) if scope == "user" else info_system(opts, app)
+            if found:
+                break
+        else:
+            return Check(Fresh.UNKNOWN, note="not installed")
+        have = found.get("Version") or found.get("Commit", "")[:12]
+        update = updates_available(opts, scope).get(app)
+        if update:
+            # The same version at the remote is a rebuild (a runtime
+            # bump, say), which flatpak update takes all the same.
+            available = update[0] if update[0] != have else f"{update[0]}, a new build"
+            return Check(Fresh.OUTDATED, have, available, update[1])
+        return Check(Fresh.CURRENT, have, source=found.get("Origin", item["remote"]))
 
     def install(self, item: Item, opts: Options, args: list[str]) -> bool:
         require_commands("flatpak")

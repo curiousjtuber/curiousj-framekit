@@ -7,7 +7,7 @@ from __future__ import annotations
 from ... import config
 from ...cmdline import Options
 from ...frame import cursor
-from ..catalog import Item, State, Status
+from ..catalog import Check, Fresh, Item, State, Status
 from .base import Base
 
 
@@ -22,6 +22,9 @@ class Kind(Base):
         if kind == "other":
             return Status(State.UNKNOWN, "a file that isn't the kit's")
         return Status(State.OK, f"software cursor {value}")
+
+    def check(self, item: Item, opts: Options, status: Status) -> Check:
+        return Check(Fresh.CURRENT, status.detail, source="this kit", note="nothing to fetch")
 
     def install(self, item: Item, opts: Options, args: list[str]) -> bool:
         verb = "auto"

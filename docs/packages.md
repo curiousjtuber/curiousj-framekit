@@ -33,8 +33,8 @@ their size before the question (`--clean` deletes unasked, `--keep` asks
 nothing; homeify's `PKGBUILD.upstream` is kept either way). Keep them
 while a PKGBUILD is being adjusted, since `makepkg -R` repackages from
 them in seconds. `cjf install emacs`, `pacman` and `krdc` build
-when `pacman-home` doesn't have the PKGBUILD's version, so `cjf install
---all` rebuilds what you bump after a SteamOS update.
+when `pacman-home` doesn't have the PKGBUILD's version, so `cjf update`
+rebuilds what you bump after a SteamOS update.
 `pc/pkgbuilds/frame-control-bin` is the other kind, an ordinary `/usr`
 package for an Arch PC, which nothing here builds or offers; the PC's
 `krdpserver-embed-cursor` is a `~/.local` build by script (see [the PC
@@ -135,7 +135,11 @@ with Arch Linux ARM's repositories, with the AUR for one they lack, and
 with the kit's PKGBUILD for it, so a bump upstream shows up
 without a build. The release number after the dash is this repo's own
 and isn't compared; a packaging that tracks git, as Arch's pacman does,
-is marked as a snapshot.
+is marked as a snapshot. `cjf outdated` makes the same comparison for
+the catalog's packages among everything else it checks: a relocated
+package with a newer one upstream is `outdated`, and `cjf update`
+relocates the new one; a built package whose upstream moved past its
+PKGBUILD is `behind`, which is a bump in the PKGBUILD, here.
 
 The pacman it runs is the host's until the kit's `pacman` package is
 installed. That is pacman 7 built for the prefix, with its programs

@@ -74,6 +74,7 @@ trust_checks = "the BLAKE2 sum in the PKGBUILD, by makepkg"
 kind = "installer-script"
 description = "distrobox under ~/.local, working from Desktop Mode and Frametop"
 url = "https://raw.githubusercontent.com/89luca89/distrobox/main/install"
+repo = "https://github.com/89luca89/distrobox"
 args = ["--prefix", "~/.local"]
 command = "distrobox"
 version_args = ["version"]

@@ -7,9 +7,11 @@ entry onto it. A build runs in ~/.cache/curiousj-framekit/build/NAME,
 a copy of the PKGBUILD's directory, not inside the package.
 
 A package built here is outdated when pacman-home's version differs
-from the PKGBUILD's pkgver-pkgrel; a relocated one is checked against
-Arch Linux ARM by `pacman-home outdated`, which needs the network, so
-`installed` shows only what is there."""
+from the PKGBUILD's pkgver-pkgrel, which `installed` sees without the
+network. `outdated` asks Arch Linux ARM, and the AUR for a package it
+lacks, as `pacman-home outdated` does: a relocated package is outdated
+when they have a newer one; a built one is behind when they have a
+newer one than the PKGBUILD, which is a bump here, not an install."""
 
 from __future__ import annotations
 
@@ -17,13 +19,28 @@ import os
 import shutil
 import subprocess
 import sys
+import threading
 from pathlib import Path
 
 from ... import cmdline
 from ...cmdline import Error, Options
 from ...frame import pkg
-from ..catalog import Item, State, Status
+from ..catalog import Check, Fresh, Item, State, Status
 from .base import Base, require_commands
+
+_synced: set[str] = set()
+_sync_lock = threading.Lock()
+
+
+def synced_paths() -> pkg.Paths:
+    """Paths with Arch Linux ARM's databases synced once per run, for
+    the checks that run together."""
+    p = paths()
+    with _sync_lock:
+        if str(p.home) not in _synced:
+            pkg.sync_alarm(p)
+            _synced.add(str(p.home))
+    return p
 
 
 def paths() -> pkg.Paths:
@@ -46,8 +63,6 @@ def pkg_install(file: Path) -> None:
 
 
 class Kind(Base):
-    updates = True
-
     def status(self, item: Item, opts: Options) -> Status:
         p = pkg.Paths()
         if not os.access(p.pacman, os.X_OK):
@@ -72,6 +87,28 @@ class Kind(Base):
                 if want and want != have:
                     return Status(State.OUTDATED, f"{have} installed, {want} in the PKGBUILD")
         return Status(State.OK, have)
+
+    def check(self, item: Item, opts: Options, status: Status) -> Check:
+        if status.state == State.UNKNOWN:
+            return Check(Fresh.UNKNOWN, note=status.detail)
+        p = synced_paths()
+        have = pkg.query_version(p, item["package"]) or ""
+        found = pkg.upstream_version(p, item["package"])
+        if item.get("relocate"):
+            if not found:
+                return Check(Fresh.UNKNOWN, have, note="not found upstream")
+            if pkg.vercmp(p, found[0], have.rsplit("-", 1)[0]) > 0:
+                return Check(Fresh.OUTDATED, have, found[0], found[1])
+            return Check(Fresh.CURRENT, have, source=found[1])
+        _, ver, rel, _ = pkg.pkgbuild_info(pkg.pkgbuilds_dir() / item["pkgbuild"])
+        if found and pkg.vercmp(p, found[0], ver) > 0:
+            snapshot = ", a git snapshot" if pkg.is_snapshot(found[0]) else ""
+            return Check(Fresh.BEHIND, have, found[0], found[1] + snapshot,
+                         f"the PKGBUILD has {ver}: bump data/pkgbuilds/{item['pkgbuild']}/PKGBUILD")
+        if status.state == State.OUTDATED:
+            return Check(Fresh.OUTDATED, have, f"{ver}-{rel}", "the kit's PKGBUILD")
+        return Check(Fresh.CURRENT, have, source=found[1] if found else "the kit's PKGBUILD",
+                     note="" if found else "not found upstream")
 
     def install(self, item: Item, opts: Options, args: list[str]) -> bool:
         self.no_args(item, args)

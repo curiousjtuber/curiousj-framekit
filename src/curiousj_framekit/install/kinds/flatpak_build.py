@@ -26,7 +26,7 @@ from pathlib import Path
 
 from ... import cmdline, where
 from ...cmdline import Error, Options
-from ..catalog import Item, State, Status
+from ..catalog import Check, Fresh, Item, State, Status
 from .base import Base, require_commands
 
 FLATHUB = "https://dl.flathub.org/repo/flathub.flatpakrepo"
@@ -92,6 +92,12 @@ class Kind(Base):
         if installed_stamp() != stamp(item):
             return Status(State.OUTDATED, f"{commit}; the manifest changed since the build")
         return Status(State.OK, commit)
+
+    def check(self, item: Item, opts: Options, status: Status) -> Check:
+        if status.state == State.OUTDATED:
+            return Check(Fresh.OUTDATED, status.detail.split(";")[0], "a rebuild", "the kit's manifest")
+        return Check(Fresh.CURRENT, status.detail, source="the kit's manifest",
+                     note="every source pinned there")
 
     def install(self, item: Item, opts: Options, args: list[str]) -> bool:
         where.require_host(item.name)

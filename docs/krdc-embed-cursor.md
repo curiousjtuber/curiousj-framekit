@@ -29,8 +29,7 @@ in place of the flatpak the item used to install. The host lacks
 extra-cmake-modules and qtkeychain, so the PKGBUILD carries both, the
 first for the build only. `cjf installed` shows pacman-home's version
 and says outdated once the PKGBUILD's moves on (a new release, or a
-`pkgrel` bump for a changed patch); `cjf install --all` rebuilds it
-then; `cjf uninstall krdc` is `pacman-home -R krdc`, and leaves the
+`pkgrel` bump for a changed patch); `cjf update` rebuilds it then; `cjf uninstall krdc` is `pacman-home -R krdc`, and leaves the
 flatpak, if any, as the menu's KRDC again. On the PC, where cjf does
 not run, the script does the same build from the checkout, on any
 distribution with KDE Frameworks 6 and FreeRDP 3:

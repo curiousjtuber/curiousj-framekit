@@ -1,8 +1,9 @@
 # Installing things: the catalog, and how setup.sh did it
 
 The kit installs optional things from its catalog: `cjf install NAME`,
-`cjf install` bare to pick, `cjf installed` for every item's state,
-`cjf install --all` to update what updates by installing again, `cjf
+`cjf install` bare to pick, `cjf installed` for every item's state as
+the Frame has it, `cjf outdated` for the same against each upstream
+(the network), `cjf update` to install what that finds newer, `cjf
 uninstall NAME`, and `cjf install --help` for each item's options.
 [TRUST.md](TRUST.md) says what each item checks. The sections below
 are the README's from before the kit, kept for the reasons behind each

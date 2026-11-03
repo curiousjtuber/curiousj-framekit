@@ -6,7 +6,7 @@ from unittest import mock
 from curiousj_framekit import cmdline
 from curiousj_framekit.cmdline import Options
 from curiousj_framekit.install import catalog
-from curiousj_framekit.install.catalog import Item, State, Status
+from curiousj_framekit.install.catalog import Check, Fresh, Item, State, Status
 from curiousj_framekit.install.kinds import base, flatpak, flatpak_build, tailscale, upstream, uv_tool
 
 SUMS = ("abc123  other.tar.gz\n"
@@ -152,21 +152,109 @@ class StampIgnoresComments(unittest.TestCase):
             path.write_text(original)
 
 
-class WantsUpdate(unittest.TestCase):
-    def test_which_items_all_runs(self):
-        from curiousj_framekit.install import commands
-        from curiousj_framekit.install.catalog import Status
-        items = catalog.load()
-        ok = Status(State.OK, "x")
-        self.assertTrue(commands.wants_update(items["moonlight"], ok))
-        self.assertTrue(commands.wants_update(items["curiousj-tools"], ok))
-        self.assertTrue(commands.wants_update(items["full-keyboard"], ok))
-        self.assertFalse(commands.wants_update(items["frametop"], ok))
-        self.assertFalse(commands.wants_update(items["bsmanager"], ok))
-        self.assertFalse(commands.wants_update(items["krdp"], ok))
-        self.assertFalse(commands.wants_update(items["cursor"], ok))
-        self.assertTrue(commands.wants_update(items["krdp"], Status(State.OUTDATED, "x")))
-        self.assertFalse(commands.wants_update(items["moonlight"], Status(State.MISSING)))
+class Versions(unittest.TestCase):
+    def test_version_tuple(self):
+        self.assertEqual(base.version_tuple("v3.5.1"), (3, 5, 1))
+        self.assertEqual(base.version_tuple("0.12.0-install-H62l1s"), (0, 12, 0))
+        self.assertEqual(base.version_tuple("1.8.2.5"), (1, 8, 2, 5))
+        self.assertEqual(base.version_tuple("main"), ())
+
+    def test_newer(self):
+        self.assertTrue(base.newer("1.104.5", "1.102.4"))
+        self.assertFalse(base.newer("1.102.4", "1.104.5"))
+        self.assertFalse(base.newer("v3.5.1", "v3.5.1"))
+        self.assertTrue(base.newer("0.14.1", "0.12.0-install-H62l1s"))
+        self.assertFalse(base.newer("0.12.0", "0.12.0-install-H62l1s"))
+        self.assertTrue(base.newer("beta", "alpha"))
+        self.assertFalse(base.newer("v1.0", "1.0"))
+
+
+class Checks(unittest.TestCase):
+    """The parsers over captured output, and the checks that need no
+    network."""
+
+    def test_flatpak_updates(self):
+        found = flatpak.parse_updates("org.deskflow.deskflow\t1.27.0\tflathub\n")
+        self.assertEqual(found, {"org.deskflow.deskflow": ("1.27.0", "flathub")})
+        self.assertEqual(flatpak.parse_updates(""), {})
+
+    def test_brew_outdated(self):
+        from curiousj_framekit.install.kinds import brew
+        text = '{"formulae":[{"name":"zsh","installed_versions":["5.9"],"current_version":"5.9.1"}],"casks":[]}'
+        self.assertEqual(brew.parse_outdated(text), {"zsh": ("5.9", "5.9.1")})
+        self.assertEqual(brew.parse_outdated('{"formulae":[],"casks":[]}'), {})
+        with self.assertRaises(cmdline.Error):
+            brew.parse_outdated("==> not json")
+
+    def test_mise_outdated(self):
+        from curiousj_framekit.install.kinds import mise
+        text = '{"rust": {"name": "rust", "requested": "latest", "current": "1.91.0", "latest": "1.92.0"}}'
+        self.assertEqual(mise.parse_outdated(text, "rust"), ("1.91.0", "1.92.0"))
+        self.assertIsNone(mise.parse_outdated("{}", "rust"))
+        self.assertIsNone(mise.parse_outdated("", "rust"))
+
+    def test_uv_tool_origin(self):
+        self.assertEqual(uv_tool.origin_of({"url": "file:///home/steamos/curiousj-tools",
+                                            "dir_info": {"editable": True}}),
+                         ("editable", "/home/steamos/curiousj-tools"))
+        self.assertEqual(uv_tool.origin_of({"url": "https://github.com/x/y",
+                                            "vcs_info": {"vcs": "git", "commit_id": "abc"}}),
+                         ("git", "https://github.com/x/y"))
+        self.assertIsNone(uv_tool.origin_of({}))
+        self.assertIsNone(uv_tool.origin_of({"url": "https://files.pythonhosted.org/x.whl",
+                                             "archive_info": {}}))
+
+    def test_frametop_check_against_catalog(self):
+        item = catalog.load()["frametop"]
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d)
+            (root / "releases" / "0.2.1").mkdir(parents=True)
+            (root / "current").symlink_to("releases/0.2.1")
+            with mock.patch.object(upstream, "FRAMETOP_RELEASES", root), \
+                    mock.patch.object(upstream, "latest_tag", return_value=f"v{item['version']}"):
+                check = upstream.frametop_check(item, Options(), Status(State.OUTDATED, "x"))
+            self.assertEqual((check.fresh, check.installed, check.available), (Fresh.OUTDATED, "0.2.1", item["version"]))
+            with mock.patch.object(upstream, "FRAMETOP_RELEASES", root), \
+                    mock.patch.object(upstream, "latest_tag", return_value="v9.0.0"):
+                check = upstream.frametop_check(item, Options(), Status(State.OUTDATED, "x"))
+            self.assertEqual(check.fresh, Fresh.BEHIND)
+            self.assertIn("bump version and sha256", check.note)
+
+    def test_local_outdated_wins(self):
+        """A missing part or a moved pin is outdated whatever upstream says."""
+        from curiousj_framekit.install.kinds import config
+        item = catalog.load()["cursor"]
+        with mock.patch.object(config.Kind, "check", return_value=Check(Fresh.CURRENT, "1")):
+            check = catalog.check_of(item, Options(), Status(State.OUTDATED, "missing wl-clipboard"))
+        self.assertEqual(check.fresh, Fresh.OUTDATED)
+        self.assertEqual(check.note, "missing wl-clipboard")
+        with mock.patch.object(config.Kind, "check", side_effect=cmdline.Error("no network")):
+            check = catalog.check_of(item, Options(), Status(State.OK, "1"))
+        self.assertEqual(check.fresh, Fresh.UNKNOWN)
+        self.assertIn("no network", check.note)
+
+    def test_check_lines(self):
+        from curiousj_framekit.install import update
+        lines = update.check_lines({
+            "tailscale": Check(Fresh.OUTDATED, "1.102.4", "1.104.5", "pkgs.tailscale.com stable"),
+            "emacs": Check(Fresh.BEHIND, "31.1-1", "31.2", "Arch Linux ARM", "the PKGBUILD has 31.1: bump it"),
+            "frametop": Check(Fresh.CURRENT, "0.2.2", source="GitHub release"),
+            "bsmanager": Check(Fresh.UNKNOWN, "AppImage", note="updates itself"),
+        })
+        self.assertEqual(lines, [
+            "outdated  tailscale  1.102.4 -> 1.104.5 (pkgs.tailscale.com stable)",
+            "behind    emacs      31.1-1 -> 31.2 (Arch Linux ARM); the PKGBUILD has 31.1: bump it",
+            "current   frametop   0.2.2 (GitHub release)",
+            "?         bsmanager  AppImage; updates itself",
+        ])
+
+    def test_every_kind_answers_check(self):
+        """No kind falls through to Base's `no way to tell` by accident:
+        each one defines check (the cursor's says current)."""
+        from curiousj_framekit.install.kinds import MODULES
+        for name in MODULES:
+            module = __import__(f"curiousj_framekit.install.kinds.{MODULES[name]}", fromlist=["Kind"])
+            self.assertIn("check", vars(module.Kind), name)
 
 
 class PacmanHome(unittest.TestCase):

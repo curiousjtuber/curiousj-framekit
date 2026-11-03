@@ -13,17 +13,11 @@ from pathlib import Path
 
 from ... import cmdline
 from ...cmdline import Error, Options
-from ..catalog import Item, State, Status
+from ..catalog import Check, Fresh, Item, State, Status
 
 
 class Base:
     options = ""
-    # Whether `cjf install --all` runs an item of this kind that is ok,
-    # because installing again is how it updates (a Flatpak, a uv tool).
-    # Kinds where that would redo a long install for nothing (Frametop's
-    # 1.1 GB, a build) leave it False and are run by --all only when
-    # outdated.
-    updates = False
 
     def status(self, item: Item, opts: Options) -> Status:
         return Status(State.UNKNOWN)
@@ -33,6 +27,17 @@ class Base:
 
     def uninstall(self, item: Item, opts: Options) -> bool:
         raise Error(f"{item.name}: no uninstall here; see the docs")
+
+    def check(self, item: Item, opts: Options, status: Status) -> Check:
+        """The installed item against its upstream, with the network;
+        `status` is the local state, already taken. A kind with no way
+        to tell says so."""
+        return Check(Fresh.UNKNOWN, status.detail, note="no way to tell")
+
+    def update(self, item: Item, opts: Options) -> bool:
+        """Install the newer version `check` found. Installing again is
+        how most kinds update; the others override."""
+        return self.install(item, opts, [])
 
     def no_args(self, item: Item, args: list[str]) -> None:
         if args:
@@ -77,6 +82,33 @@ def final_url(url: str, timeout: float = 30) -> str:
             return r.geturl()
     except OSError as e:
         raise Error(f"can't reach {url}: {e}") from None
+
+
+def latest_tag(repo: str) -> str:
+    """The tag a GitHub repository's releases/latest redirects to, as
+    written (v0.2.2, 1.8.2.5)."""
+    tag = final_url(f"{repo}/releases/latest").rstrip("/").rsplit("/", 1)[-1]
+    if tag == "latest" or tag == "releases":
+        raise Error(f"{repo} has no release")
+    return tag
+
+
+def version_tuple(version: str) -> tuple[int, ...]:
+    """The leading dotted numbers of a version, for comparing: v3.5.1 is
+    (3, 5, 1), 0.12.0-install-H62l1s is (0, 12, 0). () when it doesn't
+    start with a number."""
+    m = re.match(r"v?(\d+(?:\.\d+)*)", version.strip())
+    return tuple(int(n) for n in m.group(1).split(".")) if m else ()
+
+
+def newer(candidate: str, installed: str) -> bool:
+    """Whether candidate's leading numbers are above installed's. Two
+    unnumbered versions are compared as text, unequal meaning newer,
+    since a release tag that changed is a release that happened."""
+    a, b = version_tuple(candidate), version_tuple(installed)
+    if a and b:
+        return a > b
+    return candidate.strip().lstrip("v") != installed.strip().lstrip("v")
 
 
 def sha256_of(path: Path) -> str:
