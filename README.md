@@ -88,7 +88,8 @@ what each one checks.
 |---|---|
 | `src/curiousj_framekit/` | the package: `frame/` (the Frame's own: cursor, wifi, vr, controllers, rdp, pkg, after-update), `install/` (the catalog and its kinds, init, migrate, status), `beatsaber/`, `shell/` (init.sh and the shims), `data/` (the KRdp manifest and patches, the RDP GUI) |
 | `src/curiousj_framekit/data/pkgbuilds/` | the kit's PKGBUILDs, built for `~/.local` in `~/.cache/curiousj-framekit/build/`: emacs, pacman |
-| `pc/` | the PC side: PKGBUILDs for an Arch PC (krdpserver with an embedded cursor, Frame Control) and what the Frame's docs assume there ([pc/README.md](pc/README.md)) |
+| `pc/` | the PC side: krdpserver patched to paint the PC's pointer into the video for a viewer that asks, built by script, Frame Control's PKGBUILD, and what the Frame's docs assume there ([pc/README.md](pc/README.md)) |
+| `krdc-embed-cursor/` | KRDC with the option that asks for it, built by script on the PC and on the Frame ([krdc-embed-cursor/README.md](krdc-embed-cursor/README.md)) |
 | `docs/` | [install.md](docs/install.md), [apps.md](docs/apps.md), [tailscale.md](docs/tailscale.md), [shell-init.md](docs/shell-init.md), [cursor.md](docs/cursor.md), [packages.md](docs/packages.md), [TRUST.md](docs/TRUST.md); and the memos: [the desktop cursor on 0.5.6](docs/desktop-cursor.md), [packages under ~/.local](docs/home-packages.md), [paru](docs/paru.md), [the proximity sensor](docs/proximity-sensor.md), [the screen reader](docs/orca-screen-reader.md), [Arch distrobox images](docs/arch-distrobox-images.md); `notes/` has the AA calibration data |
 | `docs/reorg/` | the reorganization from `steam-frame-utils`, closed 2026-11-01: [plan.md](docs/reorg/plan.md) (its decisions), [steps.md](docs/reorg/steps.md) (its stages), [scenarios.md](docs/reorg/scenarios.md) (the usage it aimed at) |
 | `install.sh` | the bootstrap: mise, uv, fzf, the kit, `cjf init` |

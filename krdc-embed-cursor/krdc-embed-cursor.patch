@@ -1,0 +1,127 @@
+KRDC gets a per-host RDP option, "Remote pointer: painted into the video
+by the server" (embeddedCursor in the host's group of krdcrc, Bool,
+default false). On, the client advertises no pointer cache in its
+capabilities (both pointer cache sizes 0), which tells the server this
+client draws no pointer shapes; a server that can, such as KRdp with
+this repository's krdp-embed-cursor.patch, then paints its own pointer
+into the video and sends the null pointer, so the picture shows where
+the remote mouse is, as the remote screen does, for a viewer that only
+watches. Stock KRdp 6.8 crashes on a client without a pointer cache (it
+means to refuse one, but checks before the client's capabilities arrive
+and then evicts from an empty cache), and other servers are untested;
+the tooltip warns that a server without support may fail. Off, nothing
+changes: the sizes stay at FreeRDP's defaults and the server sends
+shapes as before. View > Show Local Cursor is left alone: with it on,
+the viewer's own pointer shows over the remote one, which some want.
+Made against krdc 26.08.2.
+
+diff --color -ruN --no-dereference a/core/krdc.kcfg b/core/krdc.kcfg
+--- a/core/krdc.kcfg
++++ b/core/krdc.kcfg
+@@ -130,6 +130,9 @@
+     <entry name="PreventSessionLock" type="Bool">
+       <default>false</default>
+     </entry>
++    <entry name="EmbeddedCursor" type="Bool">
++      <default>false</default>
++    </entry>
+     <entry name="TlsSecLevel" type="Int">
+       <default>1</default>
+     </entry>
+diff --color -ruN --no-dereference a/rdp/rdphostpreferences.cpp b/rdp/rdphostpreferences.cpp
+--- a/rdp/rdphostpreferences.cpp
++++ b/rdp/rdphostpreferences.cpp
+@@ -133,6 +133,7 @@
+     rdpUi.kcfg_ScaleToSize->setChecked(scaleToSize());
+     rdpUi.kcfg_ConsoleMode->setChecked(consoleMode());
+     rdpUi.kcfg_PreventSessionLock->setChecked(preventSessionLock());
++    rdpUi.kcfg_EmbeddedCursor->setChecked(embeddedCursor());
+     rdpUi.kcfg_Height->setValue(height());
+     rdpUi.kcfg_Width->setValue(width());
+     rdpUi.kcfg_Resolution->setCurrentIndex(int(resolution()));
+@@ -240,6 +241,7 @@
+     setScaleToSize(rdpUi.kcfg_ScaleToSize->isChecked());
+     setConsoleMode(rdpUi.kcfg_ConsoleMode->isChecked());
+     setPreventSessionLock(rdpUi.kcfg_PreventSessionLock->isChecked());
++    setEmbeddedCursor(rdpUi.kcfg_EmbeddedCursor->isChecked());
+     setWidth(rdpUi.kcfg_Width->value());
+     setHeight(rdpUi.kcfg_Height->value());
+     setResolution(Resolution(rdpUi.kcfg_Resolution->currentIndex()));
+@@ -299,6 +301,16 @@
+     m_configGroup.writeEntry("PreventSessionLock", enabled);
+ }
+ 
++bool RdpHostPreferences::embeddedCursor() const
++{
++    return m_configGroup.readEntry("embeddedCursor", Settings::embeddedCursor());
++}
++
++void RdpHostPreferences::setEmbeddedCursor(bool enabled)
++{
++    m_configGroup.writeEntry("embeddedCursor", enabled);
++}
++
+ RdpHostPreferences::Resolution RdpHostPreferences::resolution() const
+ {
+     return Resolution(m_configGroup.readEntry("resolution", Settings::resolution()));
+diff --color -ruN --no-dereference a/rdp/rdphostpreferences.h b/rdp/rdphostpreferences.h
+--- a/rdp/rdphostpreferences.h
++++ b/rdp/rdphostpreferences.h
+@@ -93,6 +93,9 @@
+     bool preventSessionLock() const;
+     void setPreventSessionLock(bool enabled);
+ 
++    bool embeddedCursor() const;
++    void setEmbeddedCursor(bool enabled);
++
+     Resolution resolution() const;
+     void setResolution(Resolution resolution);
+ 
+diff --color -ruN --no-dereference a/rdp/rdppreferences.ui b/rdp/rdppreferences.ui
+--- a/rdp/rdppreferences.ui
++++ b/rdp/rdppreferences.ui
+@@ -717,6 +717,26 @@
+          </property>
+         </widget>
+        </item>
++       <item row="13" column="0">
++        <widget class="QLabel" name="embeddedCursorLabel">
++         <property name="text">
++          <string>Remote pointer:</string>
++         </property>
++         <property name="alignment">
++          <set>Qt::AlignmentFlag::AlignRight|Qt::AlignmentFlag::AlignTrailing|Qt::AlignmentFlag::AlignVCenter</set>
++         </property>
++        </widget>
++       </item>
++       <item row="13" column="1">
++        <widget class="QCheckBox" name="kcfg_EmbeddedCursor">
++         <property name="toolTip">
++          <string>Advertise no pointer cache, so that a server which supports it (KRdp) paints its own pointer into the video instead of sending pointer shapes for this client to draw at its pointer. The picture then shows where the remote mouse is, as the remote screen does. A server without support may refuse the connection.</string>
++         </property>
++         <property name="text">
++          <string>Painted into the video by the server</string>
++         </property>
++        </widget>
++       </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="securitySettingsTab">
+diff --color -ruN --no-dereference a/rdp/rdpsession.cpp b/rdp/rdpsession.cpp
+--- a/rdp/rdpsession.cpp
++++ b/rdp/rdpsession.cpp
+@@ -628,6 +628,14 @@
+     if (preferences->preventSessionLock() && !freerdp_settings_set_uint32(settings, FreeRDP_FakeMouseMotionInterval, 180)) {
+         return -1;
+     }
++    if (preferences->embeddedCursor()) {
++        // No pointer cache tells the server this client draws no pointer shapes,
++        // so a server that can (KRdp) paints its own pointer into the video.
++        if (!freerdp_settings_set_uint32(settings, FreeRDP_PointerCacheSize, 0)
++            || !freerdp_settings_set_uint32(settings, FreeRDP_ColorPointerCacheSize, 0)) {
++            return -1;
++        }
++    }
+ 
+     if (!preferences->authPkgList().isEmpty()
+         && !freerdp_settings_set_string(settings, FreeRDP_AuthenticationPackageList, preferences->authPkgList().toUtf8().data())) {

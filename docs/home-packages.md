@@ -23,6 +23,14 @@ Checked and not taken, same day:
 | krdc 26.08.1 | built against Qt 6.11 where the host has 6.8.0 (`version Qt_6.11 not found` on the binary and every plugin); needs qtkeychain and libvncclient, neither on the host; its VNC and RDP backends are Qt plugins under `lib/qt6/plugins/krdc`, which a relocated tree isn't searched for | a KDE application against the host's KDE Frameworks, which a 26.08 release is likely to find too old; the flatpak carries its own Qt and frameworks |
 | moonlight-qt 6.2.0 | the same Qt 6.11 against 6.8.0, and ffmpeg 8's libraries (`libavcodec.so.63`, `libavutil.so.61`, `libswscale.so.10`) and libplacebo where the host has ffmpeg 7 and none of the last | buildable against the host's Qt and ffmpeg 7 in principle, but the flatpak already works and brings its own codecs |
 
+Later (2026-11-03): krdc went in after all, built from source against
+the host's Qt 6.8 and KF 6.14 by
+[krdc-embed-cursor/](../krdc-embed-cursor/README.md), with a patch of
+its own; its minimums are Qt 6.6 and KF 6.0, so "too old" was wrong,
+and the two dependencies the host lacks, extra-cmake-modules and
+qtkeychain, build in minutes. The plugin problem is real and is what
+the launcher is for.
+
 The pattern: a Qt application from Arch Linux ARM is built against
 whatever Qt Arch ships that week, and Qt's symbol versioning (`Qt_6.11`)
 makes a newer build refuse an older host library outright. SteamOS pins
