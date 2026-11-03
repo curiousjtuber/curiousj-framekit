@@ -1,17 +1,33 @@
-krdpserver gets an EmbedCursor option (Bool, [General] of krdpserverrc, default false).
-On, the compositor paints the host's own pointer into the frames (KWin's screencast in
-its Embedded cursor mode, 2 for the portal) and, once the client is streaming, the
-server sends it the null system pointer so it draws none of its own; a viewer then sees
-where the host's mouse is, as someone at the host's monitor does. Off, nothing changes:
-krdp captures with the cursor as metadata and sends the client the pointer's shape to
-draw at the client's own pointer, as before. KWin attaches no cursor metadata in
-Embedded mode, so the null pointer has to be sent explicitly; Streaming is set on the
-connection's own thread and may have passed before the wrapper exists, so the wrapper
-both connects to stateChanged and checks the state at once. The off path is upstream's
-exactly: a false argument, two if (false) tests, and the unchanged mode values.
-Made against krdp 6.8.1. server/krdpserversettings.kcfg is a symlink to the kcm's.
+krdpserver paints the host's pointer into the video for a client that
+cannot draw one, and on request for every client. krdp sends a client
+the pointer's shape to draw at its own pointer, so a viewer that only
+watches never sees where the host's mouse is. A client that advertises
+no pointer cache in its capabilities (pointer cache size 0) is one that
+cannot draw shapes. Upstream means to refuse it ("Client doesn't support
+pointer caching, aborting"), but that check runs in the Capabilities
+callback, which FreeRDP calls before the server's Demand Active on the
+server's own settings, so it never sees the client's value, and the
+first cursor update then evicts from an empty cache in Cursor::update
+and crashes the server. This patch reads the value in Activate, where
+the client's capabilities have been applied, notes it on the connection,
+and the session for it captures with the compositor's cursor painted
+into the frames (KWin's screencast in its Embedded cursor mode, 2 for
+the portal), then, once the client is streaming, sends it the null
+system pointer so it draws none of its own. EmbedCursor=true in
+[General] of ~/.config/krdpserverrc (Bool, default false) does the same
+for every client, for a server that serves only watchers. Off, and for a
+client with a pointer cache, nothing changes: krdp captures with the
+cursor as metadata and sends shapes as before. KWin attaches no cursor
+metadata in Embedded mode, so the null pointer has to be sent
+explicitly; Streaming is set on the connection's own thread and may have
+passed before the wrapper exists, so the wrapper both connects to
+stateChanged and checks the state at once. The off path is upstream's
+exactly: a false argument, two if (false) tests, and the unchanged mode
+values. KRDC asks for this with its "Remote pointer" host option (krdc-
+embed-cursor/ in this repository). Made against krdp 6.8.2.
+server/krdpserversettings.kcfg is a symlink to the kcm's.
 
-diff --color -ruN --no-dereference krdp681/server/main.cpp edit/server/main.cpp
+diff --color -ruN --no-dereference a/server/main.cpp b/server/main.cpp
 --- a/server/main.cpp
 +++ b/server/main.cpp
 @@ -171,6 +171,7 @@
@@ -22,7 +38,7 @@ diff --color -ruN --no-dereference krdp681/server/main.cpp edit/server/main.cpp
  
      if (!server.start()) {
          return -1;
-diff --color -ruN --no-dereference krdp681/server/SessionController.cpp edit/server/SessionController.cpp
+diff --color -ruN --no-dereference a/server/SessionController.cpp b/server/SessionController.cpp
 --- a/server/SessionController.cpp
 +++ b/server/SessionController.cpp
 @@ -38,9 +38,10 @@
@@ -33,7 +49,7 @@ diff --color -ruN --no-dereference krdp681/server/SessionController.cpp edit/ser
 +    SessionWrapper(KRdp::RdpConnection *conn, std::unique_ptr<KRdp::AbstractSession> &&sess, KStatusNotifierItem *sni, bool embedCursor)
          : session(std::move(sess))
          , connection(conn)
-+        , m_embedCursor(embedCursor)
++        , m_embedCursor(embedCursor || conn->clientNeedsEmbeddedCursor())
      {
          m_sni = sni;
  
@@ -111,7 +127,7 @@ diff --color -ruN --no-dereference krdp681/server/SessionController.cpp edit/ser
          if (m_virtualMonitor) {
              wrapper->session->setVirtualMonitor(*m_virtualMonitor);
          } else if (m_monitorIndex) {
-diff --color -ruN --no-dereference krdp681/server/SessionController.h edit/server/SessionController.h
+diff --color -ruN --no-dereference a/server/SessionController.h b/server/SessionController.h
 --- a/server/SessionController.h
 +++ b/server/SessionController.h
 @@ -44,6 +44,7 @@
@@ -130,7 +146,7 @@ diff --color -ruN --no-dereference krdp681/server/SessionController.h edit/serve
      std::optional<KRdp::VirtualMonitor> m_virtualMonitor;
  
      std::unique_ptr<KRdp::AbstractSession> m_initializationSession;
-diff --color -ruN --no-dereference krdp681/src/AbstractSession.cpp edit/src/AbstractSession.cpp
+diff --color -ruN --no-dereference a/src/AbstractSession.cpp b/src/AbstractSession.cpp
 --- a/src/AbstractSession.cpp
 +++ b/src/AbstractSession.cpp
 @@ -20,6 +20,7 @@
@@ -158,7 +174,7 @@ diff --color -ruN --no-dereference krdp681/src/AbstractSession.cpp edit/src/Abst
  bool AbstractSession::isStarted() const
  {
      return d->started;
-diff --color -ruN --no-dereference krdp681/src/AbstractSession.h edit/src/AbstractSession.h
+diff --color -ruN --no-dereference a/src/AbstractSession.h b/src/AbstractSession.h
 --- a/src/AbstractSession.h
 +++ b/src/AbstractSession.h
 @@ -41,6 +41,11 @@
@@ -181,7 +197,7 @@ diff --color -ruN --no-dereference krdp681/src/AbstractSession.h edit/src/Abstra
  
      void setStarted(bool started);
      void setLogicalSize(QSize size);
-diff --color -ruN --no-dereference krdp681/src/Cursor.h edit/src/Cursor.h
+diff --color -ruN --no-dereference a/src/Cursor.h b/src/Cursor.h
 --- a/src/Cursor.h
 +++ b/src/Cursor.h
 @@ -53,9 +53,13 @@
@@ -199,7 +215,7 @@ diff --color -ruN --no-dereference krdp681/src/Cursor.h edit/src/Cursor.h
      class Private;
      const std::unique_ptr<Private> d;
  };
-diff --color -ruN --no-dereference krdp681/src/kcm/krdpserversettings.kcfg edit/src/kcm/krdpserversettings.kcfg
+diff --color -ruN --no-dereference a/src/kcm/krdpserversettings.kcfg b/src/kcm/krdpserversettings.kcfg
 --- a/src/kcm/krdpserversettings.kcfg
 +++ b/src/kcm/krdpserversettings.kcfg
 @@ -47,5 +47,9 @@
@@ -207,15 +223,15 @@ diff --color -ruN --no-dereference krdp681/src/kcm/krdpserversettings.kcfg edit/
        <default>false</default>
      </entry>
 +    <entry name="embedCursor" key="EmbedCursor" type="Bool">
-+      <label>Paint the host's pointer into the video and tell the client to draw none, instead of sending the pointer's shape for the client to draw at its own pointer</label>
++      <label>Paint the host's pointer into the video for every client and tell it to draw none, instead of sending the pointer's shape for the client to draw at its own pointer; a client that advertises no pointer cache gets this whether or not the option is on</label>
 +      <default>false</default>
 +    </entry>
    </group>
  </kcfg>
-diff --color -ruN --no-dereference krdp681/src/PlasmaScreencastV1Session.cpp edit/src/PlasmaScreencastV1Session.cpp
+diff --color -ruN --no-dereference a/src/PlasmaScreencastV1Session.cpp b/src/PlasmaScreencastV1Session.cpp
 --- a/src/PlasmaScreencastV1Session.cpp
 +++ b/src/PlasmaScreencastV1Session.cpp
-@@ -172,17 +172,18 @@
+@@ -71,17 +71,18 @@
  
  void PlasmaScreencastV1Session::start()
  {
@@ -237,15 +253,73 @@ diff --color -ruN --no-dereference krdp681/src/PlasmaScreencastV1Session.cpp edi
      }
      connect(d->request.get(), &ScreencastingStream::failed, this, &PlasmaScreencastV1Session::error);
      connect(d->request.get(), &ScreencastingStream::created, this, [this](uint nodeId) {
-diff --color -ruN --no-dereference krdp681/src/PortalSession.cpp edit/src/PortalSession.cpp
+diff --color -ruN --no-dereference a/src/PortalSession.cpp b/src/PortalSession.cpp
 --- a/src/PortalSession.cpp
 +++ b/src/PortalSession.cpp
-@@ -179,7 +179,7 @@
+@@ -205,7 +205,7 @@
          parameters = {{QStringLiteral("types"), 1u}, // MONITOR
                        {QStringLiteral("multiple"), activeStream().has_value()}};
      }
 -    parameters[QStringLiteral("cursor_mode")] = 4u; // Metadata
 +    parameters[QStringLiteral("cursor_mode")] = embedCursor() ? 2u : 4u; // Embedded : Metadata
  
-     new PortalRequest(d->screencastInterface->SelectSources(d->sessionPath, parameters), this, &PortalSession::onSourcesSelected);
+     const QString handleToken = createHandleToken();
+     parameters[QStringLiteral("handle_token")] = handleToken;
+diff --color -ruN --no-dereference a/src/RdpConnection.cpp b/src/RdpConnection.cpp
+--- a/src/RdpConnection.cpp
++++ b/src/RdpConnection.cpp
+@@ -244,6 +244,7 @@
+ 
+     State state = State::Initial;
+     bool qualitySeeded = false;
++    bool clientNeedsEmbeddedCursor = false;
+ 
+     qintptr socketHandle;
+ 
+@@ -392,6 +393,11 @@
+     return d->networkDetection.get();
  }
+ 
++bool RdpConnection::clientNeedsEmbeddedCursor() const
++{
++    return d->clientNeedsEmbeddedCursor;
++}
++
+ void RdpConnection::initialize()
+ {
+     setState(State::Starting);
+@@ -656,6 +662,15 @@
+ 
+ bool RdpConnection::onActivate()
+ {
++    // Only now do the settings carry the client's capabilities: Capabilities
++    // runs before the server's Demand Active, on the server's own defaults. A
++    // client without a pointer cache cannot draw pointer shapes, so the
++    // compositor paints the host's pointer into the video for it instead.
++    if (freerdp_settings_get_uint32(d->peer->context->settings, FreeRDP_PointerCacheSize) == 0) {
++        qCInfo(KRDP) << "Client has no pointer cache, the host's pointer goes into the video";
++        d->clientNeedsEmbeddedCursor = true;
++    }
++
+     setState(State::Activated);
+ 
+     if (!d->qualitySeeded) {
+diff --color -ruN --no-dereference a/src/RdpConnection.h b/src/RdpConnection.h
+--- a/src/RdpConnection.h
++++ b/src/RdpConnection.h
+@@ -104,6 +104,15 @@
+ 
+     NetworkDetection *networkDetection() const;
+ 
++    /**
++     * Whether the client advertised no pointer cache in its capabilities.
++     *
++     * Such a client cannot draw pointer shapes of its own, so the host's
++     * pointer has to be painted into the video for it. Known once the
++     * connection is Activated.
++     */
++    bool clientNeedsEmbeddedCursor() const;
++
+ private:
+     friend BOOL peerCapabilities(freerdp_peer *);
+     friend BOOL peerActivate(freerdp_peer *);

@@ -14,17 +14,24 @@ today there is none ([the plan](../docs/reorg/plan.md), Q9).
 
 ## `krdpserver-embed-cursor/`
 
-krdpserver, KDE's RDP server, with an `EmbedCursor` option, built from
-the krdp release that matches your Plasma and installed under
-`~/.local` as a second server beside the distribution's `krdp`, on its
-own port. KRdp sends a viewer the pointer's shape, which the viewer
-draws at its own pointer, so moving the mouse at the PC shows in the
-stream on the Frame only as focus changes. With `EmbedCursor=true` in
-`[General]` of `~/.config/krdpserverrc`, which the script sets, KWin
-paints the PC's pointer into the frames and the viewer draws none, so
-the headset sees where the PC's mouse is. Off, the server is upstream's
-exactly, and the stock one ignores the key. For the Frame + Deskflow +
-Frametop + KRDC scenario; any distribution with Plasma 6 on Wayland.
+krdpserver, KDE's RDP server, patched to paint the PC's pointer into
+the video for a viewer that asks, built from the krdp release that
+matches your Plasma and installed under `~/.local` as a second server
+beside the distribution's `krdp`, on its own port. KRdp sends a viewer
+the pointer's shape, which the viewer draws at its own pointer, so
+moving the mouse at the PC shows in the stream on the Frame only as
+focus changes. A viewer that advertises no pointer cache, which is
+what [KRDC with the kit's patch](../krdc-embed-cursor/) does when its
+"Remote pointer" option is on, is one that cannot draw shapes; upstream
+means to refuse it but checks too early and crashes on it instead,
+this build serves it with KWin painting the PC's pointer into the
+frames and the viewer told to draw none, so the headset sees where the
+PC's mouse is. A viewer with a pointer cache is served as
+upstream does. `EmbedCursor=true` in `[General]` of
+`~/.config/krdpserverrc` (`install --embed-all`; the script writes the
+key `false` otherwise) does it for every viewer; the stock server
+ignores the key. For the Frame + Deskflow + Frametop + KRDC scenario;
+any distribution with Plasma 6 on Wayland.
 
 Two servers, not a switch: the distribution's
 `app-org.kde.krdpserver.service` keeps port 3389 for viewers that draw
@@ -48,8 +55,9 @@ the distribution's development packages for Qt 6, KF6, FreeRDP 3,
 kpipewire, libei, xkbcommon, PAM and qtkeychain, plus
 extra-cmake-modules and plasma-wayland-protocols; when cmake can't
 find one, the script prints the package list for Arch, Fedora or
-Debian/Ubuntu. KRDC on the Frame then connects to the PC's port 3390,
-with View → Show Local Cursor off, or it draws its own on top.
+Debian/Ubuntu. KRDC on the Frame then connects to the PC's port 3390
+with the host's "Remote pointer" option on, and View → Show Local
+Cursor off unless you want your own pointer drawn over the PC's.
 
 `start` enables the unit, now and at login; `stop` disables it; `status`
 shows the unit, the port, the firewall, and whether the installed build

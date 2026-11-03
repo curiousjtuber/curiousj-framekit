@@ -10,12 +10,14 @@
 #
 # krdp sends a viewer the pointer's shape, which the viewer draws at its
 # own pointer, so moving the mouse at the PC shows in the stream as
-# focus changes with no pointer. With EmbedCursor=true in [General] of
-# ~/.config/krdpserverrc (krdp-embed-cursor.patch, which this script
-# sets), KWin paints the PC's own pointer into the frames and the viewer
-# is told to draw none, so the headset sees where the PC's mouse is.
-# Off, the server is upstream's exactly; the stock binary ignores the
-# key.
+# focus changes with no pointer. With krdp-embed-cursor.patch, a viewer
+# that advertises no pointer cache (KRDC with this repository's
+# krdc-embed-cursor patch and its "Remote pointer" option on) gets KWin's
+# own pointer painted into the frames and is told to draw none, so the
+# headset sees where the PC's mouse is; a viewer that draws its own
+# pointer is served as upstream does. EmbedCursor=true in [General] of
+# ~/.config/krdpserverrc (--embed-all) does it for every viewer; this
+# script writes the key false otherwise. The stock binary ignores it.
 #
 # Two servers, not a switch: the distribution's app-org.kde.krdpserver
 # .service keeps port 3389 for viewers that draw their own pointer, and
@@ -54,10 +56,10 @@
 #
 # Usage: krdp-embed-cursor.sh COMMAND [options]
 #   install [--port N] [--version V] [--prefix DIR] [--force]
-#           [--no-verify] [--no-enable]
+#           [--embed-all] [--no-verify] [--no-enable]
 #                 build krdp with the patch, install under --prefix
 #                 (default ~/.local), write the unit for --port
-#                 (default 3390), set EmbedCursor=true, then start
+#                 (default 3390), write EmbedCursor, then start
 #   start         enable the unit, now and at login; open its port in
 #                 the firewall if it is closed (sudo only then)
 #   stop          disable the unit; the firewall rule stays
@@ -71,6 +73,9 @@
 #                 binary, the library and the build cache;
 #                 krdpserverrc keeps EmbedCursor
 #   --version V   the krdp release to build (default: the host's)
+#   --embed-all   EmbedCursor=true: the pointer in the video for every
+#                 viewer, not only one that asks (asks: advertises no
+#                 pointer cache)
 #   --force       rebuild even when the installed version matches
 #   --no-verify   skip the signature check
 #   --no-enable   write the unit, but leave systemd and the firewall
@@ -87,6 +92,7 @@ default_port=3390
 port=
 version=
 force=0
+embed_all=0
 enable=1
 verify=1
 cache=${XDG_CACHE_HOME:-$HOME/.cache}/$name
@@ -124,6 +130,7 @@ while [ $# -gt 0 ]; do
     --version) version=${2:?--version needs a release}; shift ;;
     --prefix) prefix=${2:?--prefix needs a directory}; shift ;;
     --force) force=1 ;;
+    --embed-all) embed_all=1 ;;
     --no-enable) enable=0 ;;
     --no-verify) verify=0 ;;
     -h|--help) usage; exit 0 ;;
@@ -264,7 +271,7 @@ do_start() {
   fi
   systemctl --user is-active --quiet "$name.service" \
     || die "$name.service did not stay up: journalctl --user -u $name.service"
-  say "$name.service is running on port $port; point the viewer there (KRDC: View > Show Local Cursor off)"
+  say "$name.service is running on port $port; point the viewer there (KRDC: Remote pointer on in the host's settings, View > Show Local Cursor off)"
   open_port
 }
 
@@ -329,7 +336,7 @@ do_uninstall() {
   rm -f "${unit:?}" "${bindir:?}/${name:?}"
   rm -rf "${libdir:?}" "${cache:?}"
   if systemd; then systemctl --user daemon-reload; fi
-  say "removed; krdpserverrc still has EmbedCursor=true, which the stock server ignores"
+  say "removed; krdpserverrc still has its EmbedCursor key, which the stock server ignores"
 }
 
 # What the build needs, by distribution family, for when cmake can't
@@ -472,10 +479,12 @@ UNIT
     say "a packaged copy is installed too (/usr/lib/systemd/user/$name.service); the unit in ~/.config overrides it, and the package can go (on Arch: sudo pacman -R $name)"
   fi
 
+  local embed=false
+  [ "$embed_all" -eq 1 ] && embed=true
   if command -v kwriteconfig6 >/dev/null; then
-    kwriteconfig6 --file krdpserverrc --group General --key EmbedCursor --type bool true
+    kwriteconfig6 --file krdpserverrc --group General --key EmbedCursor --type bool "$embed"
   else
-    say "kwriteconfig6 not found: put EmbedCursor=true under [General] in ~/.config/krdpserverrc yourself"
+    say "kwriteconfig6 not found: put EmbedCursor=$embed under [General] in ~/.config/krdpserverrc yourself"
   fi
 
   do_start restart
