@@ -37,7 +37,7 @@ A Frame set up by the old `setup.sh` moves over with `cjf migrate`.
 
 | | |
 |---|---|
-| `cjf` | the menu: every command below, picked with fzf (ENTER runs it) |
+| `cjf` | the menu: every command below, picked with fzf (ENTER runs it); a command with actions of its own gets a menu of them, a required argument is asked for, `help` on any menu is that command's `--help`, and the command line it ran is printed at the end, to type next time |
 | `cjf status [--all]` | the versions of SteamOS, SteamVR and the Steam client, the kit's own, the headset's battery, the cursor, Tailscale, the RDP server; `--all` adds the catalog |
 | `cjf install [NAME...]` | install or update a catalog item, or pick from the catalog; each item's options after its name (`cjf install --help`) |
 | `cjf installed [--trust]` | every catalog item's state, without the network; `--trust` adds the root of trust and what is checked ([docs/TRUST.md](docs/TRUST.md)) |

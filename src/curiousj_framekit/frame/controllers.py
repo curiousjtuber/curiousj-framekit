@@ -126,7 +126,11 @@ def turn_off(ctrl: Controller) -> bool:
 
 
 @click.command(cls=cmdline.Command, help=__doc__,
-               short_help="the Steam Controllers paired over Bluetooth: list, or turn off")
+               short_help="the Steam Controllers paired over Bluetooth: list, or turn off",
+               menu=[cmdline.Entry("status", (), "each Steam Controller that is on, with its battery"),
+                     cmdline.Entry("off", ("off",), "turn them all off"),
+                     cmdline.Entry("off NAME", ("off",), "turn off the one named, or any part of its name",
+                                   ask=("NAME",))])
 @click.argument("action", required=False, type=click.Choice(["off"]))
 @click.argument("name", required=False)
 @pass_options

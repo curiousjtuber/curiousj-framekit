@@ -56,14 +56,32 @@ class Options:
 pass_options = click.make_pass_decorator(Options, ensure=True)
 
 
+@dataclass(frozen=True)
+class Entry:
+    """One line of the menu a bare `cjf` shows under a command whose
+    actions are arguments rather than subcommands (vr, controllers):
+    the label shown, the arguments the pick adds to the command line,
+    what it does, and the names of any values asked for on the terminal
+    after it, which follow the arguments. Given as `menu=[...]` to the
+    command."""
+
+    label: str
+    args: tuple[str, ...]
+    help: str
+    ask: tuple[str, ...] = ()
+
+
 class _HandLaidHelp:
     """Help as written -- the usage lines in the docstring are laid out by
     hand -- with the option summary after it. -h works like --help."""
 
     context_settings = {"help_option_names": ["-h", "--help"]}
 
+    menu: list[Entry] | None
+
     def __init__(self, *args, **kw):
         settings = dict(self.context_settings, **(kw.pop("context_settings", None) or {}))
+        self.menu = kw.pop("menu", None)
         super().__init__(*args, context_settings=settings, **kw)
 
     def format_help(self, ctx, formatter):

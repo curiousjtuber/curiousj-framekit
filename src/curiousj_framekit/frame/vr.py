@@ -298,7 +298,11 @@ def turn_off(vr, hand: str | None) -> int:
 
 
 @click.command(cls=cmdline.Command, help=__doc__,
-               short_help="the headset and VR controllers: battery, or turn controllers off")
+               short_help="the headset and VR controllers: battery, or turn controllers off",
+               menu=[cmdline.Entry("status", (), "the headset's battery, then each controller's"),
+                     cmdline.Entry("off", ("off",), "turn off every controller that is on"),
+                     cmdline.Entry("off left", ("off", "left"), "turn off the left controller"),
+                     cmdline.Entry("off right", ("off", "right"), "turn off the right controller")])
 @click.argument("action", required=False, type=click.Choice(["off"]))
 @click.argument("hand", required=False, type=click.Choice(["left", "right"]))
 @pass_options
