@@ -1,0 +1,99 @@
+krdp 6.4.5: the Plasma session asks KWin for a stream again, upstream's
+"Fix plasma screencast option" (429f584c, 2026-03-31, in 6.5 and later)
+rebased onto v6.4.5 with the hunks' offsets taken up, plus the server
+side of it, which upstream changed on its own: SessionController hands
+the session a monitor index only when --monitor gave one. In 6.4.5 the
+server hands each session the --monitor index, -1 when none was given,
+and PlasmaScreencastV1Session::start() creates its workspace stream
+only when that index is zero: with no --monitor it requests nothing,
+and the client connects to an empty screen (nothing in the log past
+"Video stream initialized" but two "QObject::connect(...): invalid
+nullptr parameter"). The fix keeps the index optional, streams the
+named monitor when there is one and the whole workspace otherwise,
+which is what the flatpak's 6.7.5 does. With the session's half alone
+the -1 reaches screens().at(-1) and the server segfaults in
+QScreen::handle() as the client connects.
+
+--- a/server/SessionController.cpp
++++ b/server/SessionController.cpp
+@@ -122,8 +122,8 @@
+     auto wrapper = std::make_unique<SessionWrapper>(newConnection, makeSession(), m_sni);
+     if (m_virtualMonitor) {
+         wrapper->session->setVirtualMonitor(*m_virtualMonitor);
+-    } else {
+-        wrapper->session->setActiveStream(m_monitorIndex.value_or(-1));
++    } else if (m_monitorIndex) {
++        wrapper->session->setActiveStream(*m_monitorIndex);
+     }
+     wrapper->session->setVideoQuality(m_quality.value());
+ 
+--- a/src/AbstractSession.cpp
++++ b/src/AbstractSession.cpp
+@@ -44,9 +44,9 @@
+     return d->logicalSize;
+ }
+ 
+-int AbstractSession::activeStream() const
++std::optional<int> AbstractSession::activeStream() const
+ {
+-    return d->activeStream.value_or(-1);
++    return d->activeStream;
+ }
+ 
+ std::optional<VirtualMonitor> AbstractSession::virtualMonitor() const
+--- a/src/AbstractSession.h
++++ b/src/AbstractSession.h
+@@ -74,7 +74,7 @@
+     QSize size() const;
+     QSize logicalSize() const;
+     std::optional<VirtualMonitor> virtualMonitor() const;
+-    int activeStream() const;
++    std::optional<int> activeStream() const;
+ 
+     void setStarted(bool started);
+     void setSize(QSize size);
+--- a/src/PlasmaScreencastV1Session.cpp
++++ b/src/PlasmaScreencastV1Session.cpp
+@@ -174,7 +174,14 @@
+ {
+     if (auto vm = virtualMonitor()) {
+         d->request = d->m_screencasting.createVirtualMonitorStream(vm->name, vm->size, vm->dpr, Screencasting::Metadata);
+-    } else if (!activeStream()) {
++    } else if (const auto streamIndex = activeStream()) {
++        if (*streamIndex >= qApp->screens().size()) {
++            qCWarning(KRDP) << "Invalid monitor index" << *streamIndex;
++            return;
++        }
++        auto screen = qApp->screens().at(*streamIndex);
++        d->request = d->m_screencasting.createOutputStream(screen, Screencasting::Metadata);
++    } else {
+         d->request = d->m_screencasting.createWorkspaceStream(Screencasting::Metadata);
+     }
+     connect(d->request, &ScreencastingStream::failed, this, &PlasmaScreencastV1Session::error);
+--- a/src/PortalSession.cpp
++++ b/src/PortalSession.cpp
+@@ -231,7 +231,7 @@
+         parameters = {{QStringLiteral("types"), 4u}}; // VIRTUAL
+     } else {
+         parameters = {{QStringLiteral("types"), 1u}, // MONITOR
+-                      {QStringLiteral("multiple"), activeStream() >= 0}};
++                      {QStringLiteral("multiple"), activeStream().has_value()}};
+     }
+ 
+     new PortalRequest(d->screencastInterface->SelectSources(d->sessionPath, parameters), this, &PortalSession::onSourcesSelected);
+@@ -281,11 +281,13 @@
+         if (reply.isValid()) {
+             qCDebug(KRDP) << "Started Freedesktop Portal session";
+ 
+-            if (activeStream() >= streams.size()) {
++            auto streamIndex = activeStream().value_or(0);
++            if (streamIndex >= streams.size()) {
+                 qCWarning(KRDP) << "Requested monitor index out of range, using first monitor";
+                 setActiveStream(0);
++                streamIndex = 0;
+             }
+-            auto stream = streams.at(activeStream() >= 0 ? activeStream() : 0);
++            auto stream = streams.at(streamIndex);
+ 
+             setLogicalSize(qdbus_cast<QSize>(stream.map.value(u"size"_qs)));
+             auto fd = reply.value();

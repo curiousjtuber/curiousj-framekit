@@ -26,11 +26,12 @@ from pathlib import Path
 
 from ... import cmdline, where
 from ...cmdline import Error, Options
+from ...frame import rdp
+from ...frame.rdp import GUI_ID, menu_entry_path, menu_entry_text  # noqa: F401  (the entry is cjf rdp's)
 from ..catalog import Check, Fresh, Item, State, Status
 from .base import Base, require_commands
 
 FLATHUB = "https://dl.flathub.org/repo/flathub.flatpakrepo"
-GUI_ID = "io.github.curiousjtuber.Krdpd"
 
 
 def manifest_path(item: Item) -> Path:
@@ -72,18 +73,6 @@ def installed_stamp() -> str | None:
         return (state_dir() / "installed").read_text().strip()
     except OSError:
         return None
-
-
-def menu_entry_path() -> Path:
-    return Path.home() / ".local/share/applications" / f"{GUI_ID}.desktop"
-
-
-def menu_entry_text() -> str:
-    return ("[Desktop Entry]\nType=Application\nName=KRdp Server\n"
-            "GenericName=Remote Desktop Server\n"
-            "Comment=Serve this Plasma desktop over RDP: start, stop, where to connect, the password\n"
-            f"Exec={cmdline.cjf_path()} rdp gui\nIcon=krfb\nTerminal=false\n"
-            "Categories=Network;RemoteAccess;\nKeywords=rdp;remote;krdp;krdpd;\n")
 
 
 def flatpak_user(opts: Options, *args: str, check: bool = True, capture: bool = True):
@@ -174,7 +163,9 @@ class Kind(Base):
             if not opts.check and cmdline.confirm(opts, f"remove {item['app']}?"):
                 flatpak_user(opts, "uninstall", "-y", "--noninteractive", item["app"], capture=False)
             changed = True
-        changed |= cmdline.remove_file(opts, menu_entry_path(), "the KRdp Server menu entry")
+        # The menu entry stays while the other server is installed.
+        if not rdp.home_installed():
+            changed |= cmdline.remove_file(opts, menu_entry_path(), "the KRdp Server menu entry")
         if changed and not opts.check:
             cmdline.note(f"the build tools stay: flatpak --user uninstall {item['sdk']} org.flatpak.Builder")
         return changed

@@ -7,6 +7,7 @@ from curiousj_framekit import cmdline
 from curiousj_framekit.cmdline import Options
 from curiousj_framekit.install import catalog
 from curiousj_framekit.install.catalog import Check, Fresh, Item, State, Status
+from curiousj_framekit.frame import pkg
 from curiousj_framekit.install.kinds import base, flatpak, flatpak_build, tailscale, upstream, uv_tool
 
 SUMS = ("abc123  other.tar.gz\n"
@@ -96,6 +97,28 @@ class FlatpakBuild(unittest.TestCase):
         text = flatpak_build.menu_entry_text()
         self.assertIn("Name=KRdp Server", text)
         self.assertIn(" rdp gui\n", text)
+
+
+class KrdpserverPackage(unittest.TestCase):
+    """The pacman-home server: its PKGBUILD reads, carries its patches,
+    and asks for the same menu entry as the flatpak."""
+
+    def test_item_and_pkgbuild(self):
+        item = catalog.load()["krdpserver"]
+        self.assertEqual(item.kind, "pacman-home")
+        self.assertEqual(item.get("menu_entry"), "krdp")
+        directory = pkg.pkgbuilds_dir() / item["pkgbuild"]
+        name, ver, rel, deps = pkg.pkgbuild_info(directory)
+        self.assertEqual(name, "krdpserver")
+        self.assertEqual(ver, "6.4.5")
+        self.assertIn("freerdp", deps)
+        self.assertEqual(sorted(p.name for p in directory.glob("*.patch")),
+                         ["kpipewire-cursor-bitmap-size.patch", "kpipewire-ffmpeg-profiles.patch",
+                          "krdp-ext-security.patch", "krdp-plasma-stream.patch"])
+        # The cursor patch is the flatpak's, by symlink, so the two can't drift.
+        link = directory / "kpipewire-cursor-bitmap-size.patch"
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(link.resolve(), (pkg.pkgbuilds_dir().parent / "krdp" / link.name).resolve())
 
 
 class Tailscale(unittest.TestCase):

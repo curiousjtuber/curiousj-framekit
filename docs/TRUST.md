@@ -26,6 +26,7 @@ is Arch Linux ARM.
 | `krdc` | download.kde.org's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patch | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
 | `fuse2` | libfuse's GitHub release tarball, your review of the PKGBUILD | the BLAKE2 sums in the PKGBUILD, by makepkg |
 | `deskflow` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
+| `krdpserver` | download.kde.org's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
 | `krdp` | KDE and FreeRDP's release tarballs, your own review of the manifest and patches | every source pinned by sha256 in the manifest; patches in this kit; built on KDE's SDK from Flathub |
 | `bsmanager` | GitHub's TLS and DaVarga's account, continuously | nothing: the fork's latest install.sh, then an AppImage that updates itself |
 | `full-keyboard` | GitHub's TLS and TaiKeid's account | the archive against the release's own SHA256SUMS |
@@ -112,7 +113,20 @@ among the apps.
 
 ## KRdp's server
 
-`cjf install krdp` builds from
+`cjf install krdpserver` builds krdp 6.4.5 from the kit's PKGBUILD,
+`src/curiousj_framekit/data/pkgbuilds/krdpserver/`, the same tier as
+KRDC below: the krdp, kpipewire and extra-cmake-modules tarballs come
+from download.kde.org with their BLAKE2 sums in the PKGBUILD, recorded
+after a check against the Plasma and Frameworks release signatures;
+qtkeychain is a git source pinned to a commit; the four patches are
+in this repo with their sums. It links the host's FreeRDP and
+Frameworks and installs under `~/.local` through `pacman-home -U`,
+unsandboxed, as a distribution's krdp would be; KWin grants it the
+screencast and input interfaces through the desktop file the package
+puts in `~/.local/share/applications`, as it would any client it can
+match to one.
+
+`cjf install krdp`, the flatpak, builds from
 the manifest the kit ships, `src/curiousj_framekit/data/krdp/io.github.curiousjtuber.Krdp.yml`. Every source is a release
 tarball from download.kde.org or GitHub with its sha256 in the manifest,
 and the two patches live in this repo. The build runs on KDE's SDK

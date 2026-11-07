@@ -123,27 +123,43 @@ gets on the headset.
 - **KRdp's server** is the other direction: the Frame as the RDP host,
   for seeing and using a Plasma desktop that runs on it (Frametop's, or
   SteamOS's stock Desktop) from a PC. SteamOS has no krdp and Flathub
-  only has the client, so `install-krdp.sh` builds it as a flatpak on
-  KDE's runtime, with its own FreeRDP and kpipewire, pinned and patched
-  as the manifest in the kit (`src/curiousj_framekit/data/krdp/`) explains (krdp 6.7.5 gets 6.8's NLA
-  login, which works with FreeRDP 3.32 clients; kpipewire crashes on the
-  256 px cursor gamescope sets). krdp 6.8 itself has to wait for a
-  SteamOS with KWin 6.7 or later: it needs a newer screencast protocol
-  than the Frame's KWin speaks (0.5.7 beta's 6.6.2 is one version
-  short), so it streams nothing on the Frame; the `krdp-6.8` branch
-  holds that manifest. The first run installs the KDE
+  only has the client, so the kit builds it, two ways.
+  `cjf install krdpserver` builds krdp 6.4.5 on the Frame against the
+  host's own FreeRDP, Frameworks and Qt, in a few minutes, as a
+  `pacman-home` package under `~/.local/lib/krdpserver`; the PKGBUILD
+  (`src/curiousj_framekit/data/pkgbuilds/krdpserver/`) says why that
+  release, the newest whose minimums both the stable and the beta
+  SteamOS meet, and what it carries: a kpipewire of its own with the
+  cursor fix below and ffmpeg 8's spelling of the H.264 profiles,
+  qtkeychain, and one line of krdp 6.8's FreeRDP 3.32 fix. It is
+  unsandboxed, so KWin grants it the capture through the desktop file
+  the package puts in `~/.local/share/applications`, whose Exec is the
+  binary. A SteamOS update that changes a library it links shows in
+  `cjf installed` and `cjf update` rebuilds it, as with KRDC.
+  `cjf install krdp` builds the flatpak instead, on KDE's runtime with
+  its own FreeRDP and kpipewire, pinned and patched as the manifest in
+  the kit (`src/curiousj_framekit/data/krdp/`) explains (krdp 6.7.5
+  gets 6.8's NLA login, which works with FreeRDP 3.32 clients;
+  kpipewire crashes on the 256 px cursor gamescope sets). krdp 6.8
+  itself has to wait for a SteamOS with KWin 6.7 or later: it needs a
+  newer screencast protocol than the Frame's KWin speaks (0.5.7 beta's
+  6.6.2 is one version short), so it streams nothing on the Frame; the
+  `krdp-6.8` branch holds that manifest. The first run installs the KDE
   6.11 SDK and flatpak-builder (about 1 GB to download) and builds for
   half an hour; later runs rebuild only what changed. KWin lets the
   sandboxed server capture through the app's desktop file, so neither
-  desktop needs KWin's permission checks turned off. Nothing starts it
-  by itself. `--bundle` also writes the build as one `.flatpak` file,
-  which another aarch64 device installs with `flatpak --user install
-  FILE` and no build. GitHub builds the same bundle on an arm64 runner
-  (`.github/workflows/krdp-flatpak.yml`) when the manifest changes, and
-  attaches it to the release when a `krdp-*` tag is pushed.
+  desktop needs KWin's permission checks turned off. Nothing starts
+  either by itself. `--bundle` also writes the build as one `.flatpak`
+  file, which another aarch64 device installs with `flatpak --user
+  install FILE` and no build. GitHub builds the same bundle on an arm64
+  runner (`.github/workflows/krdp-flatpak.yml`) when the manifest
+  changes, and attaches it to the release when a `krdp-*` tag is
+  pushed.
 - **`cjf rdp start [--desktop frametop|stock|DIR] [--port N] [--user
   NAME] [--address ADDR]`**, `stop`, `status`, `log`, `password [NEW |
-  --generate]` runs that server by hand. It serves Frametop's desktop
+  --generate]` runs that server by hand: the `~/.local` build when it
+  is installed, else the flatpak (`start --flatpak` picks the flatpak
+  regardless; `status` says which runs). It serves Frametop's desktop
   when that runs (the stock Desktop only with `--force`: on SteamOS
   0.4.5 its KWin, 6.2.5 on the X11 backend inside gamescope, crashes in
   its screencast plugin as soon as a client connects, which leaves a

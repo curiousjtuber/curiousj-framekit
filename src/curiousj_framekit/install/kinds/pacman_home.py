@@ -1,7 +1,7 @@
 """The `pacman-home` kind: a package under ~/.local in pacman-home's
 database, either relocated from Arch Linux ARM's binary package
 (waypipe) or built here with makepkg from the kit's own PKGBUILD
-(emacs, krdc, fuse2; data/pkgbuilds/NAME in the package, so every install
+(emacs, krdc, fuse2, krdpserver; data/pkgbuilds/NAME in the package, so every install
 has them). The work is frame/pkg.py's; this kind maps the catalog
 entry onto it. A build runs in ~/.cache/curiousj-framekit/build/NAME,
 a copy of the PKGBUILD's directory, not inside the package.
@@ -27,7 +27,7 @@ from pathlib import Path
 
 from ... import cmdline
 from ...cmdline import Error, Options
-from ...frame import pkg
+from ...frame import pkg, rdp
 from ..catalog import Check, Fresh, Item, State, Status
 from .base import Base, require_commands
 
@@ -165,7 +165,7 @@ class Kind(Base):
         want = f"{ver}-{rel}"
         if status.state == State.OK:
             cmdline.say("ok", f"{name} {status.detail}, in pacman-home's database")
-            return False
+            return self.menu_entry(item, opts)
         bin_ = Path.home() / ".local/bin" / ("emacs" if name == "emacs-wayland" else name)
         if status.state == State.MISSING and (bin_.exists() or bin_.is_symlink()) and not owned(p, bin_):
             cmdline.say("skip", f"{cmdline.tilde(bin_)} exists and isn't pacman-home's; left alone")
@@ -179,7 +179,18 @@ class Kind(Base):
         if not cmdline.confirm(opts, f"build {name}? (a few minutes)"):
             return False
         pkg.build(opts, directory, clean=False if opts.yes else None, extra=[])
+        self.menu_entry(item, opts)
+        if item.get("menu_entry") == "krdp":
+            print("start it with: cjf rdp start   (see cjf rdp --help)")
         return True
+
+    def menu_entry(self, item: Item, opts: Options) -> bool:
+        """The KRdp Server menu entry for an item that says menu_entry =
+        "krdp" (krdpserver): cjf rdp gui, the same file the flatpak's
+        install writes, so either server has it."""
+        if item.get("menu_entry") != "krdp":
+            return False
+        return cmdline.write_file(opts, rdp.menu_entry_path(), rdp.menu_entry_text())
 
     def uninstall(self, item: Item, opts: Options) -> bool:
         p = paths()
@@ -192,4 +203,6 @@ class Kind(Base):
             return opts.check
         proc = pkg.pacman(p, p.conf, "-R", item["package"], "--noconfirm", root=True, check=False,
                           capture=False)
+        if proc.returncode == 0 and item.get("menu_entry") == "krdp" and not rdp.flatpak_installed(opts):
+            cmdline.remove_file(opts, rdp.menu_entry_path(), "the KRdp Server menu entry")
         return proc.returncode == 0

@@ -540,8 +540,9 @@ def relocate_cmd(paths: Paths, args: list[str]) -> None:
 # --- outdated -------------------------------------------------------------
 
 def pkgbuilds_dir() -> Path:
-    """The kit's PKGBUILDs, one directory each (emacs, krdc, fuse2): data/pkgbuilds
-    in the package, so an install from git has them as a checkout does."""
+    """The kit's PKGBUILDs, one directory each (emacs, krdc, fuse2,
+    krdpserver): data/pkgbuilds in the package, so an install from git
+    has them as a checkout does."""
     return Path(__file__).resolve().parent.parent / "data" / "pkgbuilds"
 
 

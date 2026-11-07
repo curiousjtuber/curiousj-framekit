@@ -1,0 +1,67 @@
+kpipewire 6.4.5: the H.264 profile constants by their ffmpeg 6.1 names.
+ffmpeg 8 (SteamOS 0.5.7) drops the FF_PROFILE_* spellings, and the
+three H.264 encoders fail to compile with them; the AV_PROFILE_* names
+exist since ffmpeg 6.1, so they build on the stable branch's ffmpeg 7
+as well. kpipewire 6.5 solves the same with fallback #defines; this is
+the rename alone.
+
+diff --git a/src/h264vaapiencoder.cpp b/src/h264vaapiencoder.cpp
+--- a/src/h264vaapiencoder.cpp
++++ b/src/h264vaapiencoder.cpp
+@@ -130,13 +130,13 @@
+ 
+     switch (m_profile) {
+     case H264Profile::Baseline:
+-        m_avCodecContext->profile = FF_PROFILE_H264_CONSTRAINED_BASELINE;
++        m_avCodecContext->profile = AV_PROFILE_H264_CONSTRAINED_BASELINE;
+         break;
+     case H264Profile::Main:
+-        m_avCodecContext->profile = FF_PROFILE_H264_MAIN;
++        m_avCodecContext->profile = AV_PROFILE_H264_MAIN;
+         break;
+     case H264Profile::High:
+-        m_avCodecContext->profile = FF_PROFILE_H264_HIGH;
++        m_avCodecContext->profile = AV_PROFILE_H264_HIGH;
+         break;
+     }
+ 
+diff --git a/src/libopenh264encoder.cpp b/src/libopenh264encoder.cpp
+--- a/src/libopenh264encoder.cpp
++++ b/src/libopenh264encoder.cpp
+@@ -64,13 +64,13 @@
+         // passes that through, but libopenh264 only allows BASELINE.
+         // Until that bug is fixed there'll always be a warning that the
+         // profile is not supported (https://github.com/cisco/openh264/issues/3613)
+-        m_avCodecContext->profile = FF_PROFILE_H264_CONSTRAINED_BASELINE;
++        m_avCodecContext->profile = AV_PROFILE_H264_CONSTRAINED_BASELINE;
+         break;
+     case H264Profile::Main:
+-        m_avCodecContext->profile = FF_PROFILE_H264_MAIN;
++        m_avCodecContext->profile = AV_PROFILE_H264_MAIN;
+         break;
+     case H264Profile::High:
+-        m_avCodecContext->profile = FF_PROFILE_H264_HIGH;
++        m_avCodecContext->profile = AV_PROFILE_H264_HIGH;
+         break;
+     }
+ 
+diff --git a/src/libx264encoder.cpp b/src/libx264encoder.cpp
+--- a/src/libx264encoder.cpp
++++ b/src/libx264encoder.cpp
+@@ -68,13 +68,13 @@
+ 
+     switch (m_profile) {
+     case H264Profile::Baseline:
+-        m_avCodecContext->profile = FF_PROFILE_H264_BASELINE;
++        m_avCodecContext->profile = AV_PROFILE_H264_BASELINE;
+         break;
+     case H264Profile::Main:
+-        m_avCodecContext->profile = FF_PROFILE_H264_MAIN;
++        m_avCodecContext->profile = AV_PROFILE_H264_MAIN;
+         break;
+     case H264Profile::High:
+-        m_avCodecContext->profile = FF_PROFILE_H264_HIGH;
++        m_avCodecContext->profile = AV_PROFILE_H264_HIGH;
+         break;
+     }
+ 

@@ -1,10 +1,12 @@
 """cjf rdp -- serve a Plasma desktop running on the Frame over RDP, with
-KDE's krdpserver from the flatpak apps/install-krdp.sh builds. For KRDC,
-Remmina or Windows Remote Desktop: every screen of that desktop, side
-by side as KWin arranges them, the cursor drawn by the viewer. Started
-by hand, never automatically.
+KDE's krdpserver: the one `cjf install krdpserver` builds for ~/.local
+when that is installed (minutes, against the host's libraries), else
+the flatpak `cjf install krdp` builds. For KRDC, Remmina or Windows
+Remote Desktop: every screen of that desktop, side by side as KWin
+arranges them, the cursor drawn by the viewer. Started by hand, never
+automatically.
 
-    cjf rdp start [--desktop frametop|stock|DIR] [--port N] [--user NAME] [--address ADDR] [--force]
+    cjf rdp start [--desktop frametop|stock|DIR] [--port N] [--user NAME] [--address ADDR] [--force] [--flatpak]
     cjf rdp stop | status [--keys] | log [LINES]
     cjf rdp password [NEW | --generate]
     cjf rdp gui
@@ -29,13 +31,16 @@ by hand, never automatically.
            lets the LAN at every port above 1024, and RDP brings its
            own TLS and login (NLA). Give the tailnet address to keep it
            off the LAN.
+--flatpak  the flatpak although the ~/.local build is installed.
 
 status --keys prints key=value lines, for the GUI. gui opens the KRdp
 Server window, a GTK program run by the system Python for its PyGObject.
 
 Clients accept the Frame's self-signed certificate once (made here, in
-~/.config/krdpd). KWin allows the capture through the flatpak's desktop
-file (see the manifest), so neither desktop needs a permission bypass.
+~/.config/krdpd). KWin allows the capture through the server's desktop
+file (the flatpak's exported one, or the one the package puts in
+~/.local/share/applications), so neither desktop needs a permission
+bypass.
 One thing this doesn't do for Frametop: ask ft-screens for full frame
 rate on screens you aren't looking at, so those draw slowly over RDP;
 Frametop Remote Access does that for its own server. Log:
@@ -47,6 +52,7 @@ from __future__ import annotations
 import base64
 import os
 import pwd
+import signal
 import socket
 import subprocess
 import sys
@@ -61,6 +67,7 @@ from ..cmdline import Options, pass_options
 from . import desktops
 
 APP = "io.github.curiousjtuber.Krdp"
+GUI_ID = "io.github.curiousjtuber.Krdpd"
 DEFAULT_PORT = 3391
 
 
@@ -86,12 +93,41 @@ def flatpak_env() -> dict[str, str]:
     return dict(os.environ, XDG_RUNTIME_DIR=str(desktops.run_dir()))
 
 
-def installed(opts: Options) -> bool:
+def flatpak_installed(opts: Options) -> bool:
     env = flatpak_env()
     for args in (["flatpak", "--user", "info", APP], ["flatpak", "info", APP]):
         if cmdline.run(opts, args, check=False, capture=True, env=env).returncode == 0:
             return True
     return False
+
+
+def home_binary() -> Path:
+    """The krdpserver the pacman-home package builds for ~/.local
+    (data/pkgbuilds/krdpserver), run directly: KWin matches the
+    connecting process to the package's desktop file by this path."""
+    return Path.home() / ".local/lib/krdpserver/bin/krdpserver"
+
+
+def home_installed() -> bool:
+    return os.access(home_binary(), os.X_OK)
+
+
+def installed(opts: Options) -> bool:
+    return home_installed() or flatpak_installed(opts)
+
+
+def menu_entry_path() -> Path:
+    return Path.home() / ".local/share/applications" / f"{GUI_ID}.desktop"
+
+
+def menu_entry_text() -> str:
+    """The KRdp Server menu entry, cjf rdp gui, which both server
+    installs write: it runs cjf rdp, whichever server that starts."""
+    return ("[Desktop Entry]\nType=Application\nName=KRdp Server\n"
+            "GenericName=Remote Desktop Server\n"
+            "Comment=Serve this Plasma desktop over RDP: start, stop, where to connect, the password\n"
+            f"Exec={cmdline.cjf_path()} rdp gui\nIcon=krfb\nTerminal=false\n"
+            "Categories=Network;RemoteAccess;\nKeywords=rdp;remote;krdp;krdpd;\n")
 
 
 def parse_ps(text: str, app: str = APP) -> str | None:
@@ -109,6 +145,34 @@ def instance_pid(opts: Options) -> str | None:
     out = cmdline.run(opts, ["flatpak", "ps", "--columns=application,child-pid"],
                       check=False, capture=True, env=flatpak_env()).stdout
     return parse_ps(out)
+
+
+def home_pid(info: dict[str, str], proc: Path = Path("/proc"),
+             binary: Path | None = None) -> str | None:
+    """The pid start recorded for the ~/.local server, while that
+    process is still it: its command line starts with the binary."""
+    if info.get("server") != "home" or not info.get("pid"):
+        return None
+    try:
+        argv0 = (proc / info["pid"] / "cmdline").read_bytes().split(b"\0")[0]
+    except OSError:
+        return None
+    return info["pid"] if argv0 == os.fsencode(str(binary or home_binary())) else None
+
+
+def running(opts: Options) -> tuple[str, str] | None:
+    """(pid, "home" or "flatpak") of the server that runs, else None."""
+    pid = home_pid(read_info())
+    if pid:
+        return pid, "home"
+    pid = instance_pid(opts)
+    if pid:
+        return pid, "flatpak"
+    return None
+
+
+def server_label(server: str) -> str:
+    return "the ~/.local build" if server == "home" else "the flatpak"
 
 
 def resolve_desktop(desktop: str | None) -> Path:
@@ -218,16 +282,20 @@ def rdp() -> None:
 @click.option("--user", default=None, help="The login name clients give; default this user.")
 @click.option("--address", default="0.0.0.0", help="Listen address; default every address.")
 @click.option("--force", is_flag=True, help="Serve the stock desktop despite its KWin crash.")
+@click.option("--flatpak", is_flag=True, help="The flatpak, although the ~/.local build is installed.")
 @pass_options
 def start(opts: Options, desktop: str | None, port: int | None, user: str | None,
-          address: str, force: bool) -> int:
+          address: str, force: bool, flatpak: bool) -> int:
     where.require_host("rdp")
     port = port or default_port()
     user = user or pwd.getpwuid(os.getuid()).pw_name
-    if not installed(opts):
-        from ..install import catalog
-        catalog.needs("krdp", "rdp", opts)
-    if instance_pid(opts):
+    use_home = home_installed() and not flatpak
+    if not use_home and not flatpak_installed(opts):
+        if flatpak:
+            raise cmdline.Error("the flatpak isn't installed: cjf install krdp")
+        raise cmdline.Error("rdp needs a server: cjf install krdpserver (built for ~/.local in "
+                            "minutes), or cjf install krdp (the Flatpak)")
+    if running(opts):
         raise cmdline.Error("already running (cjf rdp status); stop it first")
     if listening(opts, port):
         raise cmdline.Error(f"port {port} is in use (3389 is SteamOS's xrdp, 3390 Frametop Remote "
@@ -245,21 +313,40 @@ def start(opts: Options, desktop: str | None, port: int | None, user: str | None
     conf = conf_dir()
     # flatpak resolves the sandbox's xdg grants against the XDG dirs, so
     # give it the user's real ones, whatever this shell inherited from a
-    # nested session. WAYLAND_DISPLAY, as an absolute path, is the socket
-    # flatpak connects the sandbox to (with a security context, which is
-    # what KWin trusts).
+    # nested session; the ~/.local build gets the same, so that both
+    # keep their files in the same places. WAYLAND_DISPLAY, as an
+    # absolute path, is the socket flatpak connects the sandbox to (with
+    # a security context, which is what KWin trusts), and the one
+    # libwayland opens for the ~/.local build (trusted by its desktop
+    # file).
     env = flatpak_env()
     for var in ("XDG_CONFIG_HOME", "XDG_STATE_HOME", "XDG_DATA_HOME", "XDG_CACHE_HOME"):
         env.pop(var, None)
     env["WAYLAND_DISPLAY"] = str(sock)
     password = (conf / "password").read_text().strip()
-    argv = ["flatpak", "run", "--env=LANG=C.UTF-8", APP, "--plasma", "--address", address,
-            "--port", str(port), "-u", user, "-p", password,
-            "--certificate", str(conf / "cert.pem"), "--certificate-key", str(conf / "key.pem")]
-    cmdline.log(opts, "+ flatpak run " + APP + " --plasma ... (the password is not logged)")
+    server_args = ["--plasma", "--address", address, "--port", str(port), "-u", user, "-p", password,
+                   "--certificate", str(conf / "cert.pem"), "--certificate-key", str(conf / "key.pem")]
+    if use_home:
+        # The user's bus for its tray item, when this shell has none (ssh).
+        env.setdefault("DBUS_SESSION_BUS_ADDRESS", f"unix:path={desktops.run_dir()}/bus")
+        env["LANG"] = "C.UTF-8"
+        # Qt picks its platform from XDG_SESSION_TYPE, which ssh doesn't
+        # set, and once stderr isn't a terminal it logs to the journal
+        # instead: the server is told both, so that it opens the Wayland
+        # socket above and `cjf rdp log` holds what it said.
+        env["QT_QPA_PLATFORM"] = "wayland"
+        env["QT_FORCE_STDERR_LOGGING"] = "1"
+        argv = [str(home_binary()), *server_args]
+        cmdline.log(opts, f"+ {home_binary()} --plasma ... (the password is not logged)")
+    else:
+        argv = ["flatpak", "run", "--env=LANG=C.UTF-8", APP, *server_args]
+        cmdline.log(opts, "+ flatpak run " + APP + " --plasma ... (the password is not logged)")
     with log.open("w") as out:
-        subprocess.Popen(argv, env=env, stdout=out, stderr=subprocess.STDOUT,
-                         stdin=subprocess.DEVNULL, start_new_session=True)
+        proc = subprocess.Popen(argv, env=env, stdout=out, stderr=subprocess.STDOUT,
+                                stdin=subprocess.DEVNULL, start_new_session=True)
+    server = "home" if use_home else "flatpak"
+    info_path().write_text(f"desktop={runtime}\nport={port}\nuser={user}\naddress={address}\n"
+                           f"server={server}\npid={proc.pid}\n")
     for _ in range(20):
         if listening(opts, port):
             break
@@ -267,8 +354,7 @@ def start(opts: Options, desktop: str | None, port: int | None, user: str | None
     if not listening(opts, port):
         tail = "".join(log.read_text().splitlines(keepends=True)[-5:])
         raise cmdline.Error(f"didn't come up; the log says:\n{tail.rstrip()}")
-    info_path().write_text(f"desktop={runtime}\nport={port}\nuser={user}\naddress={address}\n")
-    print(f"serving {desktop_label(str(runtime))} over RDP")
+    print(f"serving {desktop_label(str(runtime))} over RDP, {server_label(server)}")
     print(f"connect to: {addresses(str(port), address, socket.gethostname(), lan_ip(opts), tailnet_ip(opts))}"
           f"   user {user}   password: cjf rdp password")
     return 0
@@ -278,16 +364,24 @@ def start(opts: Options, desktop: str | None, port: int | None, user: str | None
 @pass_options
 def stop(opts: Options) -> int:
     where.require_host("rdp")
-    if not instance_pid(opts):
+    run = running(opts)
+    if not run:
         print("not running")
         return 0
-    cmdline.run(opts, ["flatpak", "kill", APP], check=False, capture=True, env=flatpak_env())
+    pid, server = run
+    if server == "home":
+        cmdline.log(opts, f"+ kill -TERM {pid}")
+        try:
+            os.kill(int(pid), signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+    else:
+        cmdline.run(opts, ["flatpak", "kill", APP], check=False, capture=True, env=flatpak_env())
     for _ in range(20):
-        if not instance_pid(opts):
+        if not running(opts):
             break
         time.sleep(0.5)
-    pid = instance_pid(opts)
-    if pid:
+    if running(opts):
         raise cmdline.Error(f"still running: {pid}")
     print("stopped")
     return 0
@@ -296,11 +390,12 @@ def stop(opts: Options) -> int:
 def keys(opts: Options) -> list[str]:
     """yes/no flags, what start served (while running), and what start can
     choose from, for the GUI."""
-    pid = instance_pid(opts)
+    run = running(opts)
     yn = lambda b: "yes" if b else "no"  # noqa: E731
-    out = [f"installed={yn(installed(opts))}", f"running={yn(pid)}"]
-    if pid:
-        out.append(f"pid={pid}")
+    out = [f"installed={yn(installed(opts))}", f"home={yn(home_installed())}",
+           f"flatpak={yn(flatpak_installed(opts))}", f"running={yn(run)}"]
+    if run:
+        out += [f"pid={run[0]}", f"server={run[1]}"]
         for k, v in read_info().items():
             if k in ("desktop", "port", "user", "address"):
                 out.append(f"{k}={v}")
@@ -321,16 +416,21 @@ def status(opts: Options, as_keys: bool) -> int:
     if as_keys:
         print("\n".join(keys(opts)))
         return 0
-    if installed(opts):
-        print(f"installed: {APP}")
-    else:
-        print("not installed: cjf install krdp")
-    pid = instance_pid(opts)
-    if not pid:
+    if home_installed():
+        print(f"installed: krdpserver under {cmdline.tilde(home_binary().parent.parent)} (pacman-home)")
+    if flatpak_installed(opts):
+        used = ", run only with start --flatpak" if home_installed() else ""
+        print(f"installed: {APP} (flatpak{used})")
+    if not installed(opts):
+        print("not installed: cjf install krdpserver (minutes), or cjf install krdp (the Flatpak)")
+    run = running(opts)
+    if not run:
         print("not running")
         return 0
+    pid, server = run
     info = read_info()
-    print(f"running (pid {pid}), port {info.get('port', '?')}, serving {info.get('desktop', '?')}")
+    print(f"running (pid {pid}, {server_label(server)}), port {info.get('port', '?')}, "
+          f"serving {info.get('desktop', '?')}")
     print(f"connect to: {addresses(info.get('port', str(DEFAULT_PORT)), info.get('address', ''), socket.gethostname(), lan_ip(opts), tailnet_ip(opts))}"
           f"   user {info.get('user', '?')}")
     return 0
@@ -371,7 +471,7 @@ def password(opts: Options, new: str | None, generate: bool) -> int:
         print(pw.read_text().strip())
     else:
         print("none yet: made at the first start")
-    if instance_pid(opts):
+    if running(opts):
         print("(restart the server for a changed password to apply)")
     return 0
 

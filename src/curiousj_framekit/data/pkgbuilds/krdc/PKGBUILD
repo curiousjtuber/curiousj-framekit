@@ -62,8 +62,11 @@ depends=(
   libsecret
   libssh
   qt6-base
-  qt6-wayland
 )
+# Qt's Wayland client library comes with the host's Qt under a package
+# name that changed between SteamOS builds (qt6-wayland on 0.5.6, part
+# of qt6-base on 0.5.7), so it isn't listed; cjf installed's ldd over
+# the binary covers the library.
 makedepends=(cmake gettext git ninja qt6-tools)
 options=(!debug !lto)
 _ecm=6.20.0

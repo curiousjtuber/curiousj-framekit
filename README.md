@@ -77,6 +77,7 @@ a diff and asked about, and the file is backed up with a timestamp.
 | `curiousj-tools` | my ssh, tmux and Emacs tools, as a uv tool |
 | `frametop` | [Frametop](https://github.com/Frametop/frametop), the multi-screen Plasma desktop and 3D mouse, from its release zip, checked against a recorded sha256 |
 | `stream-frame`, `moonlight`, `deskflow` | Flatpaks: Stream Frame from Boxtree's repo, the others from Flathub; `--user` (default) or `--system` |
+| `krdpserver` | KRdp's server, built on the Frame for `~/.local` against the host's libraries (a few minutes; `cjf rdp` runs it in preference to the Flatpak) |
 | `krdp` | KRdp's server, built here as a Flatpak from the kit's manifest (half an hour the first time); the CI builds the same bundle |
 | `bsmanager`, `full-keyboard` | BSManager and Full Keyboard, through their own installers |
 

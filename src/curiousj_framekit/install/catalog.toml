@@ -137,9 +137,18 @@ runtime_note = "the KDE runtime 6.11, which Moonlight brings, else about 400 MB"
 trust_root = "Flathub's GPG key, fetched once over HTTPS"
 trust_checks = "every commit's signature, by flatpak"
 
+[item.krdpserver]
+kind = "pacman-home"
+description = "KRdp's server, built here for ~/.local against the host's libraries (a few minutes; cjf rdp runs it in preference to the Flatpak)"
+package = "krdpserver"
+pkgbuild = "krdpserver"
+menu_entry = "krdp"
+trust_root = "download.kde.org's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches"
+trust_checks = "the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there"
+
 [item.krdp]
 kind = "flatpak-build"
-description = "KRdp's server, built here as a Flatpak (half an hour the first time; ~1 GB of SDK)"
+description = "KRdp's server, built here as a Flatpak (half an hour the first time; ~1 GB of SDK; krdpserver is the quick way)"
 app = "io.github.curiousjtuber.Krdp"
 manifest = "krdp/io.github.curiousjtuber.Krdp.yml"
 sdk = "org.kde.Sdk//6.11"

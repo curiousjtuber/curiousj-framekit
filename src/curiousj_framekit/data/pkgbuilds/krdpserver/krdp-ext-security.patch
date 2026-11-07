@@ -1,0 +1,21 @@
+krdp 6.4.5: extended security off, the one line of krdp 6.8's "Fix
+authentication with FreeRDP 3.32" (upstream f868133, cherry-picked to
+Plasma/6.8 as 31824f9) that 6.4.5 lacks. FreeRDP 3.32 enables extended
+security by default, which selects PROTOCOL_HYBRID_EX even when krdp
+asks for NLA, and logins fail. 6.4.5 already authenticates with NLA
+against a SAM file, so the rest of that fix (the SAM file, NLA on when
+PAM isn't in use) is in place. On the FreeRDP SteamOS ships today
+(3.23 on 0.5.7) the setting is already off and this changes nothing;
+it is here for the update that brings 3.32. Rebased by hand onto
+v6.4.5, where the security block sits at line 299.
+
+--- a/src/RdpConnection.cpp
++++ b/src/RdpConnection.cpp
+@@ -299,6 +299,7 @@
+     freerdp_settings_set_bool(settings, FreeRDP_RdpSecurity, false);
+     freerdp_settings_set_bool(settings, FreeRDP_TlsSecurity, false);
+     freerdp_settings_set_bool(settings, FreeRDP_NlaSecurity, true);
++    freerdp_settings_set_bool(settings, FreeRDP_ExtSecurity, false);
+ 
+     freerdp_settings_set_uint32(settings, FreeRDP_OsMajorType, OSMAJORTYPE_UNIX);
+     // PSEUDO_XSERVER is apparently required for things to work properly.

@@ -37,11 +37,12 @@ the downloaded sources, about half a gigabyte for emacs, listed with
 their size before the question (`--clean` deletes unasked, `--keep` asks
 nothing; homeify's `PKGBUILD.upstream` is kept either way). Keep them
 while a PKGBUILD is being adjusted, since `makepkg -R` repackages from
-them in seconds. `cjf install emacs`, `krdc` and `fuse2` build when
-`pacman-home` doesn't have the PKGBUILD's version, or when a program or
-library of the installed package can no longer load (`ldd` names a
-library the host lost: SteamOS 0.5.7 took libxml2's soname from under
-emacs), so `cjf update` rebuilds after a SteamOS update with no bump.
+them in seconds. `cjf install emacs`, `krdc`, `fuse2` and `krdpserver`
+build when `pacman-home` doesn't have the PKGBUILD's version, or when a
+program or library of the installed package can no longer load (`ldd`
+names a library the host lost: SteamOS 0.5.7 took libxml2's soname from
+under emacs), so `cjf update` rebuilds after a SteamOS update with no
+bump.
 `pc/pkgbuilds/frame-control-bin` is the other kind, an ordinary `/usr`
 package for an Arch PC, which nothing here builds or offers; the PC's
 `krdpserver-embed-cursor` is a `~/.local` build by script (see [the PC

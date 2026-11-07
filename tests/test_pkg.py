@@ -152,7 +152,7 @@ class Pkgbuilds(unittest.TestCase):
         base = pkg.pkgbuilds_dir()
         self.assertEqual(base.parts[-3:], ("curiousj_framekit", "data", "pkgbuilds"))
         self.assertEqual(sorted(d.name for d in base.iterdir() if (d / "PKGBUILD").is_file()),
-                         ["emacs", "fuse2", "krdc"])
+                         ["emacs", "fuse2", "krdc", "krdpserver"])
         name, ver, rel, _ = pkg.pkgbuild_info(base / "fuse2")
         self.assertEqual(name, "fuse2")
         self.assertTrue(ver and rel)

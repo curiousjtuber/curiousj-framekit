@@ -14,6 +14,11 @@
 # it's renamed to this app id and exported. No permission bypass in KWin
 # is needed, so the stock desktop works as well as Frametop's.
 #
+# Since 2026-11-07 the kit also builds the server natively, as the
+# pacman-home package in data/pkgbuilds/krdpserver (krdp 6.4.5 against
+# the host's libraries, minutes), which cjf rdp prefers when installed;
+# this flatpak stays for the CI bundle and for a Frame without a build.
+#
 # Pinned here on purpose (verified 2026-10-29, KWin re-checked
 # 2026-11-06 against SteamOS 0.5.7 beta):
 # - krdp 6.7.5 with krdp-nla-backport.patch: 6.7.5 has no NLA (TLS only,
