@@ -37,13 +37,11 @@ the downloaded sources, about half a gigabyte for emacs, listed with
 their size before the question (`--clean` deletes unasked, `--keep` asks
 nothing; homeify's `PKGBUILD.upstream` is kept either way). Keep them
 while a PKGBUILD is being adjusted, since `makepkg -R` repackages from
-them in seconds. `cjf install emacs`, `pacman`, `krdc` and `fuse2`
-build when `pacman-home` doesn't have the PKGBUILD's version, or when a
-program or library of the installed package can no longer load (`ldd`
-names a library the host lost: SteamOS 0.5.7 took gpgme's soname from
-under pacman and libxml2's from under emacs), so `cjf update` rebuilds
-after a SteamOS update with no bump; while the kit's pacman is the one
-broken, `pacman-home` runs the host's and says so.
+them in seconds. `cjf install emacs`, `krdc` and `fuse2` build when
+`pacman-home` doesn't have the PKGBUILD's version, or when a program or
+library of the installed package can no longer load (`ldd` names a
+library the host lost: SteamOS 0.5.7 took libxml2's soname from under
+emacs), so `cjf update` rebuilds after a SteamOS update with no bump.
 `pc/pkgbuilds/frame-control-bin` is the other kind, an ordinary `/usr`
 package for an Arch PC, which nothing here builds or offers; the PC's
 `krdpserver-embed-cursor` is a `~/.local` build by script (see [the PC
@@ -63,8 +61,7 @@ PKGBUILD was homeify's output with no hand edit, while it was here
 ([docs/paru.md](paru.md)). The rewrite is the mechanical part: a
 build system that hardcodes `/usr` shows up afterwards as a file outside
 `~/.local`, which `pacman-home check PKG` lists and `pacman-home -U`
-refuses, and is fixed in the PKGBUILD by hand, as the kit's `pacman`
-and `emacs` were, for
+refuses, and is fixed in the PKGBUILD by hand, as the kit's `emacs` was, for
 features the host lacks and a layout that keeps out of the host's way.
 
 A program that needs no file outside its own tree, such as waypipe,
@@ -150,18 +147,15 @@ package with a newer one upstream is `outdated`, and `cjf update`
 relocates the new one; a built package whose upstream moved past its
 PKGBUILD is `behind`, which is a bump in the PKGBUILD, here.
 
-The pacman it runs is the host's until the kit's `pacman` package is
-installed. That is pacman 7 built for the prefix, with its programs
-under `~/.local/lib/pacman/bin` so that `pacman` on `PATH` keeps meaning
-the host's, and with `~/.local/etc/pacman.conf` and
-`~/.local/var/lib/pacman` as its compiled-in defaults, so run by its
-path it reads the home database with no `--config`. Its libalpm is
-current, libalpm.so.16 where the host's pacman 6.1 carries .so.14, for
-anything built against libalpm. It also skips the ldconfig run that the
-host's pacman attempts after every transaction and that fails on the
-read-only root. `pacman-home` switches to it as soon as it is installed
-and still looks host packages up with the host's.
+The pacman it runs is the host's: pacman 7.1 with libalpm 16 since
+SteamOS 0.5.7. Until then the host had 6.1 with libalpm 14, and the kit
+carried a pacman 7 of its own under `~/.local/lib/pacman/bin`, for its
+libalpm and for compiled-in paths; it went on 2026-11-06, once the host
+caught up ([home-packages.md](home-packages.md)). The ldconfig run the
+host's pacman attempts after every transaction fails on the read-only
+root and says so (`error: command failed to execute correctly`); the
+transaction is done by then.
 
-After a SteamOS update, `ldd ~/.local/bin/emacs | grep "not found"` says
-whether a host library moved from under a build; the fix is a rebuild
-and `pacman-home -U` again.
+After a SteamOS update, `cjf installed` says which package lost a host
+library, by `ldd` over its programs and libraries, and `cjf update`
+rebuilds it.

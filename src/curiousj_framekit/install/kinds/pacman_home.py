@@ -1,7 +1,7 @@
 """The `pacman-home` kind: a package under ~/.local in pacman-home's
 database, either relocated from Arch Linux ARM's binary package
 (waypipe) or built here with makepkg from the kit's own PKGBUILD
-(emacs, pacman, krdc; data/pkgbuilds/NAME in the package, so every install
+(emacs, krdc, fuse2; data/pkgbuilds/NAME in the package, so every install
 has them). The work is frame/pkg.py's; this kind maps the catalog
 entry onto it. A build runs in ~/.cache/curiousj-framekit/build/NAME,
 a copy of the PKGBUILD's directory, not inside the package.
@@ -10,8 +10,8 @@ A package built here is outdated when pacman-home's version differs
 from the PKGBUILD's pkgver-pkgrel, which `installed` sees without the
 network; so is any package, built or relocated, with a program or
 library that the host can no longer load, which is what a SteamOS
-update that bumps a soname leaves (0.5.7: gpgme under pacman, libxml2
-under emacs), and `cjf update` builds it again. `outdated` asks Arch
+update that bumps a soname leaves (0.5.7: libxml2 under emacs), and
+`cjf update` builds it again. `outdated` asks Arch
 Linux ARM, and the AUR for a package it lacks, as `pacman-home outdated` does: a relocated package is outdated
 when they have a newer one; a built one is behind when they have a
 newer one than the PKGBUILD, which is a bump here, not an install."""

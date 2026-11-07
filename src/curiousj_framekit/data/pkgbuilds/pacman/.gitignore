@@ -1,5 +1,0 @@
-# makepkg working files
-src/
-pkg/
-*.pkg.tar.*
-*.tar.xz

@@ -49,18 +49,15 @@ relocate uses a second one, pacman-alarm.conf beside it, that adds Arch
 Linux ARM's repositories; the plain one has none, so that -U never
 pulls a /usr package from them to satisfy a dependency.
 
-The pacman run is the host's until the kit's pacman package is installed;
-then it is that one, under ~/.local/lib/pacman/bin, whose compiled-in
-defaults are these very paths, which skips the ldconfig run that fails
-on the read-only root, and whose libalpm is current (the host's is
-pacman 7.1 too since SteamOS 0.5.7; it was 6.1 before). When a SteamOS
-update takes a library from under the kit's pacman (0.5.7 bumped
-gpgme's soname), the host's stands in again, said once on stderr, and
-`cjf installed` shows the package as outdated for `cjf update` to
-rebuild; the same check, ldd over a package's programs and libraries,
-covers every package here. Host packages are always looked up with the
-host's pacman. This database knows only what
-it installed itself, so for -U the package's dependencies are checked
+The pacman run is the host's: 7.1 with libalpm 16 since SteamOS 0.5.7
+(6.1 before, which is why the kit carried a pacman 7 of its own under
+~/.local until then; dropped on 2026-11-06). The ldconfig run it
+attempts after every transaction fails on the read-only root and says
+so; the transaction is done by then. When a SteamOS update takes a
+library from under a package here (0.5.7 bumped gpgme's and libxml2's
+sonames), `cjf installed` shows the package as outdated, by ldd over
+its programs and libraries, for `cjf update` to rebuild. This database
+knows only what it installed itself, so for -U the package's dependencies are checked
 against the host's database and the satisfied ones are passed as
 --assume-installed; a dependency the host lacks is still an error.
 
@@ -136,8 +133,8 @@ _probes: dict[str, tuple[tuple[int, ...] | None, str]] = {}
 
 def probe(path: str | Path) -> tuple[tuple[int, ...] | None, str]:
     """(version, problem) of the pacman at path, from `pacman --version`:
-    the version as a tuple, or None and the one-line reason it can't run,
-    the loader's when a library is gone. Once per path per run."""
+    the version as a tuple, or None and the one-line reason it can't run.
+    Once per path per run."""
     key = str(path)
     if key not in _probes:
         try:
@@ -165,25 +162,9 @@ class Paths:
         self.gpgdir = self.local / "etc/pacman.d/gnupg"
         self.keyrings = self.local / "share/pacman/keyrings"
         self.mirror = os.environ.get("ALARM_MIRROR", ALARM_MIRROR_DEFAULT)
-        # The kit's pacman when it is installed and runs; the host's when
-        # a SteamOS update has taken a library from under it (0.5.7 took
-        # gpgme's soname), so that the database stays readable and the
-        # kit's pacman can be rebuilt.
-        local_pacman = self.local / "lib/pacman/bin/pacman"
         self.pacman = HOST_PACMAN
-        self.broken_pacman = ""     # why the kit's pacman can't run, when it can't
-        if os.access(local_pacman, os.X_OK):
-            self.broken_pacman = probe(local_pacman)[1]
-            if not self.broken_pacman:
-                self.pacman = str(local_pacman)
         self.pacman_key = "/usr/bin/pacman-key"
-        if self.local_pacman and os.access(local_pacman.parent / "pacman-key", os.X_OK):
-            self.pacman_key = str(local_pacman.parent / "pacman-key")
         self.version = probe(self.pacman)[0]
-
-    @property
-    def local_pacman(self) -> bool:
-        return self.pacman != HOST_PACMAN
 
     def conf_text(self) -> str:
         # RootDir stays /: a prefix build's files carry absolute paths
@@ -559,7 +540,7 @@ def relocate_cmd(paths: Paths, args: list[str]) -> None:
 # --- outdated -------------------------------------------------------------
 
 def pkgbuilds_dir() -> Path:
-    """The kit's PKGBUILDs, one directory each (emacs, pacman, krdc, fuse2): data/pkgbuilds
+    """The kit's PKGBUILDs, one directory each (emacs, krdc, fuse2): data/pkgbuilds
     in the package, so an install from git has them as a checkout does."""
     return Path(__file__).resolve().parent.parent / "data" / "pkgbuilds"
 
@@ -727,9 +708,6 @@ def pacman_home_main(argv: list[str] | None = None) -> int:
             return 0
         where.require_host(PROG)
         paths = Paths()
-        if paths.broken_pacman:
-            print(f"{PROG}: the kit's pacman can't run ({paths.broken_pacman}); using {HOST_PACMAN} "
-                  "(cjf update rebuilds it)", file=sys.stderr)
         paths.write_confs()
         if args[0] == "check":
             return check_cmd(paths, args[1:])

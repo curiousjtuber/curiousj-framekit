@@ -132,8 +132,8 @@ The whole of this on a new Frame, from a clone at `~/steam-frame-utils`:
 
 That is one run: `~/.local/bin` on `PATH`, distrobox, the cursor fix and
 the rc blocks; Homebrew with zsh and wl-clipboard; waypipe relocated
-from Arch Linux ARM; mise with rust; the packages in `pkgbuilds/frame/`,
-pacman 7 and emacs, built here and installed under `~/.local`
+from Arch Linux ARM; mise with rust; the package in `pkgbuilds/frame/`,
+emacs, built here and installed under `~/.local`
 (`--emacs=box --waypipe=box` in place of `--packages`'s emacs and
 `--waypipe` take the distrobox route instead, see [emacs and waypipe:
 host or box](install.md#emacs-and-waypipe-host-or-box)); Tailscale as a system

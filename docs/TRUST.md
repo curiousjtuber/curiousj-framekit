@@ -18,7 +18,6 @@ is Arch Linux ARM.
 | `nerd-fonts` | GitHub's TLS, the nerd-fonts project | each archive against the release's SHA-256.txt; data, not code |
 | `waypipe` | Arch Linux ARM's Build System key, pinned by fingerprint in pacman-home | the package's PGP signature, by pacman; the keyring once, against the pinned fingerprint |
 | `emacs` | gnu.org's release tarball, your review of the PKGBUILD | the BLAKE2 sum in the PKGBUILD, by makepkg |
-| `pacman` | gitlab.archlinux.org's release tarball, your review of the PKGBUILD | the BLAKE2 sum in the PKGBUILD, by makepkg |
 | `distrobox` | GitHub's TLS, distrobox's account | nothing: curl | sh of the main branch, unpinned |
 | `curiousj-tools` | GitHub's TLS, curiousjtuber's account | nothing beyond TLS: a git checkout built by uv |
 | `frametop` | GitHub's TLS and the Frametop organization's account | the release zip against the sha256 recorded here, then the image inside against the zip's own metadata |

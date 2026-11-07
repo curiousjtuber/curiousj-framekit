@@ -152,9 +152,9 @@ class Pkgbuilds(unittest.TestCase):
         base = pkg.pkgbuilds_dir()
         self.assertEqual(base.parts[-3:], ("curiousj_framekit", "data", "pkgbuilds"))
         self.assertEqual(sorted(d.name for d in base.iterdir() if (d / "PKGBUILD").is_file()),
-                         ["emacs", "fuse2", "krdc", "pacman"])
-        name, ver, rel, _ = pkg.pkgbuild_info(base / "pacman")
-        self.assertEqual(name, "pacman")
+                         ["emacs", "fuse2", "krdc"])
+        name, ver, rel, _ = pkg.pkgbuild_info(base / "fuse2")
+        self.assertEqual(name, "fuse2")
         self.assertTrue(ver and rel)
 
     def test_stage_copies_into_the_cache_dir(self):
@@ -162,18 +162,18 @@ class Pkgbuilds(unittest.TestCase):
         with tempfile.TemporaryDirectory() as tmp, \
                 mock.patch.dict("os.environ", {"XDG_CACHE_HOME": tmp}):
             self.assertEqual(pkg.build_dir(), Path(tmp) / "curiousj-framekit/build")
-            work, names = pkg.stage(pkg.pkgbuilds_dir() / "pacman")
-            self.assertEqual(work, pkg.build_dir() / "pacman")
+            work, names = pkg.stage(pkg.pkgbuilds_dir() / "fuse2")
+            self.assertEqual(work, pkg.build_dir() / "fuse2")
             self.assertIn("PKGBUILD", names)
             self.assertTrue((work / "PKGBUILD").is_file())
-            self.assertEqual((work / "PKGBUILD").read_bytes(), (pkg.pkgbuilds_dir() / "pacman/PKGBUILD").read_bytes())
+            self.assertEqual((work / "PKGBUILD").read_bytes(), (pkg.pkgbuilds_dir() / "fuse2/PKGBUILD").read_bytes())
             # what a build adds is told apart from what was copied
             (work / "src").mkdir()
-            (work / "pacman-7.0.0-1-aarch64.pkg.tar.zst").write_bytes(b"")
+            (work / "fuse2-2.9.9-1-aarch64.pkg.tar.zst").write_bytes(b"")
             junk = sorted(f.name for f in work.iterdir() if f.name not in names)
-            self.assertEqual(junk, ["pacman-7.0.0-1-aarch64.pkg.tar.zst", "src"])
+            self.assertEqual(junk, ["fuse2-2.9.9-1-aarch64.pkg.tar.zst", "src"])
             # nothing landed beside the PKGBUILD in the package
-            self.assertFalse((pkg.pkgbuilds_dir() / "pacman/src").exists())
+            self.assertFalse((pkg.pkgbuilds_dir() / "fuse2/src").exists())
 
 
 class MakepkgConf(unittest.TestCase):
@@ -196,50 +196,32 @@ class MakepkgConf(unittest.TestCase):
                 self.assertIsNone(pkg.makepkg_wants("ccache"))
 
 
-class WhichPacman(unittest.TestCase):
-    """The kit's pacman runs when it can; the host's stands in when a
-    SteamOS update took a library from under it."""
+class PacmanVersion(unittest.TestCase):
+    """The host's pacman version decides the sandbox directive: 7 knows
+    it and needs it (no Landlock on the Frame), 6 would not."""
 
-    def fake_pacman(self, home: Path, script: str) -> Path:
-        bin_ = home / ".local/lib/pacman/bin"
-        bin_.mkdir(parents=True)
-        f = bin_ / "pacman"
+    def fake_host(self, tmp: Path, script: str) -> Path:
+        f = tmp / "pacman"
         f.write_text("#!/bin/sh\n" + script)
         f.chmod(0o755)
         return f
 
-    def test_broken_kit_pacman_falls_back_to_the_host(self):
+    def test_a_pacman_7_gets_the_sandbox_directive(self):
         from unittest import mock
         with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            self.fake_pacman(home, 'echo "$0: error while loading shared libraries: libgpgme.so.11: '
-                                   'cannot open shared object file: No such file or directory" >&2; exit 127\n')
-            with mock.patch.dict(pkg._probes, clear=True):
-                p = pkg.Paths(home)
-            self.assertEqual(p.pacman, pkg.HOST_PACMAN)
-            self.assertFalse(p.local_pacman)
-            self.assertEqual(p.broken_pacman,
-                             "libgpgme.so.11: cannot open shared object file: No such file or directory")
-
-    def test_working_kit_pacman_is_used_and_its_version_read(self):
-        from unittest import mock
-        with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            local = self.fake_pacman(home, 'echo " .--.    Pacman v7.1.0 - libalpm v16.0.1"\n')
-            with mock.patch.dict(pkg._probes, clear=True):
-                p = pkg.Paths(home)
-            self.assertEqual(p.pacman, str(local))
-            self.assertEqual(p.broken_pacman, "")
+            host = self.fake_host(Path(tmp), 'echo " .--.    Pacman v7.1.0 - libalpm v16.0.1"\n')
+            with mock.patch.object(pkg, "HOST_PACMAN", str(host)), mock.patch.dict(pkg._probes, clear=True):
+                p = pkg.Paths(Path(tmp))
+            self.assertEqual(p.pacman, str(host))
             self.assertEqual(p.version, (7, 1, 0))
             self.assertIn("DisableSandboxFilesystem\n", p.conf_text())
 
-    def test_a_pacman_6_gets_no_sandbox_directive(self):
+    def test_a_pacman_6_gets_none(self):
         from unittest import mock
         with tempfile.TemporaryDirectory() as tmp:
-            home = Path(tmp)
-            self.fake_pacman(home, 'echo " .--.    Pacman v6.1.0 - libalpm v14.0.0"\n')
-            with mock.patch.dict(pkg._probes, clear=True):
-                p = pkg.Paths(home)
+            host = self.fake_host(Path(tmp), 'echo " .--.    Pacman v6.1.0 - libalpm v14.0.0"\n')
+            with mock.patch.object(pkg, "HOST_PACMAN", str(host)), mock.patch.dict(pkg._probes, clear=True):
+                p = pkg.Paths(Path(tmp))
             self.assertEqual(p.version, (6, 1, 0))
             self.assertNotIn("DisableSandboxFilesystem", p.conf_text())
 
@@ -259,25 +241,25 @@ class BrokenLibs(unittest.TestCase):
         import shutil as sh
         with tempfile.TemporaryDirectory() as tmp:
             local = Path(tmp) / ".local"
-            (local / "lib/pacman/bin").mkdir(parents=True)
-            elf = local / "lib/pacman/bin/pacman"
+            (local / "lib/krdc-embed-cursor/bin").mkdir(parents=True)
+            elf = local / "lib/krdc-embed-cursor/bin/krdc"
             sh.copy2("/bin/true", elf)
             (local / "bin").mkdir()
             (local / "bin/script").write_text("#!/bin/sh\n")
             (local / "bin/script").chmod(0o755)
-            ldd = subprocess.CompletedProcess(["ldd"], 0, stdout="\tlibgpgme.so.11 => not found\n"
+            ldd = subprocess.CompletedProcess(["ldd"], 0, stdout="\tlibxml2.so.2 => not found\n"
                                               "\tlibc.so.6 => /usr/lib/libc.so.6 (0x1)\n", stderr="")
             files = subprocess.CompletedProcess(["pacman"], 0, stdout=f"{elf}\n{local}/bin/script\n"
-                                                f"{local}/share/doc/x\n{local}/lib/pacman/\n", stderr="")
+                                                f"{local}/share/doc/x\n{local}/lib/krdc-embed-cursor/\n", stderr="")
             paths = pkg.Paths(Path(tmp))
             with mock.patch.object(pkg, "pacman", return_value=files), \
                     mock.patch.object(pkg.subprocess, "run", return_value=ldd) as run:
-                self.assertEqual(pkg.broken_libs(paths, "pacman"),
-                                 [("lib/pacman/bin/pacman", "libgpgme.so.11")])
+                self.assertEqual(pkg.broken_libs(paths, "krdc"),
+                                 [("lib/krdc-embed-cursor/bin/krdc", "libxml2.so.2")])
             # ldd ran for the one ELF file, not for the script or the data
             self.assertEqual(run.call_count, 1)
             self.assertEqual(run.call_args[0][0], ["ldd", str(elf)])
-            self.assertIn(str(local / "lib/pacman/bin"), run.call_args[1]["env"]["LD_LIBRARY_PATH"].split(":"))
+            self.assertIn(str(local / "lib/krdc-embed-cursor/bin"), run.call_args[1]["env"]["LD_LIBRARY_PATH"].split(":"))
 
     def test_missing_libs_keeps_its_lines(self):
         from unittest import mock

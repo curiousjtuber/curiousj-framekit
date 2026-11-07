@@ -62,14 +62,6 @@ pkgbuild = "emacs"
 trust_root = "gnu.org's release tarball, your review of the PKGBUILD"
 trust_checks = "the BLAKE2 sum in the PKGBUILD, by makepkg"
 
-[item.pacman]
-kind = "pacman-home"
-description = "pacman 7 for ~/.local, with a current libalpm"
-package = "pacman"
-pkgbuild = "pacman"
-trust_root = "gitlab.archlinux.org's release tarball, your review of the PKGBUILD"
-trust_checks = "the BLAKE2 sum in the PKGBUILD, by makepkg"
-
 [item.distrobox]
 kind = "installer-script"
 description = "distrobox under ~/.local, working from Desktop Mode and Frametop"

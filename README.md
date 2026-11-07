@@ -72,7 +72,7 @@ a diff and asked about, and the file is backed up with a timestamp.
 | `rust` | rust through mise, for a Rust package built with `cjf pkg` |
 | `nerd-fonts` | JetBrainsMono and NerdFontsSymbolsOnly in `~/.local/share/fonts`, or the names you give |
 | `waypipe` | Arch Linux ARM's package, relocated under `~/.local` |
-| `emacs`, `pacman`, `krdc`, `fuse2` | Emacs with PGTK, pacman 7, KRDC with the kit's "Remote pointer" patch in place of the Flatpak ([docs/krdc-embed-cursor.md](docs/krdc-embed-cursor.md)), and libfuse 2 for the AppImages (SteamOS 0.5.7 dropped it), built on the Frame for `~/.local` from the kit's PKGBUILDs |
+| `emacs`, `krdc`, `fuse2` | Emacs with PGTK, KRDC with the kit's "Remote pointer" patch in place of the Flatpak ([docs/krdc-embed-cursor.md](docs/krdc-embed-cursor.md)), and libfuse 2 for the AppImages (SteamOS 0.5.7 dropped it), built on the Frame for `~/.local` from the kit's PKGBUILDs |
 | `distrobox` | distrobox under `~/.local`, working from Desktop Mode and Frametop's desktop |
 | `curiousj-tools` | my ssh, tmux and Emacs tools, as a uv tool |
 | `frametop` | [Frametop](https://github.com/Frametop/frametop), the multi-screen Plasma desktop and 3D mouse, from its release zip, checked against a recorded sha256 |
@@ -89,7 +89,7 @@ what each one checks.
 | Path | |
 |---|---|
 | `src/curiousj_framekit/` | the package: `frame/` (the Frame's own: cursor, wifi, vr, controllers, rdp, pkg, after-update), `install/` (the catalog and its kinds, init, migrate, status), `beatsaber/`, `shell/` (init.sh and the shims), `data/` (the KRdp manifest and patches, the KRDC build script and patch, the RDP GUI) |
-| `src/curiousj_framekit/data/pkgbuilds/` | the kit's PKGBUILDs, built for `~/.local` in `~/.cache/curiousj-framekit/build/`: emacs, pacman, krdc, fuse2 |
+| `src/curiousj_framekit/data/pkgbuilds/` | the kit's PKGBUILDs, built for `~/.local` in `~/.cache/curiousj-framekit/build/`: emacs, krdc, fuse2 |
 | `pc/` | the PC side: krdpserver patched to paint the PC's pointer into the video for a viewer that asks, built by script, Frame Control's PKGBUILD, and what the Frame's docs assume there ([pc/README.md](pc/README.md)) |
 | `src/curiousj_framekit/data/krdc-embed-cursor/` | KRDC with the option that asks for it: the patch, which the Frame's PKGBUILD applies too, and the script that builds it on the PC ([docs/krdc-embed-cursor.md](docs/krdc-embed-cursor.md)) |
 | `docs/` | [install.md](docs/install.md), [apps.md](docs/apps.md), [tailscale.md](docs/tailscale.md), [shell-init.md](docs/shell-init.md), [cursor.md](docs/cursor.md), [packages.md](docs/packages.md), [krdc-embed-cursor.md](docs/krdc-embed-cursor.md), [TRUST.md](docs/TRUST.md); and the memos: [the desktop cursor on 0.5.6](docs/desktop-cursor.md), [packages under ~/.local](docs/home-packages.md), [paru](docs/paru.md), [the proximity sensor](docs/proximity-sensor.md), [the screen reader](docs/orca-screen-reader.md), [Arch distrobox images](docs/arch-distrobox-images.md); `notes/` has the AA calibration data |

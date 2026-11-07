@@ -13,7 +13,7 @@ unless said otherwise, on SteamOS 0.4.5.
 | waypipe 0.11.2 | relocated, from Arch Linux ARM's package | one binary and a man page; needs only libc, lz4 and zstd, all on the host; no data files | nothing: `pacman-home relocate waypipe` |
 | jq 1.8.2 | homeify as it came (a test build on the PC, not installed on the Frame) | autotools with `--prefix`, a license file under `$pkgdir/usr` | nothing: the prefix rewrite covered both |
 | paru 2.1.0 (dropped the same day; [paru.md](paru.md)) | homeify as it came, from the AUR | cargo build, installs into `$pkgdir/usr` | nothing since homeify learned two Rust rules (the rpath in `RUSTFLAGS`, cargo unlisted as a makedepends because it comes from mise); before that, those two edits by hand |
-| pacman 7.1.0 | homeify's kind of rewrite, then edits; written by hand from the release tarball | meson with `--prefix`, but a layout to decide and host files to avoid | documentation off (no asciidoc or doxygen on the host); programs under `lib/pacman/bin` so `pacman` on PATH stays the host's; ldconfig pointed at a path that doesn't exist; `pacman.conf` and `makepkg.conf` dropped; bash completions moved under the prefix, since meson takes their directory from the system's `bash-completion.pc` |
+| pacman 7.1.0 (dropped 2026-11-06, below) | homeify's kind of rewrite, then edits; written by hand from the release tarball | meson with `--prefix`, but a layout to decide and host files to avoid | documentation off (no asciidoc or doxygen on the host); programs under `lib/pacman/bin` so `pacman` on PATH stays the host's; ldconfig pointed at a path that doesn't exist; `pacman.conf` and `makepkg.conf` dropped; bash completions moved under the prefix, since meson takes their directory from the system's `bash-completion.pc` |
 | emacs 31.1 | edits throughout; written by hand from Arch's `emacs-wayland` variant | a split PKGBUILD upstream, and features the host can't support | one variant kept (PGTK); native compilation off (no libgccjit on the host); tree-sitter off (not on the host); launcher `Exec` lines rewritten to absolute paths, since emacs's install does that only for emacsclient and the session's PATH is `/usr/local/bin:/usr/bin`; Arch's name and `provides=(emacs)` kept so `pacman-home -Q emacs` answers |
 | fuse2 2.9.9 (2026-11-06, SteamOS 0.5.7) | written by hand from Arch's PKGBUILD, with its two patches | autotools with `--prefix`, but a setuid helper it cannot have, and a library found only through `LD_LIBRARY_PATH` | utilities off (fusermount can't be setuid under `~/.local`; `~/.local/bin/fusermount` is a symlink to the host's `fusermount3`, which libfuse 2 execs by its compiled-in bindir and which speaks the same protocol); the library under `~/.local/lib/fuse2`, a directory of its own, since the AppImage launchers put it on `LD_LIBRARY_PATH`, which reaches whatever the program starts |
 
@@ -81,16 +81,17 @@ soname (`libgpgme.so.11` to `.so.45`), which the kit's pacman links,
 and libxml2's (`.so.2` to `.so.16`), which emacs links, so neither
 started; `pacman-home` ran the kit's pacman and died with it, and
 `cjf installed` called the four packages not installed. Two things
-came of that. `pacman-home` now probes the kit's pacman with
-`--version` and falls back to the host's when it can't run, saying
-so once; and a package's state now includes `ldd` over its programs
+came of that. A package's state now includes `ldd` over its programs
 and libraries, so a package with a library the host lost is
 `outdated` at its own version and `cjf update` rebuilds it, with no
-`pkgrel` bump. The same update dropped fuse2 from the image, which is
-what the fuse2 package above is for, and ships pacman 7.1 with
-libalpm 16 as the host's, which takes away the kit's pacman package's
-first reason (libalpm 16 for paru); its other two, the compiled-in
-paths and the skipped ldconfig, are conveniences. It stays for now.
+`pkgrel` bump. And the kit's pacman package went the same day: the
+update ships pacman 7.1 with libalpm 16 as the host's, which was the
+package's first reason (libalpm 16 for paru), and its other two, the
+compiled-in paths and the skipped ldconfig, were conveniences.
+`pacman-home` runs the host's pacman again, as it did before the
+package existed, with the ldconfig error after each transaction as
+the price. The same update dropped fuse2 from the image, which is
+what the fuse2 package above is for.
 
 ## What separated the three groups
 
