@@ -41,18 +41,29 @@ def state_dir() -> Path:
     return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "krdpd/flatpak"
 
 
+def patch_body(text: str) -> str:
+    """A patch from its first diff header on: the kit's patches open
+    with prose that explains them, which no build reads."""
+    lines = text.splitlines(keepends=True)
+    for i, line in enumerate(lines):
+        if line.startswith(("From ", "diff ", "--- ", "Index: ")):
+            return "".join(lines[i:])
+    return text
+
+
 def stamp(item: Item) -> str:
     """The first 16 hex digits of the sha256 over the manifest's lines
     that build something (comment and blank lines left out, so a note
     added to the manifest doesn't force a half-hour rebuild) and the
-    patches beside it."""
+    diffs of the patches beside it (their prose headers left out, for
+    the same reason)."""
     manifest = manifest_path(item)
     h = hashlib.sha256()
     for line in manifest.read_text().splitlines():
         if line.strip() and not line.lstrip().startswith("#"):
             h.update(line.encode() + b"\n")
     for patch in sorted(manifest.parent.glob("*.patch")):
-        h.update(patch.read_bytes())
+        h.update(patch_body(patch.read_text()).encode())
     return h.hexdigest()[:16]
 
 

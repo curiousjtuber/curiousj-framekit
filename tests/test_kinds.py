@@ -136,6 +136,26 @@ class Flatpak(unittest.TestCase):
                 flatpak.scope_of(Options(), [])
 
 
+class PatchBody(unittest.TestCase):
+    """A patch's prose header is not part of the build, so a note there
+    keeps the flatpak's stamp; the diff after it is the build."""
+
+    def test_prose_before_the_diff_is_dropped(self):
+        diff = "diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n+b\n"
+        self.assertEqual(flatpak_build.patch_body("why this patch\n\n" + diff), diff)
+        self.assertEqual(flatpak_build.patch_body("a note\nFrom 1234 Mon Sep 17 00:00:00 2001\n" + diff),
+                         "From 1234 Mon Sep 17 00:00:00 2001\n" + diff)
+        self.assertEqual(flatpak_build.patch_body(diff), diff)
+        self.assertEqual(flatpak_build.patch_body("no diff at all\n"), "no diff at all\n")
+
+    def test_the_kits_patches_have_bodies(self):
+        item = catalog.load()["krdp"]
+        for patch in flatpak_build.manifest_path(item).parent.glob("*.patch"):
+            body = flatpak_build.patch_body(patch.read_text())
+            self.assertTrue(body.startswith(("From ", "diff ", "--- ")), patch.name)
+            self.assertLess(len(body), len(patch.read_text()), f"{patch.name} has no prose header")
+
+
 class StampIgnoresComments(unittest.TestCase):
     def test_comment_change_keeps_the_stamp(self):
         item = catalog.load()["krdp"]
