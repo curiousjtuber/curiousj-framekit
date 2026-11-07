@@ -5,7 +5,10 @@ runs. Three installers, each a function here, chosen by the item's
 
   bsmanager      the fork's latest install.sh, run with the words after
                  the name (`--uninstall`, `--appimage FILE`); unpinned,
-                 and the AppImage then updates itself
+                 and the AppImage then updates itself. Its menu entry
+                 is then given the kit's libfuse.so.2 (the fuse2 item),
+                 which the AppImage's runtime loads and SteamOS 0.5.7
+                 no longer has
   full-keyboard  the release's SHA256SUMS names the arm64 archive; it is
                  downloaded, checked against them, and its install.sh
                  run. `--version X.Y.Z` takes that release
@@ -35,6 +38,8 @@ from .base import (Base, TempDir, fetch, fetch_text, latest_tag, newer, require_
                    sha256_of, sum_for, verify)
 
 APPIMAGE = Path("/home/steamos/Applications/BSManager.AppImage")
+BSM_DESKTOP = Path.home() / ".local/share/applications/bs-manager.desktop"
+FUSE2_LIB = Path.home() / ".local/lib/fuse2"     # the kit's fuse2 package: libfuse.so.2, nothing else
 KEYBOARD_ROOT = Path.home() / ".local/share/framekeyboard"
 KEYBOARD_LAUNCHER = Path.home() / ".local/bin/framekeyboard"
 KEYBOARD_DESKTOP = Path.home() / ".local/share/applications/framekeyboard.desktop"
@@ -74,8 +79,46 @@ def current_release(root: Path) -> str | None:
 
 # --- BSManager -------------------------------------------------------------
 
+def appimage_env(env: dict[str, str] | None = None) -> dict[str, str]:
+    """The environment an AppImage runs in here: LD_LIBRARY_PATH with the
+    kit's libfuse.so.2 in front, since the runtime dlopens it and SteamOS
+    0.5.7 dropped fuse2. The variable reaches everything the program
+    starts, which is why that directory holds nothing else."""
+    out = dict(os.environ if env is None else env)
+    rest = out.get("LD_LIBRARY_PATH", "")
+    out["LD_LIBRARY_PATH"] = str(FUSE2_LIB) + (f":{rest}" if rest else "")
+    return out
+
+
+def fuse_exec(line: str) -> str:
+    """A menu entry's Exec line, run through env with that same path."""
+    prefix = f"Exec=env LD_LIBRARY_PATH={FUSE2_LIB} "
+    return line if line.startswith(prefix) else line.replace("Exec=", prefix, 1)
+
+
+def menu_entry_has_fuse(text: str) -> bool:
+    return all(fuse_exec(l) == l for l in text.splitlines() if l.startswith("Exec="))
+
+
+def fix_menu_entry() -> bool:
+    """install.sh's menu entry runs the AppImage bare; give it the
+    path. Whether anything changed."""
+    if not BSM_DESKTOP.is_file():
+        return False
+    text = BSM_DESKTOP.read_text()
+    new = "\n".join(fuse_exec(l) if l.startswith("Exec=") else l for l in text.split("\n"))
+    if new == text:
+        return False
+    BSM_DESKTOP.write_text(new)
+    return True
+
+
 def bsmanager_status(item: Item, opts: Options) -> Status:
-    return Status(State.OK, "AppImage; updates itself") if APPIMAGE.exists() else Status(State.MISSING)
+    if not APPIMAGE.exists():
+        return Status(State.MISSING)
+    if BSM_DESKTOP.is_file() and not menu_entry_has_fuse(BSM_DESKTOP.read_text()):
+        return Status(State.OUTDATED, "AppImage; its menu entry runs without the kit's libfuse.so.2")
+    return Status(State.OK, "AppImage; updates itself")
 
 
 def bsmanager_check(item: Item, opts: Options, status: Status) -> Check:
@@ -99,6 +142,8 @@ def bsmanager_install(item: Item, opts: Options, args: list[str]) -> bool:
         script = tmp / "install.sh"
         fetch(opts, item["installer_url"], script)
         cmdline.run(opts, ["bash", str(script), *args], capture=False)
+    if verb != "remove" and fix_menu_entry():
+        cmdline.say("menu entry", f"{cmdline.tilde(BSM_DESKTOP)} runs the AppImage with the kit's libfuse.so.2")
     return True
 
 

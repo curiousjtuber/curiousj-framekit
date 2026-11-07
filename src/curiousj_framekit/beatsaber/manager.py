@@ -12,7 +12,10 @@ From the PC, the session and the command in one line:
 --no-gpu turns off BSManager's GPU rendering, for a blank or crashing
 window; pass waypipe -n on the PC as well, so the window travels as
 plain pixels instead of GPU buffers. The Frame needs waypipe (`cjf
-install waypipe`) and BSManager (`cjf install bsmanager`).
+install waypipe`) and BSManager (`cjf install bsmanager`), which brings
+fuse2, the libfuse.so.2 the AppImage's runtime loads and SteamOS 0.5.7
+dropped; it runs the AppImage with that library's directory on
+LD_LIBRARY_PATH, as BSManager's menu entry does.
 
 BSManager allows one instance: a second hands off to the first and
 exits, with no new window, so this refuses while one runs. Its Electron
@@ -60,9 +63,12 @@ def cli(opts: Options, no_gpu: bool, args: tuple[str, ...]) -> int:
         raise cmdline.Error("WAYLAND_DISPLAY is not set; run it in a waypipe ssh session from "
                             "the PC: waypipe --remote-bin /home/steamos/.local/bin/waypipe "
                             "ssh steamos@frame.local bsmanager")
+    from ..install import catalog
+    from ..install.kinds import upstream
     if not os.access(APPIMAGE, os.X_OK):
-        from ..install import catalog
         catalog.needs("bsmanager", "bsmanager", opts)
+    if not (upstream.FUSE2_LIB / "libfuse.so.2").exists():
+        catalog.needs("fuse2", "bsmanager", opts)
     if is_running(opts):
         raise cmdline.Error("BSManager is already running, in the window it was started in; "
                             "quit it first")
@@ -71,7 +77,7 @@ def cli(opts: Options, no_gpu: bool, args: tuple[str, ...]) -> int:
         argv.append("--disable-gpu")
     argv += list(args)
     cmdline.log(opts, "+ " + " ".join(argv))
-    os.execv(APPIMAGE, argv)
+    os.execve(APPIMAGE, argv, upstream.appimage_env())
 
 
 def main(argv: list[str] | None = None) -> int:

@@ -50,6 +50,8 @@ def check_lines(checks: dict[str, Check], width: int | None = None) -> list[str]
         parts = []
         if c.fresh == Fresh.CURRENT:
             parts.append(c.installed)
+        elif c.fresh in (Fresh.OUTDATED, Fresh.BEHIND) and c.available == c.installed:
+            parts.append(c.installed)     # the same version again: a rebuild, said in the note
         elif c.fresh in (Fresh.OUTDATED, Fresh.BEHIND):
             parts.append(f"{c.installed or '?'} -> {c.available}")
         elif c.installed:

@@ -12,8 +12,13 @@ build that sees the Frame's own `/usr`, D-Bus and processes, which the
 distrobox one did not; `cjf install emacs` builds and installs it.
 `krdc/` is KRDC with the kit's "Remote pointer" patch, in place of the
 Flathub flatpak; it carries the two build dependencies the host lacks
-([krdc-embed-cursor.md](krdc-embed-cursor.md)). The header of each
-PKGBUILD says what it leaves out and why. By hand, from a checkout:
+([krdc-embed-cursor.md](krdc-embed-cursor.md)). `fuse2/` is libfuse 2,
+the `libfuse.so.2` that every AppImage's runtime loads to mount itself
+and that SteamOS 0.5.7 dropped from the image; `cjf install bsmanager`
+brings it, and runs the AppImage with its directory on
+`LD_LIBRARY_PATH` (the library's own directory, `~/.local/lib/fuse2`,
+so nothing else travels with it). The header of each PKGBUILD says
+what it leaves out and why. By hand, from a checkout:
 
 ```bash
 cd ~/curiousj-framekit/src/curiousj_framekit/data/pkgbuilds/emacs && makepkg -f
@@ -32,9 +37,13 @@ the downloaded sources, about half a gigabyte for emacs, listed with
 their size before the question (`--clean` deletes unasked, `--keep` asks
 nothing; homeify's `PKGBUILD.upstream` is kept either way). Keep them
 while a PKGBUILD is being adjusted, since `makepkg -R` repackages from
-them in seconds. `cjf install emacs`, `pacman` and `krdc` build
-when `pacman-home` doesn't have the PKGBUILD's version, so `cjf update`
-rebuilds what you bump after a SteamOS update.
+them in seconds. `cjf install emacs`, `pacman`, `krdc` and `fuse2`
+build when `pacman-home` doesn't have the PKGBUILD's version, or when a
+program or library of the installed package can no longer load (`ldd`
+names a library the host lost: SteamOS 0.5.7 took gpgme's soname from
+under pacman and libxml2's from under emacs), so `cjf update` rebuilds
+after a SteamOS update with no bump; while the kit's pacman is the one
+broken, `pacman-home` runs the host's and says so.
 `pc/pkgbuilds/frame-control-bin` is the other kind, an ordinary `/usr`
 package for an Arch PC, which nothing here builds or offers; the PC's
 `krdpserver-embed-cursor` is a `~/.local` build by script (see [the PC

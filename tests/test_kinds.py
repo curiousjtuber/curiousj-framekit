@@ -240,12 +240,16 @@ class Checks(unittest.TestCase):
             "emacs": Check(Fresh.BEHIND, "31.1-1", "31.2", "Arch Linux ARM", "the PKGBUILD has 31.1: bump it"),
             "frametop": Check(Fresh.CURRENT, "0.2.2", source="GitHub release"),
             "bsmanager": Check(Fresh.UNKNOWN, "AppImage", note="updates itself"),
+            "pacman": Check(Fresh.OUTDATED, "7.1.0-1", "7.1.0-1", "the kit's PKGBUILD",
+                            "7.1.0-1 installed, but the host no longer has libgpgme.so.11 (a SteamOS update): rebuild it"),
         })
         self.assertEqual(lines, [
             "outdated  tailscale  1.102.4 -> 1.104.5 (pkgs.tailscale.com stable)",
             "behind    emacs      31.1-1 -> 31.2 (Arch Linux ARM); the PKGBUILD has 31.1: bump it",
             "current   frametop   0.2.2 (GitHub release)",
             "?         bsmanager  AppImage; updates itself",
+            "outdated  pacman     7.1.0-1 (the kit's PKGBUILD); 7.1.0-1 installed, but the host no longer has "
+            "libgpgme.so.11 (a SteamOS update): rebuild it",
         ])
 
     def test_every_kind_answers_check(self):
@@ -269,3 +273,91 @@ class PacmanHome(unittest.TestCase):
             self.assertEqual(status.state, State.UNKNOWN)
             self.assertIn("no pacman here", status.detail)
             self.assertFalse((Path(tmp) / ".local/etc").exists())
+
+
+class PacmanHomeBroken(unittest.TestCase):
+    """A package whose program lost a library to a SteamOS update is
+    outdated at the same version, and cjf update rebuilds it."""
+
+    def test_status_and_check(self):
+        from curiousj_framekit.frame import pkg
+        from curiousj_framekit.install.kinds import pacman_home
+        item = catalog.load()["pacman"]
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.dict("os.environ", {"HOME": tmp}), \
+                mock.patch.object(pkg, "query_version", return_value="7.1.0-1"), \
+                mock.patch.object(pkg, "pkgbuild_info", return_value=("pacman", "7.1.0", "1", [])), \
+                mock.patch.object(pkg, "broken_libs", return_value=[("lib/pacman/bin/pacman", "libgpgme.so.11")]), \
+                mock.patch.object(pkg, "upstream_version", return_value=None), \
+                mock.patch.object(pacman_home, "synced_paths", return_value=pkg.Paths(Path(tmp))):
+            status = pacman_home.Kind().status(item, Options())
+            self.assertEqual(status.state, State.OUTDATED)
+            self.assertEqual(status.detail, "7.1.0-1 installed, but the host no longer has libgpgme.so.11 "
+                                            "(a SteamOS update): rebuild it")
+            check = catalog.check_of(item, Options(), status)
+        self.assertEqual(check, Check(Fresh.OUTDATED, "7.1.0-1", "7.1.0-1", "the kit's PKGBUILD", status.detail))
+
+    def test_broken_and_behind_is_a_rebuild_first(self):
+        from curiousj_framekit.frame import pkg
+        from curiousj_framekit.install.kinds import pacman_home
+        item = catalog.load()["pacman"]
+        detail = "7.1.0-1 installed, but the host no longer has libgpgme.so.11 (a SteamOS update): rebuild it"
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(pkg, "query_version", return_value="7.1.0-1"), \
+                mock.patch.object(pkg, "pkgbuild_info", return_value=("pacman", "7.1.0", "1", [])), \
+                mock.patch.object(pkg, "upstream_version", return_value=("7.1.0.r9.g54d9411", "Arch Linux ARM")), \
+                mock.patch.object(pkg, "vercmp", return_value=1), \
+                mock.patch.object(pacman_home, "synced_paths", return_value=pkg.Paths(Path(tmp))):
+            check = pacman_home.Kind().check(item, Options(), Status(State.OUTDATED, detail))
+        self.assertEqual(check.fresh, Fresh.OUTDATED)
+        self.assertEqual(check.available, "7.1.0-1")
+        self.assertEqual(check.note, detail + "; and 7.1.0.r9.g54d9411 is out (Arch Linux ARM, a git snapshot): "
+                                     "the PKGBUILD has 7.1.0: bump data/pkgbuilds/pacman/PKGBUILD")
+
+    def test_a_bump_keeps_its_line(self):
+        from curiousj_framekit.frame import pkg
+        from curiousj_framekit.install.kinds import pacman_home
+        item = catalog.load()["pacman"]
+        with tempfile.TemporaryDirectory() as tmp, \
+                mock.patch.object(pkg, "query_version", return_value="7.1.0-1"), \
+                mock.patch.object(pkg, "pkgbuild_info", return_value=("pacman", "7.1.0", "2", [])), \
+                mock.patch.object(pkg, "upstream_version", return_value=None), \
+                mock.patch.object(pacman_home, "synced_paths", return_value=pkg.Paths(Path(tmp))):
+            status = Status(State.OUTDATED, "7.1.0-1 installed, 7.1.0-2 in the PKGBUILD")
+            check = pacman_home.Kind().check(item, Options(), status)
+        self.assertEqual(check, Check(Fresh.OUTDATED, "7.1.0-1", "7.1.0-2", "the kit's PKGBUILD"))
+
+
+class BSManagerFuse(unittest.TestCase):
+    def test_exec_line_gets_the_library_path_once(self):
+        from curiousj_framekit.install.kinds import upstream
+        line = 'Exec="/home/steamos/Applications/BSManager.AppImage" --no-sandbox %U'
+        fixed = upstream.fuse_exec(line)
+        self.assertEqual(fixed, f"Exec=env LD_LIBRARY_PATH={upstream.FUSE2_LIB} "
+                                '"/home/steamos/Applications/BSManager.AppImage" --no-sandbox %U')
+        self.assertEqual(upstream.fuse_exec(fixed), fixed)
+        self.assertFalse(upstream.menu_entry_has_fuse(f"[Desktop Entry]\n{line}\nName=BSManager\n"))
+        self.assertTrue(upstream.menu_entry_has_fuse(f"[Desktop Entry]\n{fixed}\nName=BSManager\n"))
+
+    def test_fix_menu_entry_rewrites_exec_only(self):
+        from curiousj_framekit.install.kinds import upstream
+        with tempfile.TemporaryDirectory() as tmp:
+            desktop = Path(tmp) / "bs-manager.desktop"
+            desktop.write_text('[Desktop Entry]\nName=BSManager\nExec="/x/BSManager.AppImage" --no-sandbox %U\n'
+                               "Icon=/y/bs-manager.png\n")
+            with mock.patch.object(upstream, "BSM_DESKTOP", desktop):
+                self.assertTrue(upstream.fix_menu_entry())
+                self.assertFalse(upstream.fix_menu_entry())
+            self.assertEqual(desktop.read_text(), f"[Desktop Entry]\nName=BSManager\nExec=env LD_LIBRARY_PATH="
+                             f'{upstream.FUSE2_LIB} "/x/BSManager.AppImage" --no-sandbox %U\nIcon=/y/bs-manager.png\n')
+
+    def test_env_puts_the_library_first(self):
+        from curiousj_framekit.install.kinds import upstream
+        env = upstream.appimage_env({"LD_LIBRARY_PATH": "/opt/lib", "HOME": "/h"})
+        self.assertEqual(env["LD_LIBRARY_PATH"], f"{upstream.FUSE2_LIB}:/opt/lib")
+        self.assertEqual(upstream.appimage_env({})["LD_LIBRARY_PATH"], str(upstream.FUSE2_LIB))
+
+    def test_bsmanager_needs_fuse2(self):
+        items = catalog.load()
+        self.assertIn("fuse2", items["bsmanager"].needs)
+        self.assertEqual(items["fuse2"].kind, "pacman-home")

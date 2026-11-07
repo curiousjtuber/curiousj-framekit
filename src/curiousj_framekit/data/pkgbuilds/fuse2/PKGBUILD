@@ -1,0 +1,76 @@
+# libfuse 2 for ~/.local on the Steam Frame host: the libfuse.so.2 that
+# AppImages load, which SteamOS 0.5.7 dropped from the image (fuse2 is
+# gone, fuse3 stays). An AppImage's runtime dlopens libfuse.so.2 to
+# mount itself, and BSManager's is one, so without it every AppImage
+# stops at "dlopen(): error loading libfuse.so.2".
+#
+# The library goes under ~/.local/lib/fuse2, a directory of its own
+# rather than ~/.local/lib, because the only way an AppImage finds it
+# is LD_LIBRARY_PATH, which the launcher must set and which reaches
+# everything the program then starts: a directory with nothing but
+# libfuse in it is all that gets passed along. The kit's `bsmanager`
+# sets it, and `cjf install bsmanager` writes it into BSManager's menu
+# entry.
+#
+# The library mounts through a setuid helper: it runs fusermount from
+# its compiled-in bindir, here ~/.local/bin, before looking on PATH. A
+# fusermount built here could not be setuid, so ~/.local/bin/fusermount
+# is a symlink to the host's /usr/bin/fusermount3, which speaks the same
+# protocol (Debian and Ubuntu ship that very symlink, and their
+# AppImages run on it). The utilities are off (--disable-util: that
+# fusermount, ulockmgr_server, mount.fuse, a udev rule, /dev/fuse and an
+# init script, all of which want /usr or root). The headers and the
+# pkg-config file come along under the prefix as usual.
+#
+# Arch's two patches: closefrom() is glibc's since 2.34, and the kernel
+# header's includes. The tarball's b2sum was checked against Arch's
+# sha512 for the same release, which makepkg there verifies against
+# Nikolaus Rath's signature.
+#
+# Build and install (on the Frame, under a minute):
+#   cjf install fuse2
+# or by hand, in this directory:
+#   makepkg -f && pacman-home -U fuse2-*.pkg.tar.zst
+
+pkgname=fuse2
+pkgver=2.9.9
+pkgrel=1
+pkgdesc='libfuse 2 for the AppImages, built for ~/.local on the Steam Frame host'
+arch=('aarch64' 'x86_64')
+url='https://github.com/libfuse/libfuse'
+license=('LGPL-2.1-only')
+depends=(glibc fuse3)
+makedepends=(pkg-config)
+options=(!debug !lto !emptydirs)
+source=(https://github.com/libfuse/libfuse/releases/download/fuse-$pkgver/fuse-$pkgver.tar.gz
+        conditionally-define-closefrom.patch
+        clean-includes.patch)
+b2sums=('9e9141380bda46eb0bcce325c6fd293fe3844fe884a4952bb38d4b89dc48b728ffcc891038b3a7a861f05acfacce9dd7bb0e11d600609f3ad0ab278ccbe98847'
+        '89c430e344a1bdd029e9c854db9a9cfdc6ae9f2866b82d3a39317ad348fcdb639a5672e24c0bb3d8ab094acf5e7b787b527e08dfb6dc74fb141d9334167b066a'
+        '092d2caf376e5c2a5115c583d97d99fdce18a5256a5582f2eb65e038d40bfa46477735e7e67c24a317c6c6c26e5d4da69451428c3cd4b88a9fcb1e0d87ffafa9')
+
+_prefix=$HOME/.local
+
+prepare() {
+  cd fuse-$pkgver
+  patch -Np1 -i "$srcdir/conditionally-define-closefrom.patch"
+  patch -Np1 -i "$srcdir/clean-includes.patch"
+  autoreconf -fiv -I /usr/share/gettext/m4
+}
+
+build() {
+  cd fuse-$pkgver
+  ./configure --prefix="$_prefix" --libdir="$_prefix/lib/fuse2" \
+    --enable-lib --disable-util --disable-example
+  make
+}
+
+package() {
+  cd fuse-$pkgver
+  make DESTDIR="$pkgdir" install
+  # The mount helper the library execs by its bindir: the host's setuid
+  # fusermount3.
+  install -d "$pkgdir$_prefix/bin"
+  ln -s /usr/bin/fusermount3 "$pkgdir$_prefix/bin/fusermount"
+  install -Dm644 COPYING.LIB -t "$pkgdir$_prefix/share/licenses/$pkgname/"
+}

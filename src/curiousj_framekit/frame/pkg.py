@@ -52,8 +52,14 @@ pulls a /usr package from them to satisfy a dependency.
 The pacman run is the host's until the kit's pacman package is installed;
 then it is that one, under ~/.local/lib/pacman/bin, whose compiled-in
 defaults are these very paths, which skips the ldconfig run that fails
-on the read-only root, and whose libalpm is current. Host packages are
-always looked up with the host's pacman. This database knows only what
+on the read-only root, and whose libalpm is current (the host's is
+pacman 7.1 too since SteamOS 0.5.7; it was 6.1 before). When a SteamOS
+update takes a library from under the kit's pacman (0.5.7 bumped
+gpgme's soname), the host's stands in again, said once on stderr, and
+`cjf installed` shows the package as outdated for `cjf update` to
+rebuild; the same check, ldd over a package's programs and libraries,
+covers every package here. Host packages are always looked up with the
+host's pacman. This database knows only what
 it installed itself, so for -U the package's dependencies are checked
 against the host's database and the satisfied ones are passed as
 --assume-installed; a dependency the host lacks is still an error.
@@ -125,6 +131,29 @@ USR_ONLY = ("usr/lib/systemd", "usr/lib/udev", "usr/lib/sysusers.d", "usr/lib/tm
 
 # --- paths and configuration ---------------------------------------------
 
+_probes: dict[str, tuple[tuple[int, ...] | None, str]] = {}
+
+
+def probe(path: str | Path) -> tuple[tuple[int, ...] | None, str]:
+    """(version, problem) of the pacman at path, from `pacman --version`:
+    the version as a tuple, or None and the one-line reason it can't run,
+    the loader's when a library is gone. Once per path per run."""
+    key = str(path)
+    if key not in _probes:
+        try:
+            proc = subprocess.run([key, "--version"], text=True, capture_output=True)
+        except OSError as e:
+            _probes[key] = (None, e.strerror or str(e))
+        else:
+            if proc.returncode != 0:
+                err = (proc.stderr.strip().splitlines() or [f"exit status {proc.returncode}"])[-1]
+                _probes[key] = (None, re.sub(r"^.*: error while loading shared libraries: ", "", err))
+            else:
+                m = re.search(r"Pacman v(\d+)\.(\d+)\.(\d+)", proc.stdout)
+                _probes[key] = (tuple(int(x) for x in m.groups()) if m else (), "")
+    return _probes[key]
+
+
 class Paths:
     def __init__(self, home: Path | None = None):
         self.home = home or Path.home()
@@ -136,11 +165,21 @@ class Paths:
         self.gpgdir = self.local / "etc/pacman.d/gnupg"
         self.keyrings = self.local / "share/pacman/keyrings"
         self.mirror = os.environ.get("ALARM_MIRROR", ALARM_MIRROR_DEFAULT)
+        # The kit's pacman when it is installed and runs; the host's when
+        # a SteamOS update has taken a library from under it (0.5.7 took
+        # gpgme's soname), so that the database stays readable and the
+        # kit's pacman can be rebuilt.
         local_pacman = self.local / "lib/pacman/bin/pacman"
-        self.pacman = str(local_pacman) if os.access(local_pacman, os.X_OK) else HOST_PACMAN
+        self.pacman = HOST_PACMAN
+        self.broken_pacman = ""     # why the kit's pacman can't run, when it can't
+        if os.access(local_pacman, os.X_OK):
+            self.broken_pacman = probe(local_pacman)[1]
+            if not self.broken_pacman:
+                self.pacman = str(local_pacman)
         self.pacman_key = "/usr/bin/pacman-key"
-        if self.pacman != HOST_PACMAN and os.access(local_pacman.parent / "pacman-key", os.X_OK):
+        if self.local_pacman and os.access(local_pacman.parent / "pacman-key", os.X_OK):
             self.pacman_key = str(local_pacman.parent / "pacman-key")
+        self.version = probe(self.pacman)[0]
 
     @property
     def local_pacman(self) -> bool:
@@ -158,9 +197,9 @@ class Paths:
                 f"LogFile  = {self.local}/var/log/pacman.log\nHookDir  = {self.local}/etc/pacman.d/hooks\n"
                 f"GPGDir   = {self.gpgdir}\nLocalFileSigLevel = Optional\n")
         # pacman 7 runs downloads in a Landlock sandbox, and the Frame
-        # kernel has no Landlock; the host's pacman 6 would not know the
-        # directive.
-        if self.local_pacman:
+        # kernel has no Landlock; a pacman 6 (the host's before SteamOS
+        # 0.5.7) would not know the directive.
+        if self.version and self.version >= (7,):
             text += "DisableSandboxFilesystem\n"
         return text
 
@@ -384,39 +423,63 @@ def usr_only_dirs(root: Path) -> list[str]:
     return [d for d in USR_ONLY if (root / d).exists()]
 
 
-def missing_libs(tree: Path) -> list[str]:
-    """`file: library` lines for ELF files whose libraries the host cannot
-    supply; the package's own library directories count as supplied, as
-    they will be under ~/.local/lib, and what the loader says on stderr
-    counts too, since that is where a symbol version the host's library
-    lacks (a newer glibc or Qt) is named."""
-    libdirs = ":".join(str(p) for p in (tree / "lib").rglob("*") if p.is_dir()) if (tree / "lib").is_dir() else ""
-    if (tree / "lib").is_dir():
-        libdirs = str(tree / "lib") + (":" + libdirs if libdirs else "")
+def lib_dirs(lib: Path) -> str:
+    """lib and every directory under it, for LD_LIBRARY_PATH: a package's
+    own libraries count as supplied."""
+    if not lib.is_dir():
+        return ""
+    return ":".join([str(lib)] + [str(p) for p in lib.rglob("*") if p.is_dir()])
+
+
+def is_elf(f: Path) -> bool:
+    if not f.is_file() or f.is_symlink() or not (os.access(f, os.X_OK) or ".so" in f.name):
+        return False
+    try:
+        with f.open("rb") as fh:
+            return fh.read(4) == b"\x7fELF"
+    except OSError:
+        return False
+
+
+def ldd_missing(files: list[Path], libdirs: str, root: Path) -> list[tuple[str, str]]:
+    """(file relative to root, what ldd says) for the ELF files among
+    files with a library the loader can't find, libdirs on
+    LD_LIBRARY_PATH. What the loader says on stderr counts too, since
+    that is where a symbol version the host's library lacks (a newer
+    glibc or Qt) is named."""
     found = set()
-    for sub in ("bin", "lib"):
-        base = tree / sub
-        if not base.is_dir():
+    for f in files:
+        if not is_elf(f):
             continue
-        for f in base.rglob("*"):
-            if not f.is_file() or f.is_symlink():
-                continue
-            if not (os.access(f, os.X_OK) or ".so" in f.name):
-                continue
-            try:
-                with f.open("rb") as fh:
-                    if fh.read(4) != b"\x7fELF":
-                        continue
-            except OSError:
-                continue
-            proc = subprocess.run(["ldd", str(f)], text=True, capture_output=True,
-                                  env=dict(os.environ, LD_LIBRARY_PATH=libdirs))
-            for line in (proc.stdout + proc.stderr).splitlines():
-                if "not found" in line:
-                    lib = re.sub(r"^[^:]*: ", "", line.strip())
-                    lib = re.sub(r" \(required by .*", "", lib)
-                    found.add(f"    {f.relative_to(tree)}: {lib}")
+        proc = subprocess.run(["ldd", str(f)], text=True, capture_output=True,
+                              env=dict(os.environ, LD_LIBRARY_PATH=libdirs))
+        for line in (proc.stdout + proc.stderr).splitlines():
+            if "not found" in line:
+                lib = re.sub(r"^[^:]*: ", "", line.strip())
+                lib = re.sub(r" \(required by .*", "", lib)
+                found.add((str(f.relative_to(root)), lib))
     return sorted(found)
+
+
+def missing_libs(tree: Path) -> list[str]:
+    """`file: library` lines for ELF files under tree/bin and tree/lib
+    whose libraries the host cannot supply; the package's own library
+    directories count as supplied, as they will be under ~/.local/lib."""
+    files = [f for sub in ("bin", "lib") if (tree / sub).is_dir() for f in (tree / sub).rglob("*")]
+    return [f"    {rel}: {lib}" for rel, lib in ldd_missing(files, lib_dirs(tree / "lib"), tree)]
+
+
+def broken_libs(paths: Paths, name: str) -> list[tuple[str, str]]:
+    """(file, library) for the installed package's programs and libraries
+    with a library the host no longer supplies: what a SteamOS update
+    that bumps a soname (0.5.7: gpgme, libxml2) leaves of a package
+    built against the old one. ~/.local/lib and what is under it count
+    as supplied, as the packages' rpaths have them."""
+    out = pacman(paths, paths.conf, "-Qlq", name, check=False).stdout
+    files = [Path(f) for f in out.splitlines()
+             if f.startswith(str(paths.local)) and ("/bin/" in f or "/lib/" in f)]
+    return [(rel, re.sub(r" => not found$", "", lib))
+            for rel, lib in ldd_missing(files, lib_dirs(paths.local / "lib"), paths.local)]
 
 
 def relocate_pkg(paths: Paths, pkg: Path, allow: bool) -> Path:
@@ -496,7 +559,7 @@ def relocate_cmd(paths: Paths, args: list[str]) -> None:
 # --- outdated -------------------------------------------------------------
 
 def pkgbuilds_dir() -> Path:
-    """The kit's PKGBUILDs, one directory each (emacs, pacman, krdc): data/pkgbuilds
+    """The kit's PKGBUILDs, one directory each (emacs, pacman, krdc, fuse2): data/pkgbuilds
     in the package, so an install from git has them as a checkout does."""
     return Path(__file__).resolve().parent.parent / "data" / "pkgbuilds"
 
@@ -664,6 +727,9 @@ def pacman_home_main(argv: list[str] | None = None) -> int:
             return 0
         where.require_host(PROG)
         paths = Paths()
+        if paths.broken_pacman:
+            print(f"{PROG}: the kit's pacman can't run ({paths.broken_pacman}); using {HOST_PACMAN} "
+                  "(cjf update rebuilds it)", file=sys.stderr)
         paths.write_confs()
         if args[0] == "check":
             return check_cmd(paths, args[1:])

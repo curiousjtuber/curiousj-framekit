@@ -25,6 +25,7 @@ is Arch Linux ARM.
 | `stream-frame` | Boxtree's GPG key, fetched once over HTTPS from streamframe.app | every commit's signature, by flatpak |
 | `moonlight` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
 | `krdc` | download.kde.org's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patch | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
+| `fuse2` | libfuse's GitHub release tarball, your review of the PKGBUILD | the BLAKE2 sums in the PKGBUILD, by makepkg |
 | `deskflow` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
 | `krdp` | KDE and FreeRDP's release tarballs, your own review of the manifest and patches | every source pinned by sha256 in the manifest; patches in this kit; built on KDE's SDK from Flathub |
 | `bsmanager` | GitHub's TLS and DaVarga's account, continuously | nothing: the fork's latest install.sh, then an AppImage that updates itself |

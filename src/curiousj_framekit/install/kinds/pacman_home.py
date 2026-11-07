@@ -8,8 +8,11 @@ a copy of the PKGBUILD's directory, not inside the package.
 
 A package built here is outdated when pacman-home's version differs
 from the PKGBUILD's pkgver-pkgrel, which `installed` sees without the
-network. `outdated` asks Arch Linux ARM, and the AUR for a package it
-lacks, as `pacman-home outdated` does: a relocated package is outdated
+network; so is any package, built or relocated, with a program or
+library that the host can no longer load, which is what a SteamOS
+update that bumps a soname leaves (0.5.7: gpgme under pacman, libxml2
+under emacs), and `cjf update` builds it again. `outdated` asks Arch
+Linux ARM, and the AUR for a package it lacks, as `pacman-home outdated` does: a relocated package is outdated
 when they have a newer one; a built one is behind when they have a
 newer one than the PKGBUILD, which is a bump here, not an install."""
 
@@ -86,6 +89,12 @@ class Kind(Base):
                     want = None
                 if want and want != have:
                     return Status(State.OUTDATED, f"{have} installed, {want} in the PKGBUILD")
+        broken = pkg.broken_libs(p, item["package"])
+        if broken:
+            libs = sorted({lib for _, lib in broken})
+            again = "relocate it again, or build it" if item.get("relocate") else "rebuild it"
+            return Status(State.OUTDATED, f"{have} installed, but the host no longer has "
+                          f"{', '.join(libs)} (a SteamOS update): {again}")
         return Status(State.OK, have)
 
     def check(self, item: Item, opts: Options, status: Status) -> Check:
@@ -101,12 +110,21 @@ class Kind(Base):
                 return Check(Fresh.OUTDATED, have, found[0], found[1])
             return Check(Fresh.CURRENT, have, source=found[1])
         _, ver, rel, _ = pkg.pkgbuild_info(pkg.pkgbuilds_dir() / item["pkgbuild"])
+        behind = ""
         if found and pkg.vercmp(p, found[0], ver) > 0:
             snapshot = ", a git snapshot" if pkg.is_snapshot(found[0]) else ""
-            return Check(Fresh.BEHIND, have, found[0], found[1] + snapshot,
-                         f"the PKGBUILD has {ver}: bump data/pkgbuilds/{item['pkgbuild']}/PKGBUILD")
+            behind = f"the PKGBUILD has {ver}: bump data/pkgbuilds/{item['pkgbuild']}/PKGBUILD"
         if status.state == State.OUTDATED:
-            return Check(Fresh.OUTDATED, have, f"{ver}-{rel}", "the kit's PKGBUILD")
+            # What is here is what cjf update can do: a build of the
+            # PKGBUILD as it is, which comes before the bump upstream
+            # asks for. The same version again is a rebuild, for a
+            # library the host lost; its reason is the note.
+            note = status.detail if have == f"{ver}-{rel}" else ""
+            if behind:
+                note += ("; " if note else "") + f"and {found[0]} is out ({found[1]}{snapshot}): " + behind
+            return Check(Fresh.OUTDATED, have, f"{ver}-{rel}", "the kit's PKGBUILD", note)
+        if behind:
+            return Check(Fresh.BEHIND, have, found[0], found[1] + snapshot, behind)
         return Check(Fresh.CURRENT, have, source=found[1] if found else "the kit's PKGBUILD",
                      note="" if found else "not found upstream")
 

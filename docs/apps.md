@@ -80,7 +80,15 @@ gets on the headset.
   needs the InputCapture portal; Plasma 6.7 offers it.
 - **BSManager** runs the fork's own `install.sh` from its latest
   release, passing on `--uninstall` and `--appimage FILE`. After that,
-  BSManager updates itself.
+  BSManager updates itself. It needs the `fuse2` item, installed first:
+  SteamOS 0.5.7 dropped fuse2 from the image, and an AppImage's runtime
+  loads `libfuse.so.2` to mount itself (`dlopen(): error loading
+  libfuse.so.2` otherwise), so the kit builds it for
+  `~/.local/lib/fuse2` ([packages.md](packages.md)) and the menu entry
+  `install.sh` writes
+  is given that directory on `LD_LIBRARY_PATH`; `cjf installed` shows
+  `bsmanager` as outdated while the entry lacks it, as after a re-run
+  of `install.sh` by hand.
 - **Full Keyboard** is a separate app, not a replacement for the system
   keyboard: start it from the dashboard's app launcher, with the VR
   session running. It types into the dashboard and local apps, not into
@@ -169,7 +177,9 @@ gets on the headset.
   - On the PC, copied there, where it opens that session itself. HOST
     defaults to `$FRAME_HOST`, or else `steamos@frame.local`.
 
-  The Frame needs `setup.sh --waypipe`. BSManager allows one instance,
+  The Frame needs `setup.sh --waypipe`, and `bsmanager` runs the
+  AppImage with the `fuse2` item's directory on `LD_LIBRARY_PATH`, as
+  the menu entry does. BSManager allows one instance,
   so the script stops if it's already running on the Frame: a second
   launch would hand off to the first and exit, and no window would show
   on the PC. `--no-gpu` is for a blank or crashing window; in a session
