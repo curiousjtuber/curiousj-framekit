@@ -78,6 +78,7 @@ a diff and asked about, and the file is backed up with a timestamp.
 | `frametop` | [Frametop](https://github.com/Frametop/frametop), the multi-screen Plasma desktop and 3D mouse, from its release zip, checked against a recorded sha256 |
 | `stream-frame`, `moonlight`, `deskflow` | Flatpaks: Stream Frame from Boxtree's repo, the others from Flathub; `--user` (default) or `--system` |
 | `krdpserver` | KRdp's server, built on the Frame for `~/.local` against the host's libraries (a few minutes; `cjf rdp` runs it in preference to the Flatpak) |
+| `gamescope-panel` | gamescope built on the Frame for `~/.local` with one patch, so that its VR backend starts above 1080p; `cjf panel` runs an app in it as a SteamVR panel of any size ([docs/panel.md](docs/panel.md)) |
 | `krdp` | KRdp's server, built here as a Flatpak from the kit's manifest (half an hour the first time); the CI builds the same bundle |
 | `bsmanager`, `full-keyboard` | BSManager and Full Keyboard, through their own installers |
 
@@ -89,11 +90,11 @@ what each one checks.
 
 | Path | |
 |---|---|
-| `src/curiousj_framekit/` | the package: `frame/` (the Frame's own: cursor, wifi, vr, controllers, rdp, pkg, after-update), `install/` (the catalog and its kinds, init, migrate, status), `beatsaber/`, `shell/` (init.sh and the shims), `data/` (the KRdp manifest and patches, the KRDC build script and patch, the RDP GUI) |
-| `src/curiousj_framekit/data/pkgbuilds/` | the kit's PKGBUILDs, built for `~/.local` in `~/.cache/curiousj-framekit/build/`: emacs, krdc, fuse2 |
+| `src/curiousj_framekit/` | the package: `frame/` (the Frame's own: cursor, wifi, vr, controllers, rdp, panel, pkg, after-update), `install/` (the catalog and its kinds, init, migrate, status), `beatsaber/`, `shell/` (init.sh and the shims), `data/` (the KRdp manifest and patches, the KRDC build script and patch, the RDP GUI) |
+| `src/curiousj_framekit/data/pkgbuilds/` | the kit's PKGBUILDs, built for `~/.local` in `~/.cache/curiousj-framekit/build/`: emacs, krdc, fuse2, krdpserver, gamescope-panel |
 | `pc/` | the PC side: krdpserver patched to paint the PC's pointer into the video for a viewer that asks, built by script, Frame Control's PKGBUILD, and what the Frame's docs assume there ([pc/README.md](pc/README.md)) |
 | `src/curiousj_framekit/data/krdc-embed-cursor/` | KRDC with the option that asks for it: the patch, which the Frame's PKGBUILD applies too, and the script that builds it on the PC ([docs/krdc-embed-cursor.md](docs/krdc-embed-cursor.md)) |
-| `docs/` | [install.md](docs/install.md), [apps.md](docs/apps.md), [tailscale.md](docs/tailscale.md), [shell-init.md](docs/shell-init.md), [cursor.md](docs/cursor.md), [packages.md](docs/packages.md), [krdc-embed-cursor.md](docs/krdc-embed-cursor.md), [TRUST.md](docs/TRUST.md); and the memos: [the desktop cursor on 0.5.6](docs/desktop-cursor.md), [packages under ~/.local](docs/home-packages.md), [paru](docs/paru.md), [the proximity sensor](docs/proximity-sensor.md), [the screen reader](docs/orca-screen-reader.md), [Arch distrobox images](docs/arch-distrobox-images.md); `notes/` has the AA calibration data |
+| `docs/` | [install.md](docs/install.md), [apps.md](docs/apps.md), [tailscale.md](docs/tailscale.md), [shell-init.md](docs/shell-init.md), [cursor.md](docs/cursor.md), [packages.md](docs/packages.md), [krdc-embed-cursor.md](docs/krdc-embed-cursor.md), [panel.md](docs/panel.md), [TRUST.md](docs/TRUST.md); and the memos: [the desktop cursor on 0.5.6](docs/desktop-cursor.md), [packages under ~/.local](docs/home-packages.md), [paru](docs/paru.md), [the proximity sensor](docs/proximity-sensor.md), [the screen reader](docs/orca-screen-reader.md), [Arch distrobox images](docs/arch-distrobox-images.md); `notes/` has the AA calibration data |
 | `docs/reorg/` | the reorganization from `steam-frame-utils`, closed 2026-11-01: [plan.md](docs/reorg/plan.md) (its decisions), [steps.md](docs/reorg/steps.md) (its stages), [scenarios.md](docs/reorg/scenarios.md) (the usage it aimed at) |
 | `install.sh` | the bootstrap: mise, uv, fzf, the kit, `cjf init` |
 | `tests/` | pytest, over the pure logic and the shell files (`bash -n`, `zsh -n`) |

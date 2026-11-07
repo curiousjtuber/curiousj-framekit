@@ -146,6 +146,14 @@ menu_entry = "krdp"
 trust_root = "download.kde.org's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches"
 trust_checks = "the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there"
 
+[item.gamescope-panel]
+kind = "pacman-home"
+description = "gamescope built here for ~/.local, its VR backend starting at any size: cjf panel runs an app in a SteamVR panel of its own (about ten minutes)"
+package = "gamescope-panel"
+pkgbuild = "gamescope-panel"
+trust_root = "the gamescope, wlroots, openvr and other git repositories on GitHub and freedesktop.org, your review of the PKGBUILD and the patch"
+trust_checks = "every git source pinned to a commit in the PKGBUILD, glm and stb to the revisions in gamescope's wrap files; the patch's BLAKE2 sum, by makepkg"
+
 [item.krdp]
 kind = "flatpak-build"
 description = "KRdp's server, built here as a Flatpak (half an hour the first time; ~1 GB of SDK; krdpserver is the quick way)"

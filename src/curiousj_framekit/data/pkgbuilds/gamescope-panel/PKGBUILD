@@ -1,0 +1,150 @@
+# gamescope, built for ~/.local on the Steam Frame host, for `cjf
+# panel`: an app of your own in a SteamVR panel of any size, beside the
+# session's gamescope, which shows every app on a 1920x1080 overlay.
+#
+# The host's gamescope would do it but for one assertion: its OpenVR
+# backend makes a flat black texture the size of its output when it
+# starts, through an upload buffer of exactly 1920x1080x4 bytes, so
+# `gamescope --backend openvr -W 3840 -H 1080` aborts before it shows
+# anything (seen on SteamOS 0.5.8, gamescope 3.16.30, 2026-11-07;
+# Frametop hit the same wall and wrote its own compositor instead).
+# flat-texture-clear.patch clears the texture on the GPU, which needs
+# no buffer; nothing else gamescope does sizes an upload by the output.
+# Frames themselves reach SteamVR as Vulkan textures, with no limit.
+#
+# The same release as the host's package (3.16.30, whose options match
+# the host binary's), from the tag's commit, with its seven submodules
+# pinned to the commits the tag records and glm and stb fetched by
+# meson from the wrap files' revisions. Everything else is the host's:
+# Xwayland, libdrm, PipeWire, libinput, Vulkan, the X and Wayland
+# libraries. The host's Vulkan layer serves this gamescope too, so the
+# layer isn't built; nor are the tests and the benchmark.
+#
+# Everything goes under ~/.local/lib/gamescope-panel. The binary stays
+# off PATH, since `gamescope` on the Frame should remain the host's;
+# ~/.local/bin/gamescope-panel runs it for a shell, and cjf panel runs
+# it directly. The package is for this one user on this one device.
+#
+# Build and install (on the Frame, about ten minutes):
+#   cjf install gamescope-panel
+# or by hand, in this directory:
+#   makepkg -f && pacman-home -U gamescope-panel-*.pkg.tar.zst
+#
+# For a new gamescope release: set _commit to the tag's commit and the
+# seven submodule commits to what `git ls-tree TAG subprojects/
+# src/reshade thirdparty/SPIRV-Headers` lists, check that the patch
+# still applies, and bump pkgver. A change to the patch needs its b2sum
+# here and a pkgrel bump, which is what tells pacman-home the install
+# is outdated.
+
+pkgname=gamescope-panel
+pkgver=3.16.30
+pkgrel=1
+pkgdesc="gamescope built for ~/.local on the Steam Frame host, its VR backend starting at any size, for cjf panel"
+arch=('aarch64' 'x86_64')
+url='https://github.com/ValveSoftware/gamescope'
+license=(BSD-2-Clause BSD-3-Clause LicenseRef-Reshade)
+depends=(
+  libavif
+  libcap
+  libdecor
+  libdisplay-info
+  libdrm
+  libei
+  libinput
+  libx11
+  libxcb
+  libxcomposite
+  libxcursor
+  libxdamage
+  libxext
+  libxfixes
+  libxi
+  libxkbcommon
+  libxmu
+  libxrender
+  libxres
+  libxtst
+  libxxf86vm
+  luajit
+  pipewire
+  pixman
+  sdl2
+  seatd
+  systemd-libs
+  vulkan-icd-loader
+  wayland
+  xcb-util-errors
+  xcb-util-wm
+  xorg-xwayland
+)
+makedepends=(cmake git glslang meson ninja vulkan-headers wayland-protocols)
+options=(!debug !lto)
+# The tag 3.16.30, and the submodule commits it records.
+_commit=ad2763da1c48860f649abfe842a087188dcb6e20
+source=(
+  gamescope::git+https://github.com/ValveSoftware/gamescope.git#commit=$_commit
+  libdisplay-info::git+https://gitlab.freedesktop.org/emersion/libdisplay-info.git#commit=c67a3e9bedb05ab61c7443704a1a107e76254595
+  libliftoff::git+https://gitlab.freedesktop.org/emersion/libliftoff.git#commit=8b08dc1c14fd019cc90ddabe34ad16596b0691f4
+  openvr::git+https://github.com/ValveSoftware/openvr.git#commit=ff87f683f41fe26cc9353dd9d9d7028357fd8e1a
+  reshade::git+https://github.com/Joshua-Ashton/reshade.git#commit=696b14cd6006ae9ca174e6164450619ace043283
+  SPIRV-Headers::git+https://github.com/KhronosGroup/SPIRV-Headers.git#commit=d790ced752b5bfc06b6988baadef6eb2d16bdf96
+  vkroots::git+https://github.com/Joshua-Ashton/vkroots.git#commit=5106d8a0df95de66cc58dc1ea37e69c99afc9540
+  wlroots::git+https://gitlab.freedesktop.org/wlroots/wlroots.git#commit=d783533489e1f75d6886c2ab5c5960090ef268f8
+  flat-texture-clear.patch
+)
+# The git sources are pinned by commit above, which is the check.
+b2sums=('SKIP'
+        'SKIP'
+        'SKIP'
+        'SKIP'
+        'SKIP'
+        'SKIP'
+        'SKIP'
+        'SKIP'
+        '1694e7895c48bbfbcc9a3ea071964f3c5aeb72d5ab4b55f0d2e5035387c483fa24aebfd543b319f3d5c70387d900f452a55f1ecf99fdd88dc06ec94d5debbc04')
+
+_prefix=$HOME/.local
+_home=$_prefix/lib/gamescope-panel
+
+prepare() {
+  cd gamescope
+  local sub
+  for sub in src/reshade subprojects/{libdisplay-info,libliftoff,openvr,vkroots,wlroots} thirdparty/SPIRV-Headers; do
+    git submodule init "$sub"
+    git config "submodule.$sub.url" "$srcdir/${sub##*/}"
+  done
+  git -c protocol.file.allow=always submodule update
+  # glm and stb, at the revisions subprojects/*.wrap pin.
+  meson subprojects download
+  patch -p1 --forward < "$srcdir/flat-texture-clear.patch"
+}
+
+build() {
+  meson setup gamescope build \
+    --prefix "$_home" --libdir lib --buildtype release \
+    -Dpipewire=enabled \
+    -Dforce_fallback_for=glm,stb,libliftoff,vkroots \
+    -Denable_gamescope_wsi_layer=false \
+    -Denable_tests=false \
+    -Dbenchmark=disabled
+  meson compile -C build
+}
+
+package() {
+  DESTDIR="$pkgdir" meson install -C build --skip-subprojects
+  [ -x "$pkgdir$_home/bin/gamescope" ] \
+    || { echo "the build left no gamescope" >&2; return 1; }
+  install -Dm644 gamescope/LICENSE "$pkgdir$_home/share/licenses/gamescope/LICENSE"
+
+  mkdir -p "$pkgdir$_prefix/bin"
+  cat > "$pkgdir$_prefix/bin/gamescope-panel" <<LAUNCHER
+#!/bin/sh
+# From curiousj-framekit's gamescope-panel package: the gamescope built
+# under the directory below, whose VR backend starts at any size. cjf
+# panel runs it with the options for a SteamVR panel; this is for a
+# shell. The host's gamescope stays the one on PATH.
+exec "$_home/bin/gamescope" "\$@"
+LAUNCHER
+  chmod 755 "$pkgdir$_prefix/bin/gamescope-panel"
+}

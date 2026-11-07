@@ -182,6 +182,16 @@ gets on the headset.
   after the window closes. It's GTK 4 and libadwaita through Python, all
   in SteamOS's image, so it needs nothing installed; run it on the host,
   from either desktop.
+- **`cjf panel start [--size WxH] [--width METRES] [--name NAME]
+  [--fullscreen] [--wayland] [--env VAR=VALUE] -- COMMAND`**, `stop`,
+  `status`, `log` runs any app in a SteamVR panel of its own with a
+  screen of exactly that size, beside Game Mode, which scales every app
+  to one 1920x1080 overlay: KRDC at 3840x1080 shows a PC's two
+  monitors pixel for pixel. It runs the gamescope `cjf install
+  gamescope-panel` builds for `~/.local` (about ten minutes), the
+  host's release with one patch, since the host's binary aborts above
+  1080p on a fixed-size upload buffer. [panel.md](panel.md) has the
+  why and the limits.
 - **`bsmanager [--no-gpu]`** shows the Frame's BSManager in a
   window on a Linux PC's Wayland desktop, through waypipe. In the
   headset, start BSManager from Steam instead. It runs in either of two

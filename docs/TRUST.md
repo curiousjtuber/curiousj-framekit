@@ -27,6 +27,7 @@ is Arch Linux ARM.
 | `fuse2` | libfuse's GitHub release tarball, your review of the PKGBUILD | the BLAKE2 sums in the PKGBUILD, by makepkg |
 | `deskflow` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
 | `krdpserver` | download.kde.org's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
+| `gamescope-panel` | the gamescope, wlroots, openvr and other git repositories on GitHub and freedesktop.org, your review of the PKGBUILD and the patch | every git source pinned to a commit in the PKGBUILD, glm and stb to the revisions in gamescope's wrap files; the patch's BLAKE2 sum, by makepkg |
 | `krdp` | KDE and FreeRDP's release tarballs, your own review of the manifest and patches | every source pinned by sha256 in the manifest; patches in this kit; built on KDE's SDK from Flathub |
 | `bsmanager` | GitHub's TLS and DaVarga's account, continuously | nothing: the fork's latest install.sh, then an AppImage that updates itself |
 | `full-keyboard` | GitHub's TLS and TaiKeid's account | the archive against the release's own SHA256SUMS |

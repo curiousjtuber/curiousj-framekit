@@ -1,10 +1,11 @@
 """The `pacman-home` kind: a package under ~/.local in pacman-home's
 database, either relocated from Arch Linux ARM's binary package
 (waypipe) or built here with makepkg from the kit's own PKGBUILD
-(emacs, krdc, fuse2, krdpserver; data/pkgbuilds/NAME in the package, so every install
-has them). The work is frame/pkg.py's; this kind maps the catalog
-entry onto it. A build runs in ~/.cache/curiousj-framekit/build/NAME,
-a copy of the PKGBUILD's directory, not inside the package.
+(emacs, krdc, fuse2, krdpserver, gamescope-panel; data/pkgbuilds/NAME
+in the package, so every install has them). The work is
+frame/pkg.py's; this kind maps the catalog entry onto it. A build runs
+in ~/.cache/curiousj-framekit/build/NAME, a copy of the PKGBUILD's
+directory, not inside the package.
 
 A package built here is outdated when pacman-home's version differs
 from the PKGBUILD's pkgver-pkgrel, which `installed` sees without the
@@ -182,6 +183,8 @@ class Kind(Base):
         self.menu_entry(item, opts)
         if item.get("menu_entry") == "krdp":
             print("start it with: cjf rdp start   (see cjf rdp --help)")
+        elif name == "gamescope-panel":
+            print("run an app in a panel with: cjf panel start --size WxH -- COMMAND   (see cjf panel --help)")
         return True
 
     def menu_entry(self, item: Item, opts: Options) -> bool:

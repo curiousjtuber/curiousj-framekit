@@ -18,7 +18,7 @@ class Help(unittest.TestCase):
         self.assertEqual(result.exit_code, 0)
         self.assertIn("cjf -- curiousj's kit for the Steam Frame.", result.output)
         self.assertRegex(result.output, r"\n    status +the versions")
-        for name in ("cursor", "wifi", "vr", "controllers", "rdp"):
+        for name in ("cursor", "wifi", "vr", "controllers", "rdp", "panel"):
             self.assertRegex(result.output, rf"\n    {name} +\S")
             self.assertIn(name, cli.cli.commands)
         self.assertIn("--check", result.output)

@@ -15,13 +15,14 @@
     vr            the headset and VR controllers: battery, or turn off
     controllers   the Steam Controllers paired over Bluetooth
     rdp           serve a Plasma desktop on the Frame over RDP
+    panel         run an app in a SteamVR panel of its own, at any size
     pkg           build or relocate a package under ~/.local (pacman-home is its pacman)
     after-update  what to re-check after a SteamOS update, as one command
     migrate       move a Frame set up by steam-frame-utils to this kit
 
 Run bare, on a terminal, it lists the commands and runs the one picked
 (fzf when installed, else a numbered menu). A command with actions of
-its own (vr, controllers, cursor, rdp, pkg) opens a second menu of
+its own (vr, controllers, cursor, rdp, panel, pkg) opens a second menu of
 them, a required argument (uninstall NAME) is asked for, and `help` on
 any menu is that command's --help. The command line it ran is printed
 at the end, to type next time. The options go before the command: -v
@@ -41,7 +42,7 @@ import click
 
 from . import cmdline, pick
 from .cmdline import Entry, Options
-from .frame import after_update, controllers, cursor, pkg, rdp, vr, wifi
+from .frame import after_update, controllers, cursor, panel, pkg, rdp, vr, wifi
 from .install import commands, init, migrate, status, update
 
 PROG = "cjf"
@@ -167,6 +168,7 @@ cli.add_command(wifi.wifi)
 cli.add_command(vr.vr_cmd, "vr")
 cli.add_command(controllers.controllers_cmd, "controllers")
 cli.add_command(rdp.rdp)
+cli.add_command(panel.panel)
 cli.add_command(pkg.pkg)
 cli.add_command(after_update.after_update)
 
