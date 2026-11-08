@@ -9,6 +9,7 @@ gamescope-panel`), whose one patch lets the VR backend start above
 1080p; the host's aborts there.
 
     cjf panel start [--size WxH] [--width METRES] [--name NAME] [--fullscreen] [--wayland] [--env VAR=VALUE]... [--] COMMAND [ARGS...]
+    cjf panel desktop [--size WxH] [--width METRES] [--name NAME]
     cjf panel stop [NAME]
     cjf panel status
     cjf panel log [NAME] [--lines N]
@@ -43,6 +44,15 @@ gets the one size, so a second app wants a second panel.
 KRDC at the size of a PC's two monitors:
     cjf panel start --size 3840x1080 --fullscreen -- krdc --fullscreen rdp://HOST
 with Resolution set to "Match screen" in KRDC's settings for that host.
+
+`desktop` runs SteamOS's own Desktop Mode in a panel, with a screen of
+--size instead of the 1280x800 Steam's Desktop entry gives it: the
+same /usr/bin/steamos-nested-desktop, copied with KWin's size changed.
+It is the same desktop, with the same settings and runtime directory,
+so it can't run while Steam's is up, and Steam's can't while it is.
+Close it from Plasma's menu, or `cjf panel stop desktop`. For larger
+text, set the scale in Plasma's display settings: KWin's own --scale
+is overridden by the saved screen configuration.
 """
 
 from __future__ import annotations
@@ -55,6 +65,7 @@ from pathlib import Path
 import click
 
 from .. import cmdline, config
+from . import desktops
 from ..cmdline import Error, Options, pass_options
 
 DEFAULT_SIZE = "1920x1080"
@@ -64,6 +75,13 @@ HEIGHT_METRES = 1.5
 CURSOR = "/usr/share/steamos/steamos-cursor.png"
 CURSOR_HOTSPOT = "5,3"
 UNIT_PREFIX = "cjf-panel-"
+# SteamOS's Desktop Mode: Plasma under a nested KWin in a runtime dir
+# of its own, which Steam's Desktop entry runs. The script writes a
+# kwin_wayland_wrapper of its own with KWin's windowed size on one
+# line, which is where a panel's size goes.
+DESKTOP_SCRIPT = Path("/usr/bin/steamos-nested-desktop")
+DESKTOP_NAME = "desktop"
+_KWIN_SIZE = re.compile(r"(kwin_wayland_wrapper .*?)--width \d+ --height \d+")
 
 
 def gamescope_binary() -> Path:
@@ -137,6 +155,33 @@ def environment(wayland: bool, extra: list[str]) -> dict[str, str]:
     return env
 
 
+def desktop_script(text: str, size: tuple[int, int]) -> str:
+    """SteamOS's Desktop Mode script with KWin's windowed size, which it
+    hard-wires on the kwin_wayland_wrapper line it writes, replaced by
+    the panel's. (KWin's --scale on that line does nothing: KScreen
+    applies the saved configuration, scale 1, over it.)"""
+    w, h = size
+    flags = f"--width {w} --height {h}"
+    out, n = _KWIN_SIZE.subn(lambda m: m.group(1) + flags, text)
+    if n != 1:
+        raise Error(f"{DESKTOP_SCRIPT} isn't the script the kit knows: one kwin_wayland_wrapper "
+                    f"line with --width and --height expected, {n} found")
+    return out
+
+
+def desktop_script_path(size: tuple[int, int]) -> Path:
+    """Where the copy goes, named by its size: the shell reads a script
+    as it runs it, so a copy for another size is another file."""
+    return config.cache_dir() / "panel" / f"desktop-{size[0]}x{size[1]}.sh"
+
+
+def desktop_environment() -> dict[str, str]:
+    """QT_QPA_PLATFORM=wayland, not start's xcb: the script passes the
+    environment on to Plasma, and a plasmashell on xcb under the nested
+    KWin draws the desktop but makes no panel windows at all."""
+    return environment(True, ["QT_QPA_PLATFORM=wayland"])
+
+
 def wrapped(unit: str, command: list[str]) -> list[str]:
     """The app, then the unit's end. gamescope's OpenVR backend keeps
     running after its child exits and ignores SIGTERM and SIGINT (the
@@ -193,6 +238,35 @@ def panel() -> None:
     pass
 
 
+def require_gamescope() -> Path:
+    binary = gamescope_binary()
+    if not binary.is_file():
+        raise Error(f"no gamescope for panels at {cmdline.tilde(binary)}: cjf install gamescope-panel (about ten minutes)")
+    if not shutil.which("systemd-run"):
+        raise Error("missing required command: systemd-run")
+    return binary
+
+
+def launch(opts: Options, binary: Path, name: str, size: tuple[int, int], width_m: float | None,
+           fullscreen: bool, wayland: bool, env: dict[str, str], command: list[str], shown: str) -> int:
+    """The panel: gamescope's arguments, the unit, the check that no
+    panel of the name runs, and systemd-run. `command` is what runs,
+    `shown` how the message names it."""
+    w, h = size
+    width_m = width_m or default_width(w, h)
+    unit = unit_name(name)
+    if any(n == panel_name(unit) and state == "running" for n, state in panels(opts)):
+        raise Error(f"panel {panel_name(unit)} runs already: cjf panel stop {panel_name(unit)}")
+    argv = gamescope_argv(binary, size, width_m, name, fullscreen, wayland, wrapped(unit, command))
+    cmdline.say("would start" if opts.check else "start",
+                f"panel {name}: {w}x{h}, {width_m:g} m wide, {shown} (unit {unit})")
+    if opts.check:
+        return 0
+    cmdline.run(opts, run_argv(unit, env, argv))
+    print(f"log: cjf panel log {panel_name(unit)}   stop: cjf panel stop {panel_name(unit)}")
+    return 0
+
+
 @panel.command(cls=cmdline.Command, help="Start COMMAND in a panel of its own.",
                context_settings={"ignore_unknown_options": True, "allow_interspersed_args": False})
 @click.option("--size", default=None, help="WIDTHxHEIGHT in pixels; default 1920x1080, or [panel] size in the config.")
@@ -205,29 +279,38 @@ def panel() -> None:
 @pass_options
 def start(opts: Options, size: str | None, width_m: float | None, name: str | None,
           fullscreen: bool, wayland: bool, env_items: tuple[str, ...], command: tuple[str, ...]) -> int:
-    binary = gamescope_binary()
-    if not binary.is_file():
-        raise Error(f"no gamescope for panels at {cmdline.tilde(binary)}: cjf install gamescope-panel (about ten minutes)")
-    if not shutil.which("systemd-run"):
-        raise Error("missing required command: systemd-run")
-    w, h = parse_size(size or default_size())
-    width_m = width_m or default_width(w, h)
+    binary = require_gamescope()
     exe = shutil.which(command[0])
     if not exe:
         raise Error(f"no {command[0]} on PATH")
-    name = name or Path(command[0]).name
-    unit = unit_name(name)
-    if any(n == panel_name(unit) and state == "running" for n, state in panels(opts)):
-        raise Error(f"panel {panel_name(unit)} runs already: cjf panel stop {panel_name(unit)}")
-    argv = gamescope_argv(binary, (w, h), width_m, name, fullscreen, wayland, wrapped(unit, [exe, *command[1:]]))
-    env = environment(wayland, list(env_items))
-    cmdline.say("would start" if opts.check else "start",
-                f"panel {name}: {w}x{h}, {width_m:g} m wide, {' '.join(command)} (unit {unit})")
-    if opts.check:
-        return 0
-    cmdline.run(opts, run_argv(unit, env, argv))
-    print(f"log: cjf panel log {panel_name(unit)}   stop: cjf panel stop {panel_name(unit)}")
-    return 0
+    return launch(opts, binary, name or Path(command[0]).name, parse_size(size or default_size()), width_m,
+                  fullscreen, wayland, environment(wayland, list(env_items)), [exe, *command[1:]], " ".join(command))
+
+
+@panel.command(cls=cmdline.Command, help="SteamOS's Desktop Mode in a panel, with a screen of --size.")
+@click.option("--size", default=None, help="WIDTHxHEIGHT in pixels; default 1920x1080, or [panel] size in the config.")
+@click.option("--width", "width_m", type=float, default=None, help="The panel's width in metres; default 1.5 m tall.")
+@click.option("--name", default=DESKTOP_NAME, show_default=True, help="The panel's name.")
+@pass_options
+def desktop(opts: Options, size: str | None, width_m: float | None, name: str) -> int:
+    binary = require_gamescope()
+    if not DESKTOP_SCRIPT.is_file():
+        raise Error(f"no {DESKTOP_SCRIPT}: this isn't a Steam Frame's SteamOS")
+    stock = desktops.desktops()["stock"]
+    if stock.running():
+        raise Error(f"{stock.label} runs already ({cmdline.tilde(stock.socket)}): close it first; "
+                    "a panel's is the same desktop, and its script empties that directory")
+    wh = parse_size(size or default_size())
+    script = desktop_script(DESKTOP_SCRIPT.read_text(), wh)
+    path = desktop_script_path(wh)
+    cmdline.say("would write" if opts.check else "write",
+                f"{cmdline.tilde(path)}: {DESKTOP_SCRIPT} with KWin at {wh[0]}x{wh[1]}")
+    if not opts.check:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text(script)
+        path.chmod(0o755)
+    return launch(opts, binary, name, wh, width_m, True, False, desktop_environment(), [str(path)],
+                  f"{DESKTOP_SCRIPT.name} at {wh[0]}x{wh[1]}")
 
 
 @panel.command(cls=cmdline.Command, help="Stop a panel: the one running, or NAME.")

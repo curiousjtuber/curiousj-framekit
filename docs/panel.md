@@ -108,6 +108,38 @@ offers xdg-shell instead (`--expose-wayland`) and leaves Qt alone.
 `XCURSOR_SIZE=32` replaces the session's 256, which would cover a good
 part of the panel; `--env` adds or overrides variables.
 
+## SteamOS's Desktop Mode in a panel
+
+```sh
+cjf panel desktop --size 3840x1080
+```
+
+Steam's Desktop entry runs `/usr/bin/steamos-nested-desktop`: a
+runtime directory of its own (`nested_plasma`), a `kwin_wayland_wrapper`
+of its own that gives KWin a windowed size of 1280x800, and
+`startplasma-wayland` under a D-Bus session. Nothing in it needs Steam,
+so `cjf panel desktop` copies it to `~/.cache/curiousj-framekit/panel/`
+with KWin's size replaced by the panel's and runs the copy in a panel
+named `desktop`, every window the panel's size. The copy is refused when the
+script no longer has the one line the kit expects. It is the same
+desktop, with the same settings and runtime directory, so the command
+refuses while Steam's Desktop is up, and Steam's must not be started
+while the panel's runs: the script empties that directory as it
+starts. Log out from Plasma's menu to end it, which ends the panel,
+or `cjf panel stop desktop`, which ends Plasma abruptly. For larger
+text on a big panel, set the scale in Plasma's display settings; KWin's
+own `--scale` on that line was tried and does nothing, since KScreen
+applies the saved screen configuration, scale 1, over it.
+
+One thing differs from `start`: the environment carries
+`QT_QPA_PLATFORM=wayland`, not `xcb`. The script passes the
+environment on to Plasma, and a plasmashell on xcb under the nested
+KWin draws the desktop and its icons but makes no panel windows at
+all (KWin's window list showed the one desktop window), which is how
+this was found. Checked at 3840x1080 on 2026-11-07: KWin lists the
+desktop and both docks, and a screenshot through `gamescopectl` of
+the panel's gamescope shows them.
+
 ## Limits
 
 - One size for every window in a panel: a second app wants a second

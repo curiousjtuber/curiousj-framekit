@@ -190,8 +190,10 @@ gets on the headset.
   monitors pixel for pixel. It runs the gamescope `cjf install
   gamescope-panel` builds for `~/.local` (about ten minutes), the
   host's release with one patch, since the host's binary aborts above
-  1080p on a fixed-size upload buffer. [panel.md](panel.md) has the
-  why and the limits.
+  1080p on a fixed-size upload buffer. `cjf panel desktop --size WxH`
+  runs SteamOS's own Desktop Mode in one, with a screen of that size
+  in place of its 1280x800. [panel.md](panel.md) has the why and the
+  limits.
 - **`bsmanager [--no-gpu]`** shows the Frame's BSManager in a
   window on a Linux PC's Wayland desktop, through waypipe. In the
   headset, start BSManager from Steam instead. It runs in either of two

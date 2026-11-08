@@ -4,6 +4,23 @@ from pathlib import Path
 from curiousj_framekit import cmdline
 from curiousj_framekit.frame import panel
 
+STOCK_SCRIPT = '''#!/bin/sh
+
+set -eu
+
+## Shadow kwin_wayland_wrapper so that we can pass args to kwin wrapper
+## whilst being launched by plasma-session
+mkdir $NEW_XDG_RUNTIME_DIR/bin
+cat <<EOF > $NEW_XDG_RUNTIME_DIR/bin/kwin_wayland_wrapper
+#!/bin/sh
+/usr/bin/kwin_wayland_wrapper --width 1280 --height 800 --no-lockscreen \\$@
+EOF
+chmod a+x $NEW_XDG_RUNTIME_DIR/bin/kwin_wayland_wrapper
+export PATH=$NEW_XDG_RUNTIME_DIR/bin:$PATH
+
+dbus-run-session startplasma-wayland
+'''
+
 
 class Sizes(unittest.TestCase):
     def test_parse(self):
@@ -71,3 +88,23 @@ class Argv(unittest.TestCase):
         self.assertEqual(argv[:2], ["/bin/sh", "-c"])
         self.assertIn('"$@"; systemctl --user stop --no-block "$0"', argv[2])
         self.assertEqual(argv[3:], ["cjf-panel-krdc.service", "/home/u/.local/bin/krdc", "--fullscreen", "rdp://pc"])
+
+
+class Desktop(unittest.TestCase):
+    def test_the_script_gets_the_panel_size_on_kwin_s_line_only(self):
+        out = panel.desktop_script(STOCK_SCRIPT, (3840, 1080))
+        self.assertIn("/usr/bin/kwin_wayland_wrapper --width 3840 --height 1080 --no-lockscreen \\$@", out)
+        self.assertNotIn("1280", out)
+        self.assertEqual(out.count("kwin_wayland_wrapper"), STOCK_SCRIPT.count("kwin_wayland_wrapper"))
+        self.assertEqual(out.replace("--width 3840 --height 1080", "--width 1280 --height 800"), STOCK_SCRIPT)
+
+    def test_a_changed_script_is_refused(self):
+        for text in ("#!/bin/sh\nstartplasma-wayland\n", STOCK_SCRIPT + STOCK_SCRIPT):
+            with self.assertRaises(cmdline.Error):
+                panel.desktop_script(text, (1920, 1080))
+
+    def test_plasma_gets_qt_on_wayland(self):
+        self.assertEqual(panel.desktop_environment(), {"QT_QPA_PLATFORM": "wayland", "XCURSOR_SIZE": "32"})
+
+    def test_the_copy_is_named_by_its_size(self):
+        self.assertEqual(panel.desktop_script_path((3840, 1080)).name, "desktop-3840x1080.sh")
