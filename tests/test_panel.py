@@ -1,5 +1,7 @@
+import os
 import unittest
 from pathlib import Path
+from unittest import mock
 
 from curiousj_framekit import cmdline
 from curiousj_framekit.frame import panel
@@ -108,3 +110,13 @@ class Desktop(unittest.TestCase):
 
     def test_the_copy_is_named_by_its_size(self):
         self.assertEqual(panel.desktop_script_path((3840, 1080)).name, "desktop-3840x1080.sh")
+
+
+class Manager(unittest.TestCase):
+    def test_systemd_is_reached_through_the_real_runtime_dir(self):
+        inside = {"XDG_RUNTIME_DIR": f"/run/user/{os.getuid()}/nested_plasma", "PATH": "/usr/bin", "KDE_FULL_SESSION": "true"}
+        with mock.patch.dict(os.environ, inside, clear=True):
+            env = panel.manager_env()
+        self.assertEqual(env["XDG_RUNTIME_DIR"], f"/run/user/{os.getuid()}")
+        self.assertEqual(env["PATH"], "/usr/bin")
+        self.assertEqual(env["KDE_FULL_SESSION"], "true")

@@ -90,7 +90,12 @@ does not, and the session gamescope's environment isn't readable), and
 the panel then outlives the terminal that started it. `status` lists
 the panels, `log` reads a panel's journal. The command is resolved on
 the calling shell's PATH, since the service's is the system's;
-`~/.local/bin/krdc` is found that way.
+`~/.local/bin/krdc` is found that way. From a Konsole inside Desktop
+Mode or Frametop, `XDG_RUNTIME_DIR` is the nested desktop's own
+directory, where systemd-run would look for the user manager's socket
+in vain ("Failed to connect to user scope bus"); the panel commands
+run systemd-run, systemctl and journalctl with the real one, so they
+work from either desktop as from Game Mode or SSH.
 
 Ending a panel took a workaround. gamescope on the OpenVR backend
 keeps running after its child exits (it logs "Primary child shut

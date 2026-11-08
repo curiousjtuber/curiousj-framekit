@@ -291,14 +291,14 @@ def run(opts: Options, argv: list[str], *, check: bool = True,
 
 
 def output(opts: Options, argv: list[str], timeout: float | None = 5,
-           default: str | None = None) -> str | None:
+           default: str | None = None, env: dict[str, str] | None = None) -> str | None:
     """A command's stdout, stripped, or `default` when it is missing, fails
     or times out: for the probes status makes, where a missing tool is a
     `?` in a column, not an error."""
     log(opts, "+ " + " ".join(argv))
     try:
         proc = subprocess.run(argv, text=True, capture_output=True,
-                              timeout=timeout)
+                              timeout=timeout, env=env)
     except (FileNotFoundError, subprocess.TimeoutExpired, PermissionError):
         return default
     if proc.returncode != 0:

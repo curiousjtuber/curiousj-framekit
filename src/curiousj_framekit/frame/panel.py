@@ -39,7 +39,9 @@ ends it sooner (three seconds: gamescope ignores SIGTERM and is killed),
 `status` lists the panels, `log` is its journal. The command is
 resolved on this shell's PATH, since the service's is the system's. A
 panel needs SteamVR up, which Game Mode is. Every window in a panel
-gets the one size, so a second app wants a second panel.
+gets the one size, so a second app wants a second panel. The commands
+work from a terminal in Game Mode, over SSH, or inside Desktop Mode or
+Frametop, whose own XDG_RUNTIME_DIR they look past for the manager.
 
 KRDC at the size of a PC's two monitors:
     cjf panel start --size 3840x1080 --fullscreen -- krdc --fullscreen rdp://HOST
@@ -57,6 +59,7 @@ is overridden by the saved screen configuration.
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -182,6 +185,15 @@ def desktop_environment() -> dict[str, str]:
     return environment(True, ["QT_QPA_PLATFORM=wayland"])
 
 
+def manager_env() -> dict[str, str]:
+    """The environment for systemd-run, systemctl and journalctl, which
+    reach the user manager through $XDG_RUNTIME_DIR/systemd/private. A
+    terminal inside Desktop Mode or Frametop has XDG_RUNTIME_DIR pointed
+    at the desktop's own dir, where there is no such socket ("Failed to
+    connect to user scope bus"), so the real one."""
+    return dict(os.environ, XDG_RUNTIME_DIR=str(desktops.run_dir()))
+
+
 def wrapped(unit: str, command: list[str]) -> list[str]:
     """The app, then the unit's end. gamescope's OpenVR backend keeps
     running after its child exits and ignores SIGTERM and SIGINT (the
@@ -215,7 +227,7 @@ def parse_units(text: str) -> list[tuple[str, str]]:
 
 def panels(opts: Options) -> list[tuple[str, str]]:
     text = cmdline.output(opts, ["systemctl", "--user", "list-units", "--plain", "--no-legend",
-                                 "--all", f"{UNIT_PREFIX}*"], default="")
+                                 "--all", f"{UNIT_PREFIX}*"], default="", env=manager_env())
     return parse_units(text or "")
 
 
@@ -262,7 +274,7 @@ def launch(opts: Options, binary: Path, name: str, size: tuple[int, int], width_
                 f"panel {name}: {w}x{h}, {width_m:g} m wide, {shown} (unit {unit})")
     if opts.check:
         return 0
-    cmdline.run(opts, run_argv(unit, env, argv))
+    cmdline.run(opts, run_argv(unit, env, argv), env=manager_env())
     print(f"log: cjf panel log {panel_name(unit)}   stop: cjf panel stop {panel_name(unit)}")
     return 0
 
@@ -321,7 +333,7 @@ def stop(opts: Options, name: str | None) -> int:
     cmdline.say("would stop" if opts.check else "stop", f"panel {panel_name(unit)} ({unit})")
     if opts.check:
         return 0
-    cmdline.run(opts, ["systemctl", "--user", "stop", unit + ".service"])
+    cmdline.run(opts, ["systemctl", "--user", "stop", unit + ".service"], env=manager_env())
     return 0
 
 
@@ -348,4 +360,4 @@ def log(opts: Options, name: str | None, lines: int) -> int:
     unit = unit_name(pick_name(opts, name, "log"))
     argv = ["journalctl", "--user", "-u", unit + ".service", "-n", str(lines), "--no-pager", "-o", "cat"]
     cmdline.log(opts, "+ " + " ".join(argv))
-    return subprocess.run(argv).returncode
+    return subprocess.run(argv, env=manager_env()).returncode
