@@ -45,7 +45,11 @@ which nothing has started outside a Plasma session. A third
 patch, `krdc-bgrx-buffer.patch`, has KRDC keep the picture in the byte
 order RDP sends it in, which makes FreeRDP's copy of each update a
 plain one; on ARM the copy with red and blue swapped was the larger
-cost of a session, more than the decoding. `cjf installed` shows pacman-home's version
+cost of a session, more than the decoding. A fourth,
+`krdc-fullscreen-toolbar.patch`, shows KRDC's full-screen toolbar in a
+`cjf panel`: it slides in at the top centre when full screen starts
+and leaves a thin tab there to point at, which stock KRDC never drew
+in a window that was already the size of the screen. `cjf installed` shows pacman-home's version
 and says outdated once the PKGBUILD's moves on (a new release, or a
 `pkgrel` bump for a changed patch); `cjf update` rebuilds it then; `cjf uninstall krdc` is `pacman-home -R krdc`, and leaves the
 flatpak, if any, as the menu's KRDC again. On the PC, where cjf does

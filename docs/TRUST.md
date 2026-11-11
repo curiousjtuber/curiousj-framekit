@@ -148,7 +148,7 @@ changed tarball fails makepkg; FreeRDP's tarball, the package's own
 copy of the library since 2026-11-11, comes from pub.freerdp.com the
 same way, its sum recorded after a check against its maintainer's
 signature; qtkeychain is a git source pinned to a commit, which
-makepkg checks out and nothing else. The three patches, two of KRDC
+makepkg checks out and nothing else. The four patches, three of KRDC
 and one of FreeRDP, are in this repo for review, each with its own
 sum. The package installs under
 `~/.local` through `pacman-home -U`, unsandboxed, as a distribution's

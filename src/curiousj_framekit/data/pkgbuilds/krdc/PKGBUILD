@@ -49,6 +49,10 @@
 # blue swap it replaces has vector code on x86 only and took most of a
 # core here.
 #
+# krdc-fullscreen-toolbar.patch shows the full-screen toolbar in a cjf
+# panel, where KRDC's window has the screen's size before it goes full
+# screen and the resize the toolbar waits for never comes.
+#
 # For a new KDE Gear release: bump pkgver, update the first b2sum
 # (checked against the tarball's signature from the KDE Gear release
 # keys), and make sure the patches still apply. For a new FreeRDP:
@@ -60,7 +64,7 @@
 
 pkgname=krdc
 pkgver=26.08.3
-pkgrel=3
+pkgrel=4
 pkgdesc='KRDC with the "Remote pointer" option, built for ~/.local on the Steam Frame host'
 arch=('aarch64' 'x86_64')
 url='https://apps.kde.org/krdc'
@@ -122,6 +126,7 @@ source=(
   qtkeychain::git+https://github.com/frankosterfeld/qtkeychain.git#commit=${_qtkeychain_commit}
   freerdp-h264-v4l2m2m.patch
   krdc-bgrx-buffer.patch
+  krdc-fullscreen-toolbar.patch
   krdc-embed-cursor.patch
 )
 # The tarballs as checked against their signatures: krdc's by Heiko
@@ -134,6 +139,7 @@ b2sums=('5d340d03d4b99d00722ae7d60f51602ae825f5eec7fa1d64046190c72ed770e7c63b7c3
         'SKIP'
         '23b284c3166eeb4328934e10a53ffa7d2013055454c758e2cba098b51bc83360572a72f18e957870c6eeeb4271db52cd705dd351d00fe666e24b8f5ce0a915a7'
         '0b015168caa68647dd422fbc6abca8d8bcaf738c5e4e08c456f5349f65b1f967f14f630e5b5b67f5f9c7d4fe67adaeb79eeef385dc795c33d792457e5cad7c32'
+        '86288fa7cbf257eadcf53c5ee0aa63d07539848418754c22e9ed494d8564f9229e58a1a5f6077bd5927ebe2b1fa96b754ba81bc2aaaf39c4f7a646e30f292762'
         'e5cba5b301d8c3a6b22aa316ffb989dab36eadb824700fa6df8495c3cdc97e263259f6f394e4a6d236838850390c8c7f7425543274a5ccb481bb6d816901d11e')
 
 _prefix=$HOME/.local
@@ -148,6 +154,7 @@ prepare() {
   cd krdc-${pkgver}
   patch -p1 --forward < "$srcdir/krdc-embed-cursor.patch"
   patch -p1 --forward < "$srcdir/krdc-bgrx-buffer.patch"
+  patch -p1 --forward < "$srcdir/krdc-fullscreen-toolbar.patch"
 }
 
 build() {

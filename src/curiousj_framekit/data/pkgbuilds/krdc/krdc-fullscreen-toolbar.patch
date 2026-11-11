@@ -1,0 +1,21 @@
+KRDC 26.08.3: show the full-screen toolbar when full screen is entered.
+The floating toolbar shows itself only from the main window's resize
+event. A window that already has the size of the screen, as every
+window in a gamescope panel has, is not resized by going full screen,
+so the toolbar was created and never shown: no tab at the top edge to
+point at, and no way out of full screen but the shortcut.
+
+--- a/mainwindow.cpp
++++ b/mainwindow.cpp
+@@ -906,6 +906,11 @@
+ 
+         m_toolBar->addWidget(buttonBox);
+     }
++
++    // The toolbar otherwise appears only when the window is resized,
++    // which entering full screen does not do to a window that already
++    // has the size of the screen.
++    m_toolBar->showAndAnimate();
+ }
+ 
+ void MainWindow::updateActionStatus()
