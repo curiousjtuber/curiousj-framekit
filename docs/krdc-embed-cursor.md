@@ -37,7 +37,11 @@ software when it can't. ffmpeg's line `[h264_v4l2m2m @ ...] Using
 device /dev/video-dec0` in `journalctl --user` says it is in use
 (FreeRDP's own `Using V4L2` line is at a level KRDC doesn't show), a
 `decoding in software` warning says why it is not, and
-`FREERDP_H264_V4L2M2M=0` in KRDC's environment turns it off. A third
+`FREERDP_H264_V4L2M2M=0` in KRDC's environment turns it off. The
+launcher also sets `QTKEYCHAIN_BACKEND=kwallet6`, so that passwords
+are saved and read in Gaming Mode and in a `cjf panel` as they are in
+Desktop Mode: there qtkeychain would otherwise ask the Secret Service,
+which nothing has started outside a Plasma session. A third
 patch, `krdc-bgrx-buffer.patch`, has KRDC keep the picture in the byte
 order RDP sends it in, which makes FreeRDP's copy of each update a
 plain one; on ARM the copy with red and blue swapped was the larger

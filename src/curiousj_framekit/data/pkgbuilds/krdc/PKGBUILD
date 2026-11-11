@@ -60,7 +60,7 @@
 
 pkgname=krdc
 pkgver=26.08.3
-pkgrel=2
+pkgrel=3
 pkgdesc='KRDC with the "Remote pointer" option, built for ~/.local on the Steam Frame host'
 arch=('aarch64' 'x86_64')
 url='https://apps.kde.org/krdc'
@@ -229,6 +229,12 @@ fi
 if [ ! -e "\$data/krdc/bookmarks.xml" ] && [ -s "\$flatpak/data/krdc/bookmarks.xml" ]; then
   mkdir -p "\$data/krdc" && cp "\$flatpak/data/krdc/bookmarks.xml" "\$data/krdc/bookmarks.xml"
 fi
+# Outside a Plasma session (Gaming Mode, a cjf panel) qtkeychain takes
+# the desktop for an unknown one and asks the Secret Service, a name
+# nothing owns there and D-Bus can't start, so no password was saved
+# or read. KWallet's name D-Bus can start, and it is the wallet a
+# Plasma session uses.
+export QTKEYCHAIN_BACKEND="\${QTKEYCHAIN_BACKEND:-kwallet6}"
 export QT_PLUGIN_PATH="\$home/lib/plugins\${QT_PLUGIN_PATH:+:\$QT_PLUGIN_PATH}"
 export XDG_DATA_DIRS="\$home/share:\${XDG_DATA_DIRS:-/usr/local/share:/usr/share}"
 exec "\$home/bin/krdc" "\$@"
