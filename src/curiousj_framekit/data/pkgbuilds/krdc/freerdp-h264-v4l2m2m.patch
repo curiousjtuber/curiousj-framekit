@@ -1,0 +1,444 @@
+FreeRDP 3.33.1: decode H.264 with a V4L2 stateful decoder when ffmpeg
+has one (h264_v4l2m2m), such as the Steam Frame's qcom-iris. FreeRDP's
+hardware decoding goes through ffmpeg's hwaccel device types (VA-API,
+Vulkan, ...), and a SoC's V4L2 decoder is none of those: ffmpeg wraps
+it as a decoder of its own, which wants the stream's frame size before
+it opens, hands a frame back a few milliseconds after its packet, and
+returns NV12. The path runs beside the software decoder, which stays
+open and takes over when the device is missing, busy, refuses the size
+or stops answering. FREERDP_H264_V4L2M2M=0 turns it off.
+
+On the Frame, 1080p at 60 fps through avc420_decompress: 4.7 ms of CPU
+a frame against 7.4 in software, the rest being the conversion to RGB,
+and the same pictures bit for bit.
+
+--- a/libfreerdp/codec/h264_ffmpeg.c
++++ b/libfreerdp/codec/h264_ffmpeg.c
+@@ -22,12 +22,17 @@
+ 
+ #include <winpr/wlog.h>
+ #include <winpr/json.h>
++#include <winpr/crt.h>
++#include <winpr/sysinfo.h>
++#include <winpr/synch.h>
++#include <winpr/interlocked.h>
+ 
+ #include <freerdp/log.h>
+ #include <freerdp/codec/h264.h>
+ #include <freerdp/utils/helpers.h>
+ #include <libavcodec/avcodec.h>
+ #include <libavutil/opt.h>
++#include <libavutil/pixdesc.h>
+ #include <libswscale/swscale.h>
+ 
+ #include "h264.h"
+@@ -340,6 +345,16 @@
+ 	AVPacket bufferpacket;
+ #endif
+ 	AVPacket* packet;
++	/* The V4L2 stateful decoder (h264_v4l2m2m), see v4l2_decompress. */
++	BOOL v4l2Wanted;
++	AVCodecContext* v4l2Context;
++	int v4l2Width;
++	int v4l2Height;
++	UINT64 v4l2Frames;
++	UINT32 v4l2Failures;
++	BYTE* v4l2Chroma[2];
++	UINT32 v4l2ChromaStride;
++	UINT32 v4l2ChromaRows;
+ #if defined(WITH_FFMPEG_HWACCEL)
+ 	AVBufferRef* hwctx;
+ 	struct SwsContext* swsctx;
+@@ -617,6 +632,355 @@
+ }
+ #endif
+ 
++/* Hardware decoding through V4L2.
++ *
++ * Embedded SoCs (Qualcomm, Rockchip, Raspberry Pi, ...) expose their
++ * H.264 decoder as a V4L2 stateful memory-to-memory device, not as one
++ * of ffmpeg's hwaccel device types. ffmpeg wraps such a device as a
++ * decoder of its own, h264_v4l2m2m, so none of the hwctx code applies
++ * and the path below runs beside it:
++ *
++ *  - the wrapper wants the stream's frame size before it opens, and
++ *    the surface's is no guide (a server may send smaller frames), so
++ *    it opens with the first packet, at the size in that packet's
++ *    sequence parameter set, and again when a later one changes it
++ *  - a frame leaves the device a few milliseconds after its packet went
++ *    in. avcodec_receive_frame returns EAGAIN until then, which the
++ *    software path may read as 'no picture in this packet' but which
++ *    here means 'not yet', so the frame is waited for
++ *  - the picture comes as NV12, whose chroma plane is split in two for
++ *    the planar YUV420 the callers expect
++ *
++ * The software decoder stays open and takes over when the device
++ * can't be opened or stops answering. FREERDP_H264_V4L2M2M=0 in the
++ * environment turns the path off.
++ */
++#define V4L2_DECODER_NAME "h264_v4l2m2m"
++#define V4L2_FIRST_FRAME_TIMEOUT_MS 2000
++#define V4L2_FRAME_TIMEOUT_MS 250
++#define V4L2_MAX_FAILURES 3
++/* Below this a device may refuse the stream, and software decoding
++ * costs next to nothing. */
++#define V4L2_MIN_WIDTH 320
++#define V4L2_MIN_HEIGHT 240
++
++/* -1 once an open failed before any succeeded in this process: there
++ * is no usable device, and later contexts need not ask again. */
++static volatile LONG g_v4l2Available = 0;
++
++/* TRUE if a sequence parameter set precedes the packet's first slice. */
++static BOOL v4l2_packet_has_sps(const AVPacket* packet)
++{
++	const uint8_t* data = packet->data;
++	const size_t size = (packet->size > 0) ? (size_t)packet->size : 0;
++
++	for (size_t x = 0; x + 3 < size; x++)
++	{
++		if ((data[x] != 0) || (data[x + 1] != 0) || (data[x + 2] != 1))
++			continue;
++		const uint8_t type = data[x + 3] & 0x1F;
++		if (type == 7)
++			return TRUE;
++		if ((type == 1) || (type == 5))
++			return FALSE;
++		x += 2;
++	}
++	return FALSE;
++}
++
++/* The frame size the packet's sequence parameter set declares. */
++static BOOL v4l2_packet_size(H264_CONTEXT_LIBAVCODEC* sys, const AVPacket* packet, int* pwidth,
++                             int* pheight)
++{
++	BOOL rc = FALSE;
++	uint8_t* out = nullptr;
++	int outSize = 0;
++	AVCodecContext* ctx = avcodec_alloc_context3(sys->codecDecoder);
++	AVCodecParserContext* parser = av_parser_init(AV_CODEC_ID_H264);
++	/* The parser reads past the end, into the padding a copy has. */
++	AVPacket* copy = av_packet_alloc();
++
++	if (!ctx || !parser || !copy || (av_new_packet(copy, packet->size) < 0))
++		goto fail;
++	memcpy(copy->data, packet->data, (size_t)packet->size);
++
++	parser->flags |= PARSER_FLAG_COMPLETE_FRAMES;
++	(void)av_parser_parse2(parser, ctx, &out, &outSize, copy->data, copy->size, AV_NOPTS_VALUE,
++	                       AV_NOPTS_VALUE, 0);
++	if ((parser->width > 0) && (parser->height > 0))
++	{
++		*pwidth = parser->width;
++		*pheight = parser->height;
++		rc = TRUE;
++	}
++
++fail:
++	av_packet_free(&copy);
++	if (parser)
++		av_parser_close(parser);
++	avcodec_free_context(&ctx);
++	return rc;
++}
++
++static BOOL v4l2_wanted(void)
++{
++	// NOLINTNEXTLINE(concurrency-mt-unsafe)
++	const char* env = getenv("FREERDP_H264_V4L2M2M");
++	if (env && ((strcmp(env, "0") == 0) || (_stricmp(env, "off") == 0) ||
++	            (_stricmp(env, "false") == 0)))
++		return FALSE;
++	return avcodec_find_decoder_by_name(V4L2_DECODER_NAME) != nullptr;
++}
++
++static void v4l2_close(H264_CONTEXT_LIBAVCODEC* sys)
++{
++	WINPR_ASSERT(sys);
++	/* The frame's buffers belong to the device. */
++	if (sys->videoFrame)
++		av_frame_unref(sys->videoFrame);
++	if (sys->v4l2Context)
++		avcodec_free_context(&sys->v4l2Context);
++	winpr_aligned_free(sys->v4l2Chroma[0]);
++	winpr_aligned_free(sys->v4l2Chroma[1]);
++	sys->v4l2Chroma[0] = nullptr;
++	sys->v4l2Chroma[1] = nullptr;
++	sys->v4l2ChromaStride = 0;
++	sys->v4l2ChromaRows = 0;
++}
++
++static BOOL v4l2_open(H264_CONTEXT* h264, H264_CONTEXT_LIBAVCODEC* sys, int width, int height)
++{
++	const AVCodec* codec = avcodec_find_decoder_by_name(V4L2_DECODER_NAME);
++	if (!codec)
++		return FALSE;
++
++	if ((width < V4L2_MIN_WIDTH) || (height < V4L2_MIN_HEIGHT))
++	{
++		WLog_Print(h264->log, WLOG_DEBUG, "%dx%d is too small for %s, decoding in software",
++		           width, height, V4L2_DECODER_NAME);
++		return FALSE;
++	}
++
++	sys->v4l2Context = avcodec_alloc_context3(codec);
++	if (!sys->v4l2Context)
++		return FALSE;
++
++	sys->v4l2Context->width = width;
++	sys->v4l2Context->height = height;
++	sys->v4l2Context->flags |= AV_CODEC_FLAG_LOW_DELAY;
++
++	const int rc = avcodec_open2(sys->v4l2Context, codec, nullptr);
++	if (rc < 0)
++	{
++		char buffer[64] = WINPR_C_ARRAY_INIT;
++		(void)av_strerror(rc, buffer, sizeof(buffer));
++		/* A size every decoder takes: the device is missing or busy,
++		 * where a larger one may only be more than it can do. */
++		const BOOL common = (width <= 1920) && (height <= 1088);
++		if (common && (InterlockedCompareExchange(&g_v4l2Available, -1, 0) == 0))
++			WLog_Print(h264->log, WLOG_INFO,
++			           "No V4L2 H264 decoder to use (%s, %dx%d: %s), decoding in software",
++			           V4L2_DECODER_NAME, width, height, buffer);
++		else
++			WLog_Print(h264->log, WLOG_INFO, "%s did not open for %dx%d (%s), decoding in software",
++			           V4L2_DECODER_NAME, width, height, buffer);
++		avcodec_free_context(&sys->v4l2Context);
++		return FALSE;
++	}
++
++	const LONG before = InterlockedExchange(&g_v4l2Available, 1);
++	WINPR_UNUSED(before);
++	sys->v4l2Width = width;
++	sys->v4l2Height = height;
++	sys->v4l2Frames = 0;
++	sys->v4l2Failures = 0;
++	return TRUE;
++}
++
++/* The V4L2 path's picture in sys->videoFrame as planar YUV420. */
++static BOOL v4l2_export_frame(H264_CONTEXT* h264, H264_CONTEXT_LIBAVCODEC* sys)
++{
++	const AVFrame* frame = sys->videoFrame;
++	BYTE** pYUVData = h264->pYUVData;
++	UINT32* iStride = h264->iStride;
++
++	if ((frame->width <= 0) || (frame->height <= 0) || !frame->data[0] || !frame->data[1] ||
++	    (frame->linesize[0] <= 0) || (frame->linesize[1] <= 0))
++		return FALSE;
++
++	if (frame->format == AV_PIX_FMT_YUV420P)
++	{
++		if (!frame->data[2] || (frame->linesize[2] <= 0))
++			return FALSE;
++		pYUVData[1] = frame->data[1];
++		pYUVData[2] = frame->data[2];
++		iStride[1] = (UINT32)frame->linesize[1];
++		iStride[2] = (UINT32)frame->linesize[2];
++	}
++	else if (frame->format == AV_PIX_FMT_NV12)
++	{
++		const UINT32 width = ((UINT32)frame->width + 1) / 2;
++		const UINT32 rows = ((UINT32)frame->height + 1) / 2;
++		/* Padded like a decoder's own planes, for readers that work in
++		 * blocks. */
++		const UINT32 stride = (width + 63) & ~31u;
++
++		if ((2ull * width) > (size_t)frame->linesize[1])
++			return FALSE;
++
++		if ((stride != sys->v4l2ChromaStride) || (rows != sys->v4l2ChromaRows))
++		{
++			for (size_t x = 0; x < 2; x++)
++			{
++				BYTE* tmp = winpr_aligned_recalloc(sys->v4l2Chroma[x], 1ull * stride, rows + 1, 32);
++				if (!tmp)
++					return FALSE;
++				sys->v4l2Chroma[x] = tmp;
++			}
++			sys->v4l2ChromaStride = stride;
++			sys->v4l2ChromaRows = rows;
++		}
++
++		for (UINT32 y = 0; y < rows; y++)
++		{
++			const BYTE* WINPR_RESTRICT src = &frame->data[1][1ull * y * (size_t)frame->linesize[1]];
++			BYTE* WINPR_RESTRICT u = &sys->v4l2Chroma[0][1ull * y * stride];
++			BYTE* WINPR_RESTRICT v = &sys->v4l2Chroma[1][1ull * y * stride];
++			for (UINT32 x = 0; x < width; x++)
++			{
++				u[x] = src[2ull * x];
++				v[x] = src[2ull * x + 1];
++			}
++		}
++
++		pYUVData[1] = sys->v4l2Chroma[0];
++		pYUVData[2] = sys->v4l2Chroma[1];
++		iStride[1] = stride;
++		iStride[2] = stride;
++	}
++	else
++	{
++		WLog_Print(h264->log, WLOG_WARN, "%s returned frames of format %s, which is not handled",
++		           V4L2_DECODER_NAME, av_get_pix_fmt_name(frame->format));
++		return FALSE;
++	}
++
++	pYUVData[0] = frame->data[0];
++	iStride[0] = (UINT32)frame->linesize[0];
++	h264->YUVWidth = (UINT32)frame->width;
++	h264->YUVHeight = (UINT32)frame->height;
++	return TRUE;
++}
++
++/* Decodes packet with the V4L2 decoder. Returns 1 with the picture
++ * exported, a negative value when this picture is lost, and 0 when the
++ * software decoder should decode the packet (the path is then off for
++ * the context). */
++static int v4l2_decompress(H264_CONTEXT* h264, H264_CONTEXT_LIBAVCODEC* sys, AVPacket* packet)
++{
++	const char* what = "did not open";
++	int status = 0;
++
++	if (v4l2_packet_has_sps(packet))
++	{
++		int width = 0;
++		int height = 0;
++		if (v4l2_packet_size(sys, packet, &width, &height) && sys->v4l2Context &&
++		    ((width != sys->v4l2Width) || (height != sys->v4l2Height)))
++		{
++			/* A new sequence starts here, so nothing is lost. */
++			WLog_Print(h264->log, WLOG_DEBUG, "stream changed from %dx%d to %dx%d",
++			           sys->v4l2Width, sys->v4l2Height, width, height);
++			v4l2_close(sys);
++		}
++
++		if (!sys->v4l2Context)
++		{
++			if ((InterlockedCompareExchange(&g_v4l2Available, 0, 0) < 0) ||
++			    !v4l2_open(h264, sys, width, height))
++			{
++				sys->v4l2Wanted = FALSE;
++				return 0;
++			}
++		}
++	}
++
++	/* No parameter set yet: nothing can decode this packet, and the
++	 * software decoder says so the way it always has. */
++	if (!sys->v4l2Context)
++		return 0;
++
++	av_frame_unref(sys->videoFrame);
++
++	const UINT64 start = GetTickCount64();
++	const UINT64 timeout =
++	    (sys->v4l2Frames == 0) ? V4L2_FIRST_FRAME_TIMEOUT_MS : V4L2_FRAME_TIMEOUT_MS;
++
++	status = avcodec_send_packet(sys->v4l2Context, packet);
++	what = "took no packet";
++	if (status >= 0)
++	{
++		what = "returned no frame";
++		for (;;)
++		{
++			status = avcodec_receive_frame(sys->v4l2Context, sys->videoFrame);
++			if (status != AVERROR(EAGAIN))
++				break;
++			if ((GetTickCount64() - start) > timeout)
++			{
++				status = AVERROR(ETIMEDOUT);
++				break;
++			}
++			USleep(200);
++		}
++	}
++
++	if ((status >= 0) && !v4l2_export_frame(h264, sys))
++	{
++		what = "returned a frame that can't be used";
++		status = AVERROR(EINVAL);
++	}
++
++	if (status >= 0)
++	{
++		if (sys->v4l2Frames++ == 0)
++			WLog_Print(h264->log, WLOG_INFO,
++			           "Using V4L2 (%s) for accelerated H264 decoding, %dx%d %s",
++			           V4L2_DECODER_NAME, sys->videoFrame->width, sys->videoFrame->height,
++			           av_get_pix_fmt_name(sys->videoFrame->format));
++		sys->v4l2Failures = 0;
++		return 1;
++	}
++
++	char buffer[64] = WINPR_C_ARRAY_INIT;
++	(void)av_strerror(status, buffer, sizeof(buffer));
++
++	/* Before its first frame the device has kept nothing the software
++	 * decoder lacks: this is the stream's first packet. */
++	if (sys->v4l2Frames == 0)
++	{
++		WLog_Print(h264->log, WLOG_WARN, "%s %s (%s), decoding in software", V4L2_DECODER_NAME,
++		           what, buffer);
++		v4l2_close(sys);
++		sys->v4l2Wanted = FALSE;
++		return 0;
++	}
++
++	sys->v4l2Failures++;
++	WLog_Print(h264->log, WLOG_WARN, "%s %s (%s) [%" PRIu32 "/%d]", V4L2_DECODER_NAME, what,
++	           buffer, sys->v4l2Failures, V4L2_MAX_FAILURES);
++	if (sys->v4l2Failures >= V4L2_MAX_FAILURES)
++	{
++		/* The software decoder has seen none of the stream so far, so
++		 * its pictures are only whole again from the next key frame. */
++		WLog_Print(h264->log, WLOG_WARN, "%s keeps failing, decoding in software from here",
++		           V4L2_DECODER_NAME);
++		v4l2_close(sys);
++		sys->v4l2Wanted = FALSE;
++	}
++	return -1;
++}
++
+ static int libavcodec_decompress(H264_CONTEXT* WINPR_RESTRICT h264,
+                                  const BYTE* WINPR_RESTRICT pSrcData, UINT32 SrcSize)
+ {
+@@ -657,6 +1021,17 @@
+ 	packet->size = (int)MIN(SrcSize, INT32_MAX);
+ 
+ 	WINPR_ASSERT(sys->codecDecoderContext);
++
++	if (sys->v4l2Wanted)
++	{
++		const int res = v4l2_decompress(h264, sys, packet);
++		if (res != 0)
++		{
++			rc = res;
++			goto fail;
++		}
++	}
++
+ 	/* avcodec_decode_video2 is deprecated with libavcodec 57.48.101 */
+ #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(57, 48, 101)
+ 	status = avcodec_send_packet(sys->codecDecoderContext, packet);
+@@ -980,6 +1355,8 @@
+ #endif
+ 	}
+ 
++	v4l2_close(sys);
++
+ 	if (sys->videoFrame)
+ 	{
+ #if LIBAVCODEC_VERSION_INT >= AV_VERSION_INT(55, 18, 102)
+@@ -1433,6 +1810,9 @@
+ 			WLog_Print(h264->log, WLOG_ERROR, "Failed to initialize libav parser");
+ 			goto EXCEPTION;
+ 		}
++
++		/* Opened with the first packet, see v4l2_decompress. */
++		sys->v4l2Wanted = v4l2_wanted();
+ 	}
+ 	else
+ 	{

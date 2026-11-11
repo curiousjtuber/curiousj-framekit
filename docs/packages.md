@@ -12,6 +12,7 @@ build that sees the Frame's own `/usr`, D-Bus and processes, which the
 distrobox one did not; `cjf install emacs` builds and installs it.
 `krdc/` is KRDC with the kit's "Remote pointer" patch, in place of the
 Flathub flatpak; it carries the two build dependencies the host lacks
+and a FreeRDP of its own, newer than the host's
 ([krdc-embed-cursor.md](krdc-embed-cursor.md)). `fuse2/` is libfuse 2,
 the `libfuse.so.2` that every AppImage's runtime loads to mount itself
 and that SteamOS 0.5.7 dropped from the image; `cjf install bsmanager`

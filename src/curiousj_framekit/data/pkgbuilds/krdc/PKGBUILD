@@ -3,14 +3,29 @@
 # file the PC's build script applies), built for ~/.local on the Steam
 # Frame host, in place of the Flathub flatpak.
 #
-# The host has KDE Frameworks 6, Qt 6 and FreeRDP 3 with their headers,
-# which is most of what KRDC needs. It lacks the two others, so the
-# build carries them: extra-cmake-modules, needed at configure time
-# only, goes in a staging directory and never in the package;
-# qtkeychain, a library KRDC links, is built from its repository at a
-# pinned commit and installed with the rest. ECM 6.20.0 is the last
-# release that takes the host's CMake 3.29 (6.24 wants 3.27, 6.31
-# 3.30). VNC is off: the host has no libvncclient.
+# The host has KDE Frameworks 6 and Qt 6 with their headers, which is
+# most of what KRDC needs. It lacks two others, so the build carries
+# them: extra-cmake-modules, needed at configure time only, goes in a
+# staging directory and never in the package; qtkeychain, a library
+# KRDC links, is built from its repository at a pinned commit and
+# installed with the rest. ECM 6.20.0 is the last release that takes
+# the host's CMake 3.29 (6.24 wants 3.27, 6.31 3.30). VNC is off: the
+# host has no libvncclient.
+#
+# FreeRDP is the package's own too, although the host has one: SteamOS
+# 0.5.8's is 3.23.0, ten releases behind, and the kit can't patch a
+# library under /usr. Only the three libraries KRDC links are built (no
+# clients, servers or tools), with the channels inside them, and they
+# go in the same lib directory, which KRDC's RUNPATH names ahead of
+# /usr/lib. ffmpeg's hardware decoding is left at its default, off:
+# the only kind FreeRDP knows is a hwaccel device such as VA-API, the
+# Frame has none, and the host build's attempt only logged a failure
+# for every stream before decoding in software. The Frame's decoder is
+# a V4L2 device (qcom-iris), which ffmpeg has as a decoder of its own,
+# h264_v4l2m2m, and freerdp-h264-v4l2m2m.patch has FreeRDP use that:
+# the same pictures for about two thirds of the CPU, with software
+# decoding as the fallback; FREERDP_H264_V4L2M2M=0 in krdc's
+# environment turns it off.
 #
 # Everything goes under one directory, ~/.local/lib/krdc-embed-cursor,
 # a prefix of its own, because KRDC's RDP backend is a Qt plugin that
@@ -28,21 +43,34 @@
 # or by hand, in this directory:
 #   makepkg -f && pacman-home -U krdc-*.pkg.tar.zst
 #
+# krdc-bgrx-buffer.patch is the Frame's alone, where the PC script
+# shares the other: KRDC keeps its picture in the byte order RDP
+# surfaces have, so FreeRDP's copy into it is a memcpy; the red and
+# blue swap it replaces has vector code on x86 only and took most of a
+# core here.
+#
 # For a new KDE Gear release: bump pkgver, update the first b2sum
 # (checked against the tarball's signature from the KDE Gear release
-# keys), and make sure the patch still applies. A change to the patch
-# needs its b2sum here and a pkgrel bump, which is what tells
-# pacman-home the install is outdated.
+# keys), and make sure the patches still apply. For a new FreeRDP:
+# bump _freerdp, update its b2sum (checked against the .asc beside the
+# tarball on pub.freerdp.com, by the key in akallabeth.asc there) and
+# bump pkgrel, and make sure freerdp-h264-v4l2m2m.patch still applies.
+# A change to any patch needs its b2sum here and a pkgrel bump,
+# which is what tells pacman-home the install is outdated.
 
 pkgname=krdc
-pkgver=26.08.2
-pkgrel=1
+pkgver=26.08.3
+pkgrel=2
 pkgdesc='KRDC with the "Remote pointer" option, built for ~/.local on the Steam Frame host'
 arch=('aarch64' 'x86_64')
 url='https://apps.kde.org/krdc'
 license=(GPL-2.0-or-later)
 depends=(
-  freerdp
+  alsa-lib
+  ffmpeg
+  fuse3
+  icu
+  jansson
   kbookmarks
   kcmutils
   kcompletion
@@ -58,10 +86,23 @@ depends=(
   kstatusnotifieritem
   kwidgetsaddons
   kwindowsystem
+  krb5
   kxmlgui
+  libcups
+  libjpeg-turbo
+  libpng
+  libpulse
   libsecret
   libssh
+  libusb
+  libwebp
+  libx11
+  libxkbfile
+  openssl
   qt6-base
+  sndio
+  systemd-libs
+  zlib
 )
 # Qt's Wayland client library comes with the host's Qt under a package
 # name that changed between SteamOS builds (qt6-wayland on 0.5.6, part
@@ -69,30 +110,44 @@ depends=(
 # the binary covers the library.
 makedepends=(cmake gettext git ninja qt6-tools)
 options=(!debug !lto)
+_freerdp=3.33.1
 _ecm=6.20.0
 _qtkeychain=0.17.0
 # The commit tag 0.17.0 pointed at on 2026-11-03.
 _qtkeychain_commit=875f77d9f61bd97fd84cca47ce3bc71186dfbd09
 source=(
   https://download.kde.org/stable/release-service/${pkgver}/src/krdc-${pkgver}.tar.xz
+  https://pub.freerdp.com/releases/freerdp-${_freerdp}.tar.xz
   https://download.kde.org/stable/frameworks/${_ecm%.*}/extra-cmake-modules-${_ecm}.tar.xz
   qtkeychain::git+https://github.com/frankosterfeld/qtkeychain.git#commit=${_qtkeychain_commit}
+  freerdp-h264-v4l2m2m.patch
+  krdc-bgrx-buffer.patch
   krdc-embed-cursor.patch
 )
 # The tarballs as checked against their signatures: krdc's by Heiko
-# Becker's KDE Gear key, extra-cmake-modules' by Nicolas Fella's KDE
-# Frameworks key, on 2026-11-03.
-b2sums=('9b7df8de2b01384b07c35354a45a6755c44aecde65de743baec20f0cf9d3343827029c108209a42c71234a44c2e6125b46c3eecffb264de608058e4efdb2cb92'
+# Becker's KDE Gear key and FreeRDP's by akallabeth's, its maintainer,
+# on 2026-11-11; extra-cmake-modules' by Nicolas Fella's KDE Frameworks
+# key, on 2026-11-03.
+b2sums=('5d340d03d4b99d00722ae7d60f51602ae825f5eec7fa1d64046190c72ed770e7c63b7c3b0a8068475207e99be6e70948700048f916de584f781a25b7b077b3c1'
+        '8e167f1131315130ea718f98e5137318958c811e3f6f7825aaebd1c958e3fc4f93d163974e5739f12afaf05a85e99b4412d047120ca53a9ec2e13ee503e0719d'
         '1e6cb0037a70bc3d40e29eff5b074808c317a113e0c634a6c196ce5a0558c5dcc0ef71f512ce469be3098cea596507795aeed63580c9488266224b7898845f48'
         'SKIP'
+        '23b284c3166eeb4328934e10a53ffa7d2013055454c758e2cba098b51bc83360572a72f18e957870c6eeeb4271db52cd705dd351d00fe666e24b8f5ce0a915a7'
+        '0b015168caa68647dd422fbc6abca8d8bcaf738c5e4e08c456f5349f65b1f967f14f630e5b5b67f5f9c7d4fe67adaeb79eeef385dc795c33d792457e5cad7c32'
         'e5cba5b301d8c3a6b22aa316ffb989dab36eadb824700fa6df8495c3cdc97e263259f6f394e4a6d236838850390c8c7f7425543274a5ccb481bb6d816901d11e')
 
 _prefix=$HOME/.local
 _home=$_prefix/lib/krdc-embed-cursor
 
 prepare() {
+  # What an earlier build left here, when cjf install kept it: a build
+  # directory configured from another version's source, which cmake
+  # refuses, and staged copies of that version's libraries.
+  rm -rf build-ecm build-qtkeychain build-freerdp build-krdc ecm stage
+  patch -d freerdp-${_freerdp} -p1 --forward < "$srcdir/freerdp-h264-v4l2m2m.patch"
   cd krdc-${pkgver}
   patch -p1 --forward < "$srcdir/krdc-embed-cursor.patch"
+  patch -p1 --forward < "$srcdir/krdc-bgrx-buffer.patch"
 }
 
 build() {
@@ -112,6 +167,24 @@ build() {
   cmake --build build-qtkeychain
   DESTDIR="$srcdir/stage" cmake --install build-qtkeychain
 
+  # FreeRDP's libraries, for the package; KRDC configures against a
+  # staged copy. The image formats are the clipboard's.
+  cmake -S freerdp-${_freerdp} -B build-freerdp -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_INSTALL_PREFIX="$_home" \
+    -DCMAKE_INSTALL_LIBDIR=lib \
+    -DBUILD_TESTING=OFF \
+    -DWITH_CLIENT=OFF -DWITH_SERVER=OFF -DWITH_SAMPLE=OFF \
+    -DWITH_WINPR_TOOLS=OFF -DWITH_MANPAGES=OFF -DWITH_WAYLAND=OFF \
+    -DWITH_VERBOSE_WINPR_ASSERT=OFF \
+    -DWITH_FFMPEG=ON -DWITH_DSP_FFMPEG=ON -DWITH_SWSCALE=ON \
+    -DWITH_ALSA=ON -DWITH_PULSE=ON -DWITH_CUPS=ON -DWITH_FUSE=ON \
+    -DWITH_PCSC=ON -DWITH_JPEG=ON -DCHANNEL_URBDRC_CLIENT=ON \
+    -DWINPR_UTILS_IMAGE_JPEG=ON -DWINPR_UTILS_IMAGE_PNG=ON \
+    -DWINPR_UTILS_IMAGE_WEBP=ON
+  cmake --build build-freerdp
+  DESTDIR="$srcdir/stage" cmake --install build-freerdp
+
   # The RUNPATH is set here rather than by ECM, whose default would add
   # the staging directory beside the real one. Everything the package
   # installs that KRDC loads is in $_home/lib.
@@ -126,11 +199,15 @@ build() {
     -DKDE_INSTALL_PLUGINDIR=lib/plugins \
     -DBUILD_TESTING=OFF \
     -DWITH_RDP=ON -DWITH_VNC=OFF
+  # The host's FreeRDP 3 would configure just as well.
+  grep -q "^FreeRDP_DIR:PATH=$srcdir/stage$_home/" build-krdc/CMakeCache.txt \
+    || { echo "KRDC configured against a FreeRDP other than the one built here" >&2; return 1; }
   cmake --build build-krdc
 }
 
 package() {
   DESTDIR="$pkgdir" cmake --install build-qtkeychain
+  DESTDIR="$pkgdir" cmake --install build-freerdp
   DESTDIR="$pkgdir" cmake --install build-krdc
   [ -e "$pkgdir$_home/lib/plugins/krdc/krdc_rdpplugin.so" ] \
     || { echo "the build left no RDP plugin" >&2; return 1; }

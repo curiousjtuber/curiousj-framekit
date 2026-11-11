@@ -23,7 +23,7 @@ is Arch Linux ARM.
 | `frametop` | GitHub's TLS and the Frametop organization's account | the release zip against the sha256 recorded here, then the image inside against the zip's own metadata |
 | `stream-frame` | Boxtree's GPG key, fetched once over HTTPS from streamframe.app | every commit's signature, by flatpak |
 | `moonlight` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
-| `krdc` | download.kde.org's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patch | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
+| `krdc` | download.kde.org's and pub.freerdp.com's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
 | `fuse2` | libfuse's GitHub release tarball, your review of the PKGBUILD | the BLAKE2 sums in the PKGBUILD, by makepkg |
 | `deskflow` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
 | `krdpserver` | download.kde.org's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
@@ -144,9 +144,13 @@ read-only.
 and pacman: the KDE Gear tarball and the extra-cmake-modules tarball
 come from download.kde.org with their BLAKE2 sums in the PKGBUILD,
 recorded after a check against the KDE release signatures, so a
-changed tarball fails makepkg; qtkeychain is a git source pinned to a
-commit, which makepkg checks out and nothing else. The patch is in
-this repo for review, with its own sum. The package installs under
+changed tarball fails makepkg; FreeRDP's tarball, the package's own
+copy of the library since 2026-11-11, comes from pub.freerdp.com the
+same way, its sum recorded after a check against its maintainer's
+signature; qtkeychain is a git source pinned to a commit, which
+makepkg checks out and nothing else. The three patches, two of KRDC
+and one of FreeRDP, are in this repo for review, each with its own
+sum. The package installs under
 `~/.local` through `pacman-home -U`, unsandboxed, as a distribution's
 KRDC would be. Until 2026-11-03 this item was the Flathub flatpak,
 under the trust below; a copy of it stays installed and shadowed.

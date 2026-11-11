@@ -120,6 +120,10 @@ _prefix=$HOME/.local
 _home=$_prefix/lib/krdpserver
 
 prepare() {
+  # What an earlier build left here, when cjf install kept it: a build
+  # directory configured from another version's source, which cmake
+  # refuses, and staged copies of that version's libraries.
+  rm -rf build-ecm build-kpipewire build-qtkeychain build-krdp ecm stage
   cd kpipewire-${pkgver}
   patch -p1 --forward < "$srcdir/kpipewire-cursor-bitmap-size.patch"
   patch -p1 --forward < "$srcdir/kpipewire-ffmpeg-profiles.patch"

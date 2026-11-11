@@ -1,0 +1,36 @@
+KRDC 26.08.3: keep the session's picture as BGRX, the byte order RDP
+surfaces already have, where it asked FreeRDP for RGBX. FreeRDP copies
+every updated region from a surface into KRDC's buffer, and between
+those two formats the copy swaps red and blue; it has vector code for
+that on x86 only, so on ARM it went pixel by pixel through
+FreeRDPGetColor and FreeRDPSplitColor, 15 ms for a full 2728x1185
+frame on the Steam Frame and most of a core in a session. With the
+formats equal the same copy is a memcpy, 0.5 ms. Format_RGB32 is also
+the format Qt's raster painter works in.
+
+--- a/rdp/rdpsession.cpp
++++ b/rdp/rdpsession.cpp
+@@ -80,9 +80,9 @@
+     auto &buffer = session->m_videoBuffer;
+     buffer = QImage(freerdp_settings_get_uint32(settings, FreeRDP_DesktopWidth),
+                     freerdp_settings_get_uint32(settings, FreeRDP_DesktopHeight),
+-                    QImage::Format_RGBX8888);
++                    QImage::Format_RGB32);
+ 
+-    if (!gdi_init_ex(rdp, PIXEL_FORMAT_RGBX32, buffer.bytesPerLine(), buffer.bits(), nullptr)) {
++    if (!gdi_init_ex(rdp, PIXEL_FORMAT_BGRX32, buffer.bytesPerLine(), buffer.bits(), nullptr)) {
+         qCWarning(KRDC) << "Could not initialize GDI subsystem";
+         return false;
+     }
+@@ -795,9 +795,9 @@
+     auto &buffer = session->m_videoBuffer;
+     buffer = QImage(freerdp_settings_get_uint32(settings, FreeRDP_DesktopWidth),
+                     freerdp_settings_get_uint32(settings, FreeRDP_DesktopHeight),
+-                    QImage::Format_RGBX8888);
++                    QImage::Format_RGB32);
+ 
+-    if (!gdi_resize_ex(gdi, buffer.width(), buffer.height(), buffer.bytesPerLine(), PIXEL_FORMAT_RGBX32, buffer.bits(), nullptr)) {
++    if (!gdi_resize_ex(gdi, buffer.width(), buffer.height(), buffer.bytesPerLine(), PIXEL_FORMAT_BGRX32, buffer.bits(), nullptr)) {
+         qCWarning(KRDC) << "Failed resizing GDI subsystem";
+         return false;
+     }

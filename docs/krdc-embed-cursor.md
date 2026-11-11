@@ -27,7 +27,21 @@ cjf install krdc
 
 in place of the flatpak the item used to install. The host lacks
 extra-cmake-modules and qtkeychain, so the PKGBUILD carries both, the
-first for the build only. `cjf installed` shows pacman-home's version
+first for the build only. It carries FreeRDP as well, 3.33.1 where
+SteamOS 0.5.8 has 3.23.0: the three libraries KRDC links, beside it
+under `~/.local/lib/krdc-embed-cursor`, with the host's left alone.
+That FreeRDP has a patch of the kit's too, `freerdp-h264-v4l2m2m.patch`,
+which decodes the session's H.264 on the Frame's hardware decoder
+(a V4L2 device, which stock FreeRDP has no path to) and falls back to
+software when it can't. ffmpeg's line `[h264_v4l2m2m @ ...] Using
+device /dev/video-dec0` in `journalctl --user` says it is in use
+(FreeRDP's own `Using V4L2` line is at a level KRDC doesn't show), a
+`decoding in software` warning says why it is not, and
+`FREERDP_H264_V4L2M2M=0` in KRDC's environment turns it off. A third
+patch, `krdc-bgrx-buffer.patch`, has KRDC keep the picture in the byte
+order RDP sends it in, which makes FreeRDP's copy of each update a
+plain one; on ARM the copy with red and blue swapped was the larger
+cost of a session, more than the decoding. `cjf installed` shows pacman-home's version
 and says outdated once the PKGBUILD's moves on (a new release, or a
 `pkgrel` bump for a changed patch); `cjf update` rebuilds it then; `cjf uninstall krdc` is `pacman-home -R krdc`, and leaves the
 flatpak, if any, as the menu's KRDC again. On the PC, where cjf does
@@ -73,4 +87,5 @@ so leave it off for that entry; other servers are untested.
 After a KDE Gear update on the PC, `install` again builds the release
 the script names; `--version` builds another, as long as the patch
 still applies. On the Frame a new release is a `pkgver` bump and a new
-sum in the PKGBUILD, then `cjf install krdc` again.
+sum in the PKGBUILD (`_freerdp` and its sum for a new FreeRDP), then
+`cjf install krdc` again.
