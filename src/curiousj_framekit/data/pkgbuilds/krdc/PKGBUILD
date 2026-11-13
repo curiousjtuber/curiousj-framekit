@@ -1,7 +1,8 @@
-# KRDC, KDE's RDP client, with the kit's "Remote pointer: painted into
-# the video by the server" option (krdc-embed-cursor.patch, the same
-# file the PC's build script applies), built for ~/.local on the Steam
-# Frame host, in place of the Flathub flatpak.
+# KRDC, KDE's RDP and VNC client, with the kit's "Remote pointer:
+# painted into the video by the server" option
+# (krdc-embed-cursor.patch, the same file the PC's build script
+# applies), built for ~/.local on the Steam Frame host, in place of the
+# Flathub flatpak.
 #
 # The host has KDE Frameworks 6 and Qt 6 with their headers, which is
 # most of what KRDC needs. It lacks two others, so the build carries
@@ -9,8 +10,13 @@
 # staging directory and never in the package; qtkeychain, a library
 # KRDC links, is built from its repository at a pinned commit and
 # installed with the rest. ECM 6.20.0 is the last release that takes
-# the host's CMake 3.29 (6.24 wants 3.27, 6.31 3.30). VNC is off: the
-# host has no libvncclient.
+# the host's CMake 3.29 (6.24 wants 3.27, 6.31 3.30).
+#
+# VNC needs libvncclient, which the host lacks as well: LibVNCServer's
+# client library, built here and installed beside FreeRDP's. Its build
+# has no switch for the client alone, so the server library is built
+# too and left out of the package. TLS is GnuTLS's and the ciphers
+# libgcrypt's, as in Arch's package, both on the host.
 #
 # FreeRDP is the package's own too, although the host has one: SteamOS
 # 0.5.8's is 3.23.0, ten releases behind, and the kit can't patch a
@@ -28,8 +34,8 @@
 # environment turns it off.
 #
 # Everything goes under one directory, ~/.local/lib/krdc-embed-cursor,
-# a prefix of its own, because KRDC's RDP backend is a Qt plugin that
-# Qt finds only through QT_PLUGIN_PATH: ~/.local/bin/krdc is a launcher
+# a prefix of its own, because KRDC's backends are Qt plugins that Qt
+# finds only through QT_PLUGIN_PATH: ~/.local/bin/krdc is a launcher
 # that sets it and runs the build's binary, and the menu entry points
 # at the launcher. A flatpak KRDC keeps its hosts and bookmarks under
 # ~/.var/app/org.kde.krdc; the launcher copies them to ~/.config and
@@ -59,13 +65,15 @@
 # bump _freerdp, update its b2sum (checked against the .asc beside the
 # tarball on pub.freerdp.com, by the key in akallabeth.asc there) and
 # bump pkgrel, and make sure freerdp-h264-v4l2m2m.patch still applies.
+# For a new LibVNCServer: bump _libvncserver, update its b2sum (the
+# releases are unsigned; see the note at the sums) and bump pkgrel.
 # A change to any patch needs its b2sum here and a pkgrel bump,
 # which is what tells pacman-home the install is outdated.
 
 pkgname=krdc
 pkgver=26.08.3
-pkgrel=4
-pkgdesc='KRDC with the "Remote pointer" option, built for ~/.local on the Steam Frame host'
+pkgrel=5
+pkgdesc='KRDC, RDP and VNC, with the "Remote pointer" option, built for ~/.local on the Steam Frame host'
 arch=('aarch64' 'x86_64')
 url='https://apps.kde.org/krdc'
 license=(GPL-2.0-or-later)
@@ -73,6 +81,7 @@ depends=(
   alsa-lib
   ffmpeg
   fuse3
+  gnutls
   icu
   jansson
   kbookmarks
@@ -93,15 +102,18 @@ depends=(
   krb5
   kxmlgui
   libcups
+  libgcrypt
   libjpeg-turbo
   libpng
   libpulse
+  libsasl
   libsecret
   libssh
   libusb
   libwebp
   libx11
   libxkbfile
+  lzo
   openssl
   qt6-base
   sndio
@@ -115,6 +127,7 @@ depends=(
 makedepends=(cmake gettext git ninja qt6-tools)
 options=(!debug !lto)
 _freerdp=3.33.1
+_libvncserver=0.9.15
 _ecm=6.20.0
 _qtkeychain=0.17.0
 # The commit tag 0.17.0 pointed at on 2026-11-03.
@@ -122,6 +135,7 @@ _qtkeychain_commit=875f77d9f61bd97fd84cca47ce3bc71186dfbd09
 source=(
   https://download.kde.org/stable/release-service/${pkgver}/src/krdc-${pkgver}.tar.xz
   https://pub.freerdp.com/releases/freerdp-${_freerdp}.tar.xz
+  https://github.com/LibVNC/libvncserver/archive/LibVNCServer-${_libvncserver}.tar.gz
   https://download.kde.org/stable/frameworks/${_ecm%.*}/extra-cmake-modules-${_ecm}.tar.xz
   qtkeychain::git+https://github.com/frankosterfeld/qtkeychain.git#commit=${_qtkeychain_commit}
   freerdp-h264-v4l2m2m.patch
@@ -132,9 +146,12 @@ source=(
 # The tarballs as checked against their signatures: krdc's by Heiko
 # Becker's KDE Gear key and FreeRDP's by akallabeth's, its maintainer,
 # on 2026-11-11; extra-cmake-modules' by Nicolas Fella's KDE Frameworks
-# key, on 2026-11-03.
+# key, on 2026-11-03. LibVNCServer signs nothing: its sum is of GitHub's
+# archive of the tag on 2026-11-12, whose files are those of the tag
+# (commit 9b54b1ec) that Arch's libvncserver package pins by checksum.
 b2sums=('5d340d03d4b99d00722ae7d60f51602ae825f5eec7fa1d64046190c72ed770e7c63b7c3b0a8068475207e99be6e70948700048f916de584f781a25b7b077b3c1'
         '8e167f1131315130ea718f98e5137318958c811e3f6f7825aaebd1c958e3fc4f93d163974e5739f12afaf05a85e99b4412d047120ca53a9ec2e13ee503e0719d'
+        '4495c82f1e0e77bbb51a3dd35e4d723bf75020c1ebe1dc693842222a1606f3c800757a4a0a444d25621ad87eeb4cd4c12e1de25f44fe0b7635c31c59ffd4af9c'
         '1e6cb0037a70bc3d40e29eff5b074808c317a113e0c634a6c196ce5a0558c5dcc0ef71f512ce469be3098cea596507795aeed63580c9488266224b7898845f48'
         'SKIP'
         '23b284c3166eeb4328934e10a53ffa7d2013055454c758e2cba098b51bc83360572a72f18e957870c6eeeb4271db52cd705dd351d00fe666e24b8f5ce0a915a7'
@@ -149,7 +166,7 @@ prepare() {
   # What an earlier build left here, when cjf install kept it: a build
   # directory configured from another version's source, which cmake
   # refuses, and staged copies of that version's libraries.
-  rm -rf build-ecm build-qtkeychain build-freerdp build-krdc ecm stage
+  rm -rf build-ecm build-qtkeychain build-freerdp build-libvncserver build-krdc ecm stage
   patch -d freerdp-${_freerdp} -p1 --forward < "$srcdir/freerdp-h264-v4l2m2m.patch"
   cd krdc-${pkgver}
   patch -p1 --forward < "$srcdir/krdc-embed-cursor.patch"
@@ -192,9 +209,32 @@ build() {
   cmake --build build-freerdp
   DESTDIR="$srcdir/stage" cmake --install build-freerdp
 
+  # libvncclient, for the package; KRDC configures against a staged
+  # copy. The source asks for a CMake policy version CMake 4 has
+  # dropped. KRDC finds the library through pkg-config, whose file
+  # names the installed prefix, so a copy that names the staged one is
+  # what the configure below reads.
+  cmake -S libvncserver-LibVNCServer-${_libvncserver} -B build-libvncserver -G Ninja \
+    -DCMAKE_BUILD_TYPE=Release \
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+    -DCMAKE_INSTALL_PREFIX="$_home" \
+    -DCMAKE_INSTALL_LIBDIR=lib \
+    -DWITH_EXAMPLES=OFF -DWITH_TESTS=OFF -DWITH_QT=OFF -DWITH_SDL=OFF \
+    -DWITH_GTK=OFF -DWITH_FFMPEG=OFF -DWITH_LIBSSHTUNNEL=OFF \
+    -DWITH_XCB=OFF -DWITH_SYSTEMD=OFF -DWITH_WEBSOCKETS=OFF \
+    -DWITH_PNG=OFF -DWITH_OPENSSL=OFF \
+    -DWITH_GNUTLS=ON -DWITH_GCRYPT=ON -DWITH_SASL=ON \
+    -DWITH_ZLIB=ON -DWITH_LZO=ON -DWITH_JPEG=ON
+  cmake --build build-libvncserver
+  DESTDIR="$srcdir/stage" cmake --install build-libvncserver
+  mkdir -p "$srcdir/stage/pkgconfig"
+  sed "s|$_home|$srcdir/stage$_home|g" "$srcdir/stage$_home/lib/pkgconfig/libvncclient.pc" \
+    > "$srcdir/stage/pkgconfig/libvncclient.pc"
+
   # The RUNPATH is set here rather than by ECM, whose default would add
   # the staging directory beside the real one. Everything the package
   # installs that KRDC loads is in $_home/lib.
+  PKG_CONFIG_PATH="$srcdir/stage/pkgconfig" \
   cmake -S krdc-${pkgver} -B build-krdc -G Ninja \
     -DCMAKE_BUILD_TYPE=Release \
     -DCMAKE_INSTALL_PREFIX="$_home" \
@@ -205,10 +245,12 @@ build() {
     -DKDE_INSTALL_LIBDIR=lib \
     -DKDE_INSTALL_PLUGINDIR=lib/plugins \
     -DBUILD_TESTING=OFF \
-    -DWITH_RDP=ON -DWITH_VNC=OFF
+    -DWITH_RDP=ON -DWITH_VNC=ON
   # The host's FreeRDP 3 would configure just as well.
   grep -q "^FreeRDP_DIR:PATH=$srcdir/stage$_home/" build-krdc/CMakeCache.txt \
     || { echo "KRDC configured against a FreeRDP other than the one built here" >&2; return 1; }
+  grep -q "^VNCCLIENT_LIBDIR:INTERNAL=$srcdir/stage$_home/lib\$" build-krdc/CMakeCache.txt \
+    || { echo "KRDC configured against a libvncclient other than the one built here" >&2; return 1; }
   cmake --build build-krdc
 }
 
@@ -216,14 +258,19 @@ package() {
   DESTDIR="$pkgdir" cmake --install build-qtkeychain
   DESTDIR="$pkgdir" cmake --install build-freerdp
   DESTDIR="$pkgdir" cmake --install build-krdc
-  [ -e "$pkgdir$_home/lib/plugins/krdc/krdc_rdpplugin.so" ] \
-    || { echo "the build left no RDP plugin" >&2; return 1; }
+  # The client library alone, of the two LibVNCServer builds.
+  cp -a "$srcdir/stage$_home/lib/"libvncclient.so* "$pkgdir$_home/lib/"
+  local plugin
+  for plugin in rdp vnc; do
+    [ -e "$pkgdir$_home/lib/plugins/krdc/krdc_${plugin}plugin.so" ] \
+      || { echo "the build left no $plugin plugin" >&2; return 1; }
+  done
 
   mkdir -p "$pkgdir$_prefix/bin" "$pkgdir$_prefix/share/applications"
   cat > "$pkgdir$_prefix/bin/krdc" <<LAUNCHER
 #!/bin/sh
 # From curiousj-framekit's krdc package: the KRDC built under the
-# directory below, whose RDP plugin Qt finds only through
+# directory below, whose RDP and VNC plugins Qt finds only through
 # QT_PLUGIN_PATH. A flatpak KRDC's hosts and bookmarks are copied over
 # the first time, when there are none here yet.
 home=$_home

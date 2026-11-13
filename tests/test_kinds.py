@@ -73,7 +73,8 @@ class KrdcPkgbuild(unittest.TestCase):
         PC script's; a changed patch needs the sum and a pkgrel bump.
         FreeRDP is a source, not a dependency: the package builds its
         own, with the V4L2 decoder patch; its sum and those of the
-        Frame's two KRDC patches are the three before."""
+        Frame's two KRDC patches are the three before. LibVNCServer
+        is a source as well, for the VNC plugin."""
         import hashlib
         import re
         from curiousj_framekit.frame import pkg
@@ -81,7 +82,7 @@ class KrdcPkgbuild(unittest.TestCase):
         patch = directory / "krdc-embed-cursor.patch"
         self.assertEqual(patch.resolve(), (pkg.pkgbuilds_dir().parent / "krdc-embed-cursor/krdc-embed-cursor.patch").resolve())
         sums = re.findall(r"'([0-9a-f]{128}|SKIP)'", (directory / "PKGBUILD").read_text())
-        self.assertEqual(len(sums), 8)
+        self.assertEqual(len(sums), 9)
         self.assertEqual(sums[-1], hashlib.blake2b(patch.read_bytes()).hexdigest())
         v4l2 = directory / "freerdp-h264-v4l2m2m.patch"
         self.assertEqual(sums[-4], hashlib.blake2b(v4l2.read_bytes()).hexdigest())

@@ -113,10 +113,10 @@ trust_checks = "every commit's signature, by flatpak"
 
 [item.krdc]
 kind = "pacman-home"
-description = "KRDC, KDE's RDP client, built here with the Remote pointer option for ~/.local (a few minutes; shadows the Flatpak)"
+description = "KRDC, KDE's RDP and VNC client, built here with the Remote pointer option for ~/.local (a few minutes; shadows the Flatpak)"
 package = "krdc"
 pkgbuild = "krdc"
-trust_root = "download.kde.org's and pub.freerdp.com's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches"
+trust_root = "download.kde.org's and pub.freerdp.com's release tarballs, LibVNCServer's GitHub tag archive and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches"
 trust_checks = "the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there"
 
 [item.fuse2]

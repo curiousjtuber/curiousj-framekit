@@ -23,7 +23,7 @@ is Arch Linux ARM.
 | `frametop` | GitHub's TLS and the Frametop organization's account | the release zip against the sha256 recorded here, then the image inside against the zip's own metadata |
 | `stream-frame` | Boxtree's GPG key, fetched once over HTTPS from streamframe.app | every commit's signature, by flatpak |
 | `moonlight` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
-| `krdc` | download.kde.org's and pub.freerdp.com's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
+| `krdc` | download.kde.org's and pub.freerdp.com's release tarballs, LibVNCServer's GitHub tag archive and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
 | `fuse2` | libfuse's GitHub release tarball, your review of the PKGBUILD | the BLAKE2 sums in the PKGBUILD, by makepkg |
 | `deskflow` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
 | `krdpserver` | download.kde.org's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
@@ -147,7 +147,11 @@ recorded after a check against the KDE release signatures, so a
 changed tarball fails makepkg; FreeRDP's tarball, the package's own
 copy of the library since 2026-11-11, comes from pub.freerdp.com the
 same way, its sum recorded after a check against its maintainer's
-signature; qtkeychain is a git source pinned to a commit, which
+signature; LibVNCServer's, for the VNC backend since 2026-11-12, is
+GitHub's archive of the release tag, which nobody signs: its sum was
+recorded after a check that the archive holds the files of the tag's
+commit, the one Arch's libvncserver package pins by checksum;
+qtkeychain is a git source pinned to a commit, which
 makepkg checks out and nothing else. The four patches, three of KRDC
 and one of FreeRDP, are in this repo for review, each with its own
 sum. The package installs under

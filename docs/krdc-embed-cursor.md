@@ -1,7 +1,8 @@
 # KRDC with the Remote pointer option
 
-KRDC, KDE's RDP client, with one option added per host: "Remote
-pointer: painted into the video by the server". It is the viewer side
+KRDC, KDE's RDP and VNC client, with one option added per RDP host:
+"Remote pointer: painted into the video by the server". It is the
+viewer side
 of [the PC's krdpserver-embed-cursor](../pc/README.md): a headset that
 watches a PC's desktop wants to see where the PC's mouse is, and KRdp
 sends only the pointer's shape, for the viewer to draw at its own
@@ -33,7 +34,11 @@ under `~/.local/lib/krdc-embed-cursor`, with the host's left alone.
 That FreeRDP has a patch of the kit's too, `freerdp-h264-v4l2m2m.patch`,
 which decodes the session's H.264 on the Frame's hardware decoder
 (a V4L2 device, which stock FreeRDP has no path to) and falls back to
-software when it can't. ffmpeg's line `[h264_v4l2m2m @ ...] Using
+software when it can't. VNC is in the package as well, since
+2026-11-12: the host has no libvncclient, so the PKGBUILD builds
+LibVNCServer 0.9.15 and installs its client library in the same
+directory; the kit's patches are all RDP's, and a `vnc://` host is
+stock KRDC. ffmpeg's line `[h264_v4l2m2m @ ...] Using
 device /dev/video-dec0` in `journalctl --user` says it is in use
 (FreeRDP's own `Using V4L2` line is at a level KRDC doesn't show), a
 `decoding in software` warning says why it is not, and
