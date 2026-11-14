@@ -24,7 +24,6 @@ Items with options of their own:
                    [--any-steamos] [--unpack-only]
     full-keyboard  [--version X.Y.Z]
     bsmanager      [--uninstall | --appimage FILE]
-    krdp           [--bundle [FILE]]
     Flatpak apps   [--user | --system]
 """
 

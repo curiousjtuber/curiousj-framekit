@@ -8,9 +8,8 @@
                                               takes after NAME, for help
 
 `args` are the words after the item's name on the command line, parsed
-by the kind (the Frametop flags, --trust for Tailscale, --bundle for
-KRdp), so the catalog stays declarative and each kind's quirks stay in
-its module."""
+by the kind (the Frametop flags, --trust for Tailscale), so the catalog
+stays declarative and each kind's quirks stay in its module."""
 
 from __future__ import annotations
 
@@ -21,7 +20,6 @@ from ..catalog import Item
 MODULES = {
     "config": "config",
     "flatpak": "flatpak",
-    "flatpak-build": "flatpak_build",
     "upstream": "upstream",
     "pacman-home": "pacman_home",
     "brew": "brew",

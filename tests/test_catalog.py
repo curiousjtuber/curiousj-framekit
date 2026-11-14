@@ -48,12 +48,12 @@ class Needs(unittest.TestCase):
     def test_refusal_names_the_install(self):
         with mock.patch.object(catalog, "status_of", return_value=Status(State.MISSING)):
             with self.assertRaises(cmdline.Error) as cm:
-                catalog.needs("krdp", "rdp")
-        self.assertEqual(str(cm.exception), "rdp needs the krdp item (KRdp's server, built here as a Flatpak): cjf install krdp")
+                catalog.needs("krdpserver", "rdp")
+        self.assertEqual(str(cm.exception), "rdp needs the krdpserver item (KRdp's server, built here for ~/.local against the host's libraries): cjf install krdpserver")
 
     def test_silent_when_installed(self):
         with mock.patch.object(catalog, "status_of", return_value=Status(State.OK, "abc")):
-            catalog.needs("krdp", "rdp")
+            catalog.needs("krdpserver", "rdp")
 
 
 class Commands(unittest.TestCase):
@@ -64,7 +64,7 @@ class Commands(unittest.TestCase):
         self.assertEqual(commands.split_words(items, ["frametop", "--version", "0.2.3", "--yes"]),
                          (["frametop"], ["--version", "0.2.3", "--yes"]))
         with self.assertRaises(cmdline.Error):
-            commands.split_words(items, ["frametop", "krdp", "--bundle"])
+            commands.split_words(items, ["frametop", "krdpserver", "--yes"])
         with self.assertRaises(cmdline.Error):
             commands.split_words(items, ["nothing"])
 

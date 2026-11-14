@@ -19,7 +19,6 @@ the command that fixes it.
   frametop    which Frametop the Desktop launcher starts, the release
               the catalog knows or a checkout, and whether the release is
               current
-  krdp        whether the built server still matches the kit's manifest
 
 Then docs/desktop-cursor.md says how to re-check the cursor fixes on a
 new SteamOS, which only a person with the headset on can do.
@@ -187,16 +186,6 @@ def check_frametop(items: dict, statuses: dict) -> list[str]:
     return lines
 
 
-def check_krdp(statuses: dict) -> str:
-    from ..install.catalog import State
-    status = statuses.get("krdp")
-    if status is None or status.state == State.MISSING:
-        return f"{'ok':<14} krdp: not installed"
-    if status.state == State.OUTDATED:
-        return f"{'rebuild':<14} krdp: {status.detail}  ->  cjf install krdp"
-    return f"{'ok':<14} krdp's build matches the kit's manifest"
-
-
 @click.command(cls=cmdline.Command, help=__doc__, name="after-update",
                short_help="what to re-check after a SteamOS update, as one command")
 @pass_options
@@ -204,7 +193,7 @@ def after_update(opts: Options) -> int:
     where.require_host("after-update")
     from ..install import catalog
     items = catalog.load()
-    statuses = {n: catalog.status_of(items[n], opts) for n in ("frametop", "krdp") if n in items}
+    statuses = {n: catalog.status_of(items[n], opts) for n in ("frametop",) if n in items}
     info = where.os_release()
     recorded = read_record()
     print(steamos_line(info, recorded))
@@ -215,7 +204,6 @@ def after_update(opts: Options) -> int:
         print(line)
     for line in check_frametop(items, statuses):
         print(line)
-    print(check_krdp(statuses))
     if recorded and any(recorded.get(k) != info.get(k) for k in RECORD_KEYS):
         print(f"{'note':<14} docs/desktop-cursor.md says how to re-check the cursor fixes on a new SteamOS")
     if not opts.check:

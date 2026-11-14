@@ -28,7 +28,6 @@ is Arch Linux ARM.
 | `deskflow` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
 | `krdpserver` | download.kde.org's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
 | `gamescope-panel` | the gamescope, wlroots, openvr and other git repositories on GitHub and freedesktop.org, your review of the PKGBUILD and the patch | every git source pinned to a commit in the PKGBUILD, glm and stb to the revisions in gamescope's wrap files; the patch's BLAKE2 sum, by makepkg |
-| `krdp` | KDE and FreeRDP's release tarballs, your own review of the manifest and patches | every source pinned by sha256 in the manifest; patches in this kit; built on KDE's SDK from Flathub |
 | `bsmanager` | GitHub's TLS and DaVarga's account, continuously | nothing: the fork's latest install.sh, then an AppImage that updates itself |
 | `full-keyboard` | GitHub's TLS and TaiKeid's account | the archive against the release's own SHA256SUMS |
 
@@ -126,16 +125,6 @@ unsandboxed, as a distribution's krdp would be; KWin grants it the
 screencast and input interfaces through the desktop file the package
 puts in `~/.local/share/applications`, as it would any client it can
 match to one.
-
-`cjf install krdp`, the flatpak, builds from
-the manifest the kit ships, `src/curiousj_framekit/data/krdp/io.github.curiousjtuber.Krdp.yml`. Every source is a release
-tarball from download.kde.org or GitHub with its sha256 in the manifest,
-and the two patches live in this repo. The build runs on KDE's SDK
-pulled from Flathub by flatpak-builder. A changed tarball fails the
-build instead of installing. The CI bundle built on GitHub's arm64
-runner carries an attestation as well. The sandbox holds the network,
-the GPU, flatpak's Wayland socket, PipeWire and `~/.config/krdpd`
-read-only.
 
 ## KRDC
 

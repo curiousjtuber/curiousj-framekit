@@ -1,23 +1,21 @@
-# KDE's krdpserver, built for ~/.local on the Steam Frame host, in
-# place of the flatpak `cjf install krdp` builds: the same server,
-# which `cjf rdp start` runs in preference to the flatpak when it is
-# installed. Minutes against the host's libraries, where the flatpak
-# downloads KDE's SDK and builds for half an hour.
+# KDE's krdpserver, built for ~/.local on the Steam Frame host, which
+# `cjf rdp start` runs. It took the place of a flatpak the kit built
+# until 2026-11-14: minutes against the host's libraries, where the
+# flatpak downloaded KDE's SDK and built for half an hour.
 #
-# krdp 6.4.5, not the flatpak's 6.7.5 nor the Plasma the host runs,
-# because it is the newest release whose minimums both SteamOS
+# krdp 6.4.5, not the Plasma the host runs, because it is the newest release whose minimums both SteamOS
 # branches meet: stable (0.5.6) has Qt 6.8 and KDE Frameworks 6.14,
 # the beta (0.5.7) Qt 6.10 and Frameworks 6.23, and 6.4.5 asks for
 # exactly Qt 6.8 and KF 6.14 (6.5 wants Qt 6.9). krdp links kpipewire,
 # never KWin, so it needs no match with the Plasma around it; what it
 # asks the compositor for, screencast protocol 3 and fake-input 4,
 # both branches' KWins offer. 6.4.5 authenticates with NLA against a
-# SAM file of its users as it is, so the NLA backport the flatpak
-# carries for 6.7.5 isn't needed; krdp-ext-security.patch is the one
-# line of it that applies here, upstream's fix for FreeRDP 3.32
+# SAM file of its users as it is, so krdp 6.8's NLA commits aren't
+# needed; krdp-ext-security.patch is the one line of them that applies
+# here, upstream's fix for FreeRDP 3.32
 # turning extended security on by default: nothing on the host's
 # older FreeRDP, ready for the update that brings 3.32. One thing 6.4.5
-# gets wrong that the flatpak's 6.7.5 doesn't: with --plasma and no
+# gets wrong that later releases don't: with --plasma and no
 # --monitor it never asks KWin for a stream, so a client sees an empty
 # screen; krdp-plasma-stream.patch is upstream's 6.5 fix for that.
 #
@@ -25,8 +23,7 @@
 # PipeWire, libva, ffmpeg and the Frameworks, all with headers. The
 # build still carries three things. extra-cmake-modules goes in a
 # staging directory, for configuring only. kpipewire is built again,
-# with kpipewire-cursor-bitmap-size.patch (the same file the flatpak
-# applies): the host's copies the cursor bitmap with stride * height
+# with kpipewire-cursor-bitmap-size.patch: the host's copies the cursor bitmap with stride * height
 # * 4 bytes and segfaults on the 256 px cursor gamescope sets; the fix
 # is upstream since 2026-10-13 but in no SteamOS yet. Its H.264
 # encoders, which krdp's video goes through, name ffmpeg's profile

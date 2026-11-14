@@ -34,7 +34,8 @@ KPipeWire's cursor bitmap size, merged in October (its row is below).
 ## Every patch
 
 Paths are under `src/curiousj_framekit/data/` unless they start with
-`pc/`. A patch named twice is one file and a symlink to it.
+`pc/`. A patch named twice is one file and a symlink to it. The `krdp`
+Flatpak and its two patches left the kit on 2026-11-14.
 
 ### KRdp (the RDP server)
 
@@ -44,13 +45,12 @@ Paths are under `src/curiousj_framekit/data/` unless they start with
 | `pc/krdpserver-embed-cursor/krdp-embed-cursor.patch` | the same script, after the check | ours, not upstream | to send next |
 | `pkgbuilds/krdpserver/krdp-ext-security.patch` | `krdpserver` package, krdp 6.4.5 | backport | one line of `f868133` (Plasma/6.8 as `31824f9`); in 6.8 |
 | `pkgbuilds/krdpserver/krdp-plasma-stream.patch` | `krdpserver` package | backport, rebased | `429f584c`, in 6.5 and later, with the server side upstream changed separately |
-| `krdp/krdp-nla-backport.patch` | the `krdp` flatpak, krdp 6.7.5 | backport | `a5c6f54`, `7a803ab`, `31824f9` of Plasma/6.8; in 6.8 |
 
 ### KPipeWire
 
 | Patch | Applied by | Kind | Upstream |
 |---|---|---|---|
-| `krdp/kpipewire-cursor-bitmap-size.patch` (and its link in `pkgbuilds/krdpserver/`) | the `krdp` flatpak (kpipewire 6.7.5) and the `krdpserver` package (6.4.5) | ours, upstream since | sent as [!285](https://invent.kde.org/plasma/kpipewire/-/merge_requests/285), merged 2026-10-13 as `d5dbf359` and picked to the stable branches: in 6.8.1, 6.7.6 and 6.6.7. The flatpak can drop it by moving to 6.7.6; 6.4 gets no more releases, so the package keeps it |
+| `pkgbuilds/krdpserver/kpipewire-cursor-bitmap-size.patch` | `krdpserver` package, kpipewire 6.4.5 | ours, upstream since | sent as [!285](https://invent.kde.org/plasma/kpipewire/-/merge_requests/285), merged 2026-10-13 as `d5dbf359` and picked to the stable branches: in 6.8.1, 6.7.6 and 6.6.7. 6.4 gets no more releases, so the package keeps it |
 | `pkgbuilds/krdpserver/kpipewire-ffmpeg-profiles.patch` | `krdpserver` package, kpipewire 6.4.5 | ours, upstream since | 6.5 builds with ffmpeg 8 through fallback defines; this is the rename alone |
 
 ### KRDC (the RDP and VNC client)

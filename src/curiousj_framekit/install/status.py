@@ -52,7 +52,7 @@ def live_lines(opts: Options) -> list[str]:
         from . import catalog
         status = ts.Kind().status(catalog.load()["tailscale"], opts)
         lines.append(f"{'tailscale':<13} {status.detail or status.state.value}")
-        pid = rdp.instance_pid(opts)
+        pid = rdp.running()
         info = rdp.read_info() if pid else {}
         lines.append(f"{'rdp':<13} " + (f"running (pid {pid}), port {info.get('port', '?')}"
                                          if pid else "not running"))

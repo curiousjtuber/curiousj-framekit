@@ -20,7 +20,7 @@ gets on the headset.
 | `install-bsmanager.sh` | [BSManager](https://github.com/DaVarga/bs-manager), DaVarga's arm64 fork, for Beat Saber versions, mods and maps | `~/Applications/BSManager.AppImage`, with a menu entry and the BeatSaver OneClick links |
 | `install-full-keyboard.sh [--version X.Y.Z \| --uninstall]` | [Full Keyboard](https://github.com/TaiKeid/steam-frame-full-keyboard), TaiKeid's full-size virtual keyboard for the dashboard and local apps | `~/.local/share/framekeyboard`, with the launcher `~/.local/bin/framekeyboard` and a menu entry |
 | `install-frametop.sh [--version X.Y.Z] [--yes] [--no-eye-tracker] [--no-bluetooth \| --bluetooth] [--any-steamos] [--unpack-only] \| --uninstall` | [Frametop](https://github.com/Frametop/frametop), the multi-screen Plasma desktop and 3D mouse that run on the Frame itself | `~/.local/share/frametop/releases/<version>`, with a podman image and container from the release's `Frametop.zip`, and services in the home directory; two optional parts use sudo |
-| `install-krdp.sh [--bundle [FILE] \| --uninstall]` | [KRdp](https://invent.kde.org/plasma/krdp)'s server, krdpserver, for serving a Plasma desktop on the Frame over RDP to KRDC, Remmina or Windows Remote Desktop | Flatpak `io.github.curiousjtuber.Krdp`, built here on KDE's runtime, in the user installation; no root. Run with `cjf rdp`, or KRdp Server in the menu |
+| `install-krdp.sh [--bundle [FILE] \| --uninstall]` | [KRdp](https://invent.kde.org/plasma/krdp)'s server, krdpserver, for serving a Plasma desktop on the Frame over RDP to KRDC, Remmina or Windows Remote Desktop | was a Flatpak built here, `io.github.curiousjtuber.Krdp`; since 2026-11-14 only `cjf install krdpserver`, a package built on the Frame for `~/.local`; no root. Run with `cjf rdp`, or KRdp Server in the menu |
 
 - **The Flatpak apps** go into the user installation,
   `~/.local/share/flatpak`, like Frametop and krdpserver: no root and no
@@ -123,7 +123,7 @@ gets on the headset.
 - **KRdp's server** is the other direction: the Frame as the RDP host,
   for seeing and using a Plasma desktop that runs on it (Frametop's, or
   SteamOS's stock Desktop) from a PC. SteamOS has no krdp and Flathub
-  only has the client, so the kit builds it, two ways.
+  only has the client, so the kit builds it.
   `cjf install krdpserver` builds krdp 6.4.5 on the Frame against the
   host's own FreeRDP, Frameworks and Qt, in a few minutes, as a
   `pacman-home` package under `~/.local/lib/krdpserver`; the PKGBUILD
@@ -136,30 +136,21 @@ gets on the headset.
   the package puts in `~/.local/share/applications`, whose Exec is the
   binary. A SteamOS update that changes a library it links shows in
   `cjf installed` and `cjf update` rebuilds it, as with KRDC.
-  `cjf install krdp` builds the flatpak instead, on KDE's runtime with
-  its own FreeRDP and kpipewire, pinned and patched as the manifest in
-  the kit (`src/curiousj_framekit/data/krdp/`) explains (krdp 6.7.5
-  gets 6.8's NLA login, which works with FreeRDP 3.32 clients;
-  kpipewire crashes on the 256 px cursor gamescope sets). krdp 6.8
-  itself has to wait for a SteamOS with KWin 6.7 or later: it needs a
-  newer screencast protocol than the Frame's KWin speaks (0.5.7 beta's
-  6.6.2 is one version short), so it streams nothing on the Frame; the
-  `krdp-6.8` branch holds that manifest. The first run installs the KDE
-  6.11 SDK and flatpak-builder (about 1 GB to download) and builds for
-  half an hour; later runs rebuild only what changed. KWin lets the
-  sandboxed server capture through the app's desktop file, so neither
-  desktop needs KWin's permission checks turned off. Nothing starts
-  either by itself. `--bundle` also writes the build as one `.flatpak`
-  file, which another aarch64 device installs with `flatpak --user
-  install FILE` and no build. GitHub builds the same bundle on an arm64
-  runner (`.github/workflows/krdp-flatpak.yml`) when the manifest
-  changes, and attaches it to the release when a `krdp-*` tag is
-  pushed.
+  Neither desktop needs KWin's permission checks turned off, and
+  nothing starts by itself. krdp 6.8 has to wait for a SteamOS with
+  KWin 6.7 or later: it needs a newer screencast protocol than the
+  Frame's KWin speaks (0.5.7 beta's 6.6.2 is one version short), so it
+  streams nothing on the Frame. Until 2026-11-14 the kit also built
+  the server as a Flatpak, `io.github.curiousjtuber.Krdp` (krdp 6.7.5
+  on KDE's runtime, half an hour and 1 GB of SDK), and GitHub built
+  its bundle for the `krdp-*` releases; the package replaced it. If
+  that Flatpak is still installed, `flatpak --user uninstall
+  io.github.curiousjtuber.Krdp` removes it, `org.kde.Sdk` and
+  `org.flatpak.Builder` with it if nothing else uses them, and
+  `~/.cache/krdpd/flatpak` is its build state.
 - **`cjf rdp start [--desktop frametop|stock|DIR] [--port N] [--user
   NAME] [--address ADDR]`**, `stop`, `status`, `log`, `password [NEW |
-  --generate]` runs that server by hand: the `~/.local` build when it
-  is installed, else the flatpak (`start --flatpak` picks the flatpak
-  regardless; `status` says which runs). It serves Frametop's desktop
+  --generate]` runs that server by hand. It serves Frametop's desktop
   when that runs (the stock Desktop only with `--force`: on SteamOS
   0.4.5 its KWin, 6.2.5 on the X11 backend inside gamescope, crashes in
   its screencast plugin as soon as a client connects, which leaves a
@@ -175,7 +166,7 @@ gets on the headset.
   `--address` with the tailnet address keeps it off the LAN. Over RDP,
   Frametop's screens you aren't looking at draw slowly, since only
   Frametop Remote Access asks ft-screens for full rate.
-- **KRdp Server**, the menu entry `install-krdp.sh` adds, is
+- **KRdp Server**, the menu entry the krdpserver install adds, is
   `cjf rdp gui`: a window that starts and stops the same server and
   shows where to connect, the password, and the log. It runs `cjf rdp` for
   everything, so the two never disagree, and the server keeps running

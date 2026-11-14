@@ -6,7 +6,7 @@
 # with Plasma 6 on Wayland: nothing here goes through the distribution's
 # package manager except the build dependencies, which this script names
 # when cmake can't find one. Not for the Frame: the Frame's server is
-# the flatpak `cjf install krdp` builds.
+# the package `cjf install krdpserver` builds.
 #
 # krdp sends a viewer the pointer's shape, which the viewer draws at its
 # own pointer, so moving the mouse at the PC shows in the stream as

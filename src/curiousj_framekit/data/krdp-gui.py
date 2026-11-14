@@ -3,8 +3,8 @@
 # Plasma desktop on the Frame. Starts and stops it, shows where to
 # connect and the password, and its log. Every action runs cjf itself
 # (status through `cjf rdp status --keys`), so the two never disagree;
-# the server keeps running after the window closes. The krdp install
-# adds it to the menu as KRdp Server, and `cjf rdp gui` opens it.
+# the server keeps running after the window closes. The krdpserver
+# install adds it to the menu as KRdp Server, and `cjf rdp gui` opens it.
 #
 # GTK 4 and libadwaita through PyGObject, which only the system Python
 # has, so this is a standalone script run by /usr/bin/python3 and
@@ -178,7 +178,7 @@ class Window(Adw.ApplicationWindow):
 
         if not installed:
             self.state_row.set_title("Not installed")
-            self.state_row.set_subtitle("Run apps/install-krdp.sh")
+            self.state_row.set_subtitle("Run cjf install krdpserver")
         elif running:
             self.state_row.set_title(f"Serving {self.desktop_name(k.get('desktop', ''))}")
             self.state_row.set_subtitle(f"port {k.get('port', '?')}, pid {k.get('pid', '?')}")

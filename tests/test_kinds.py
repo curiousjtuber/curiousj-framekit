@@ -8,7 +8,7 @@ from curiousj_framekit.cmdline import Options
 from curiousj_framekit.install import catalog
 from curiousj_framekit.install.catalog import Check, Fresh, Item, State, Status
 from curiousj_framekit.frame import pkg
-from curiousj_framekit.install.kinds import base, flatpak, flatpak_build, tailscale, upstream, uv_tool
+from curiousj_framekit.install.kinds import base, flatpak, tailscale, upstream, uv_tool
 
 SUMS = ("abc123  other.tar.gz\n"
         "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  framekeyboard-1.2.3-aarch64.tar.gz\n"
@@ -98,23 +98,18 @@ class KrdcPkgbuild(unittest.TestCase):
         self.assertIn("ffmpeg", deps)
 
 
-class FlatpakBuild(unittest.TestCase):
-    def test_stamp_covers_manifest_and_patches(self):
-        item = catalog.load()["krdp"]
-        path = flatpak_build.manifest_path(item)
-        self.assertTrue(path.is_file(), path)
-        self.assertEqual(len(list(path.parent.glob("*.patch"))), 2)
-        self.assertEqual(len(flatpak_build.stamp(item)), 16)
+class KrdpserverPackage(unittest.TestCase):
+    """The pacman-home server: its PKGBUILD reads, carries its patches,
+    and asks for the KRdp Server menu entry."""
 
     def test_menu_entry(self):
-        text = flatpak_build.menu_entry_text()
+        from curiousj_framekit.frame import rdp
+        text = rdp.menu_entry_text()
         self.assertIn("Name=KRdp Server", text)
         self.assertIn(" rdp gui\n", text)
 
-
-class KrdpserverPackage(unittest.TestCase):
-    """The pacman-home server: its PKGBUILD reads, carries its patches,
-    and asks for the same menu entry as the flatpak."""
+    def test_no_flatpak_item(self):
+        self.assertNotIn("krdp", catalog.load())
 
     def test_item_and_pkgbuild(self):
         item = catalog.load()["krdpserver"]
@@ -128,10 +123,7 @@ class KrdpserverPackage(unittest.TestCase):
         self.assertEqual(sorted(p.name for p in directory.glob("*.patch")),
                          ["kpipewire-cursor-bitmap-size.patch", "kpipewire-ffmpeg-profiles.patch",
                           "krdp-ext-security.patch", "krdp-plasma-stream.patch"])
-        # The cursor patch is the flatpak's, by symlink, so the two can't drift.
-        link = directory / "kpipewire-cursor-bitmap-size.patch"
-        self.assertTrue(link.is_symlink())
-        self.assertEqual(link.resolve(), (pkg.pkgbuilds_dir().parent / "krdp" / link.name).resolve())
+        self.assertFalse(any(p.is_symlink() for p in directory.glob("*.patch")))
 
 
 class Tailscale(unittest.TestCase):
@@ -170,42 +162,6 @@ class Flatpak(unittest.TestCase):
         with mock.patch("curiousj_framekit.config.get", return_value="odd"):
             with self.assertRaises(cmdline.Error):
                 flatpak.scope_of(Options(), [])
-
-
-class PatchBody(unittest.TestCase):
-    """A patch's prose header is not part of the build, so a note there
-    keeps the flatpak's stamp; the diff after it is the build."""
-
-    def test_prose_before_the_diff_is_dropped(self):
-        diff = "diff --git a/x b/x\n--- a/x\n+++ b/x\n@@ -1 +1 @@\n-a\n+b\n"
-        self.assertEqual(flatpak_build.patch_body("why this patch\n\n" + diff), diff)
-        self.assertEqual(flatpak_build.patch_body("a note\nFrom 1234 Mon Sep 17 00:00:00 2001\n" + diff),
-                         "From 1234 Mon Sep 17 00:00:00 2001\n" + diff)
-        self.assertEqual(flatpak_build.patch_body(diff), diff)
-        self.assertEqual(flatpak_build.patch_body("no diff at all\n"), "no diff at all\n")
-
-    def test_the_kits_patches_have_bodies(self):
-        item = catalog.load()["krdp"]
-        for patch in flatpak_build.manifest_path(item).parent.glob("*.patch"):
-            body = flatpak_build.patch_body(patch.read_text())
-            self.assertTrue(body.startswith(("From ", "diff ", "--- ")), patch.name)
-            self.assertLess(len(body), len(patch.read_text()), f"{patch.name} has no prose header")
-
-
-class StampIgnoresComments(unittest.TestCase):
-    def test_comment_change_keeps_the_stamp(self):
-        item = catalog.load()["krdp"]
-        before = flatpak_build.stamp(item)
-        path = flatpak_build.manifest_path(item)
-        original = path.read_text()
-        try:
-            path.write_text("# a new note\n" + original.replace("\n#", "\n# changed", 1))
-            self.assertEqual(flatpak_build.stamp(item), before)
-            self.assertIn("runtime-version: '6.11'", original)
-            path.write_text(original.replace("runtime-version: '6.11'", "runtime-version: '6.12'", 1))
-            self.assertNotEqual(flatpak_build.stamp(item), before)
-        finally:
-            path.write_text(original)
 
 
 class Versions(unittest.TestCase):

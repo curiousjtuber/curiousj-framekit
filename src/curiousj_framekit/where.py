@@ -5,7 +5,7 @@ in which desktop, and with which Wayland display.
 The Frame is detected positively, from /etc/os-release: SteamOS with
 VARIANT_ID "vr" (the Deck's is "steamdeck"). Everything else is a PC.
 CJF_ASSUME_FRAME=1 says "treat this machine as the Frame" for a build
-that runs somewhere else, such as the krdp flatpak on a CI runner.
+that runs somewhere else, such as a CI runner.
 
 The desktops both run inside Game Mode's gamescope with a runtime dir
 of their own under /run/user/UID: nested_plasma for SteamOS's stock

@@ -139,7 +139,7 @@ trust_checks = "every commit's signature, by flatpak"
 
 [item.krdpserver]
 kind = "pacman-home"
-description = "KRdp's server, built here for ~/.local against the host's libraries (a few minutes; cjf rdp runs it in preference to the Flatpak)"
+description = "KRdp's server, built here for ~/.local against the host's libraries (a few minutes; cjf rdp runs it)"
 package = "krdpserver"
 pkgbuild = "krdpserver"
 menu_entry = "krdp"
@@ -153,16 +153,6 @@ package = "gamescope-panel"
 pkgbuild = "gamescope-panel"
 trust_root = "the gamescope, wlroots, openvr and other git repositories on GitHub and freedesktop.org, your review of the PKGBUILD and the patch"
 trust_checks = "every git source pinned to a commit in the PKGBUILD, glm and stb to the revisions in gamescope's wrap files; the patch's BLAKE2 sum, by makepkg"
-
-[item.krdp]
-kind = "flatpak-build"
-description = "KRdp's server, built here as a Flatpak (half an hour the first time; ~1 GB of SDK; krdpserver is the quick way)"
-app = "io.github.curiousjtuber.Krdp"
-manifest = "krdp/io.github.curiousjtuber.Krdp.yml"
-sdk = "org.kde.Sdk//6.11"
-extras = ["org.flatpak.Builder//stable", "org.freedesktop.Platform.openh264//2.5.1"]
-trust_root = "KDE and FreeRDP's release tarballs, your own review of the manifest and patches"
-trust_checks = "every source pinned by sha256 in the manifest; patches in this kit; built on KDE's SDK from Flathub"
 
 [item.bsmanager]
 kind = "upstream"

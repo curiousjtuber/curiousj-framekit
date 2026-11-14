@@ -137,15 +137,19 @@ class Menu(unittest.TestCase):
         self.assertEqual(err, "ran: cjf --help\n")
 
     def test_the_options_reach_the_picked_command(self):
+        # rdp stop hands its options to the log line for the kill: a
+        # server that runs for one look, then is gone.
         seen = {}
         with mock.patch.object(where, "require_host", side_effect=lambda *a: None), \
-             mock.patch("curiousj_framekit.frame.rdp.instance_pid",
-                        side_effect=lambda opts: seen.setdefault("opts", opts) and None):
+             mock.patch("curiousj_framekit.frame.rdp.running", side_effect=["4242", None, None]), \
+             mock.patch("curiousj_framekit.frame.rdp.os.kill"), \
+             mock.patch("curiousj_framekit.frame.rdp.cmdline.log",
+                        side_effect=lambda opts, text: seen.setdefault("opts", opts)):
             code, out, err = self.run_bare(picks("rdp", "stop"), ["--yes", "-v"])
         self.assertEqual(code, 0, out + err)
         self.assertTrue(seen["opts"].yes)
         self.assertEqual(seen["opts"].verbose, 1)
-        self.assertEqual(out, "not running\n")
+        self.assertEqual(out, "stopped\n")
         self.assertEqual(err, "ran: cjf rdp stop\n")
 
     def test_a_failure_still_says_what_ran(self):

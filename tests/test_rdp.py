@@ -7,13 +7,6 @@ from curiousj_framekit.frame import rdp
 
 
 class Parsing(unittest.TestCase):
-    def test_flatpak_ps(self):
-        text = ("Application                     Child PID\n"
-                "org.kde.krdc                    1234\n"
-                "io.github.curiousjtuber.Krdp    41023\n")
-        self.assertEqual(rdp.parse_ps(text), "41023")
-        self.assertIsNone(rdp.parse_ps("Application  Child PID\n"))
-
     def test_info(self):
         self.assertEqual(rdp.parse_info("desktop=/run/user/1000/frametop\nport=3391\n"),
                          {"desktop": "/run/user/1000/frametop", "port": "3391"})
@@ -47,14 +40,14 @@ class HomeServer(unittest.TestCase):
         self.cmdline("4242", ["/usr/bin/sleep", "60"])
         self.assertIsNone(rdp.home_pid(info, self.proc, self.binary))
 
-    def test_the_flatpak_is_not_this(self):
+    def test_a_record_without_server_is_this(self):
+        self.cmdline("4242", [str(self.binary)])
+        self.assertEqual(rdp.home_pid({"pid": "4242"}, self.proc, self.binary), "4242")
+
+    def test_an_old_flatpak_record_is_not_this(self):
         self.cmdline("4242", [str(self.binary)])
         self.assertIsNone(rdp.home_pid({"server": "flatpak", "pid": "4242"}, self.proc, self.binary))
         self.assertIsNone(rdp.home_pid({"server": "home"}, self.proc, self.binary))
-
-    def test_labels(self):
-        self.assertEqual(rdp.server_label("home"), "the ~/.local build")
-        self.assertEqual(rdp.server_label("flatpak"), "the flatpak")
 
     def test_desktop_label(self):
         self.assertEqual(rdp.desktop_label("/run/user/1000/nested_plasma"), "the stock desktop")

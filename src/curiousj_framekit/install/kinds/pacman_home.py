@@ -189,8 +189,7 @@ class Kind(Base):
 
     def menu_entry(self, item: Item, opts: Options) -> bool:
         """The KRdp Server menu entry for an item that says menu_entry =
-        "krdp" (krdpserver): cjf rdp gui, the same file the flatpak's
-        install writes, so either server has it."""
+        "krdp" (krdpserver): cjf rdp gui."""
         if item.get("menu_entry") != "krdp":
             return False
         return cmdline.write_file(opts, rdp.menu_entry_path(), rdp.menu_entry_text())
@@ -206,6 +205,6 @@ class Kind(Base):
             return opts.check
         proc = pkg.pacman(p, p.conf, "-R", item["package"], "--noconfirm", root=True, check=False,
                           capture=False)
-        if proc.returncode == 0 and item.get("menu_entry") == "krdp" and not rdp.flatpak_installed(opts):
+        if proc.returncode == 0 and item.get("menu_entry") == "krdp":
             cmdline.remove_file(opts, rdp.menu_entry_path(), "the KRdp Server menu entry")
         return proc.returncode == 0
