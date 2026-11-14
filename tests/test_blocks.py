@@ -2,6 +2,9 @@ import unittest
 
 from curiousj_framekit import blocks
 
+# Another name's blocks, as steam-frame-utils' setup.sh wrote them.
+OLD = "steam-frame-utils"
+
 RC = """\
 # >>> steam-frame-utils: top >>>
 # https://github.com/curiousjtuber/steam-frame-utils#shell-init
@@ -27,23 +30,17 @@ unset _sfu
 """
 
 
-class Names(unittest.TestCase):
-    def test_finds_old_blocks(self):
-        self.assertEqual(blocks.names(RC, blocks.OLD_PREFIX), ["top", "end"])
-        self.assertEqual(blocks.names(RC, blocks.PREFIX), [])
-
-
 class Remove(unittest.TestCase):
     def test_removes_both_and_tidies_blank_lines(self):
-        text = blocks.remove(RC, "top", blocks.OLD_PREFIX)
-        text = blocks.remove(text, "end", blocks.OLD_PREFIX)
+        text = blocks.remove(RC, "top", OLD)
+        text = blocks.remove(text, "end", OLD)
         self.assertEqual(text, "#\n# ~/.bashrc\n#\nexport PATH=~/.local/bin:$PATH\n"
                                'eval "$(mise activate bash)"\n')
-        self.assertEqual(blocks.remove(text, "top", blocks.OLD_PREFIX), text)
+        self.assertEqual(blocks.remove(text, "top", OLD), text)
 
     def test_outside(self):
-        self.assertIn("mise activate", blocks.outside(RC, blocks.OLD_PREFIX))
-        self.assertNotIn("_sfu", blocks.outside(RC, blocks.OLD_PREFIX))
+        self.assertIn("mise activate", blocks.outside(RC, OLD))
+        self.assertNotIn("_sfu", blocks.outside(RC, OLD))
 
 
 class Ensure(unittest.TestCase):
@@ -66,5 +63,5 @@ class Ensure(unittest.TestCase):
                          "a\n# >>> curiousj-framekit: shims >>>\nb\n# <<< curiousj-framekit: shims <<<\n")
 
     def test_block_text(self):
-        self.assertTrue(blocks.block(RC, "end", blocks.OLD_PREFIX).startswith("# >>> steam-frame-utils: end >>>\n"))
-        self.assertIsNone(blocks.block(RC, "x", blocks.OLD_PREFIX))
+        self.assertTrue(blocks.block(RC, "end", OLD).startswith("# >>> steam-frame-utils: end >>>\n"))
+        self.assertIsNone(blocks.block(RC, "x", OLD))

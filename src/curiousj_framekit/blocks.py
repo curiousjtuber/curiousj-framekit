@@ -1,13 +1,11 @@
 """Marked blocks in rc files: a few lines between `# >>> NAME: PART >>>`
 and `# <<< NAME: PART <<<`, which a later run finds and replaces in
-place. The kit's own blocks are named curiousj-framekit; setup.sh's
-were steam-frame-utils, and `cjf migrate` removes those. Pure text
+place. The kit's own blocks are named curiousj-framekit. Pure text
 functions; the files are read and written by the callers."""
 
 from __future__ import annotations
 
 PREFIX = "curiousj-framekit"
-OLD_PREFIX = "steam-frame-utils"
 
 
 def begin(part: str, prefix: str = PREFIX) -> str:
@@ -16,16 +14,6 @@ def begin(part: str, prefix: str = PREFIX) -> str:
 
 def end(part: str, prefix: str = PREFIX) -> str:
     return f"# <<< {prefix}: {part} <<<"
-
-
-def names(text: str, prefix: str) -> list[str]:
-    """The parts of every block with that prefix, in order."""
-    lead = f"# >>> {prefix}: "
-    found = []
-    for line in text.splitlines():
-        if line.startswith(lead) and line.endswith(" >>>"):
-            found.append(line[len(lead):-4])
-    return found
 
 
 def block(text: str, part: str, prefix: str = PREFIX) -> str | None:

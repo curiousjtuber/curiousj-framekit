@@ -18,7 +18,6 @@
     panel         run an app in a SteamVR panel of its own, at any size
     pkg           build or relocate a package under ~/.local (pacman-home is its pacman)
     after-update  what to re-check after a SteamOS update, as one command
-    migrate       move a Frame set up by steam-frame-utils to this kit
 
 Run bare, on a terminal, it lists the commands and runs the one picked
 (fzf when installed, else a numbered menu). A command with actions of
@@ -43,7 +42,7 @@ import click
 from . import cmdline, pick
 from .cmdline import Entry, Options
 from .frame import after_update, controllers, cursor, panel, pkg, rdp, vr, wifi
-from .install import commands, init, migrate, status, update
+from .install import commands, init, status, update
 
 PROG = "cjf"
 
@@ -162,7 +161,6 @@ cli.add_command(update.outdated)
 cli.add_command(update.update)
 cli.add_command(commands.uninstall)
 cli.add_command(init.init)
-cli.add_command(migrate.migrate)
 cli.add_command(cursor.cursor)
 cli.add_command(wifi.wifi)
 cli.add_command(vr.vr_cmd, "vr")

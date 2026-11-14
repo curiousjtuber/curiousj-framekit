@@ -31,7 +31,9 @@ are live:
 uv tool install --editable ~/curiousj-framekit && cjf init
 ```
 
-A Frame set up by the old `setup.sh` moves over with `cjf migrate`.
+A Frame still set up by `steam-frame-utils`' `setup.sh` moves over
+with `cjf migrate`, which the kit had up to 0.5.1: install that
+release, run it once, then update.
 
 ## Commands
 
@@ -52,7 +54,6 @@ A Frame set up by the old `setup.sh` moves over with `cjf migrate`.
 | `cjf rdp start\|stop\|status\|log\|password\|gui` | KRdp's server for a Plasma desktop on the Frame, for KRDC, Remmina or Windows Remote Desktop ([docs/apps.md](docs/apps.md)) |
 | `cjf pkg build\|homeify\|outdated` | packages built for `~/.local` from the kit's PKGBUILDs; `pacman-home` is their pacman ([docs/packages.md](docs/packages.md)) |
 | `cjf after-update` | what to re-check after a SteamOS update, as one command, each check ending in ok or in the command that fixes it |
-| `cjf migrate` | move a Frame set up by `steam-frame-utils`' `setup.sh` to the kit |
 | `pacman-home` | pacman for the packages under `~/.local`: `-Q`, `-U`, `-R`, `check`, `outdated`, `relocate`, `keyring` |
 | `beat-saber-recent` | the songs Beat Saber played in its recent launches; `--install-hook` sets the launch options that record every launch |
 | `bsmanager` | BSManager on the Frame in a window on a Linux PC, through waypipe |
@@ -89,7 +90,7 @@ what each one checks.
 
 | Path | |
 |---|---|
-| `src/curiousj_framekit/` | the package: `frame/` (the Frame's own: cursor, wifi, vr, controllers, rdp, panel, pkg, after-update), `install/` (the catalog and its kinds, init, migrate, status), `beatsaber/`, `shell/` (init.sh and the shims), `data/` (the KRdp manifest and patches, the KRDC build script and patch, the RDP GUI) |
+| `src/curiousj_framekit/` | the package: `frame/` (the Frame's own: cursor, wifi, vr, controllers, rdp, panel, pkg, after-update), `install/` (the catalog and its kinds, init, status), `beatsaber/`, `shell/` (init.sh and the shims), `data/` (the KRdp manifest and patches, the KRDC build script and patch, the RDP GUI) |
 | `src/curiousj_framekit/data/pkgbuilds/` | the kit's PKGBUILDs, built for `~/.local` in `~/.cache/curiousj-framekit/build/`: emacs, krdc, fuse2, krdpserver, gamescope-panel |
 | `pc/` | the PC side: krdpserver patched to paint the PC's pointer into the video for a viewer that asks, built by script, Frame Control's PKGBUILD, and what the Frame's docs assume there ([pc/README.md](pc/README.md)) |
 | `src/curiousj_framekit/data/krdc-embed-cursor/` | KRDC with the option that asks for it: the patch, which the Frame's PKGBUILD applies too, and the script that builds it on the PC ([docs/krdc-embed-cursor.md](docs/krdc-embed-cursor.md)) |
