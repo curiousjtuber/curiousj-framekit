@@ -1,0 +1,54 @@
+KRDC 26.08.3: set the clipboard from the GUI thread.
+The RDP backend hands the server's clipboard text to
+RemoteView::remoteClipboardChanged() on its own thread, the one that
+reads the connection, and QClipboard::setMimeData() there deletes the
+data the clipboard held. A request for that data being answered on the
+GUI thread at that moment, as gamescope makes for every new selection
+in a cjf panel, then calls into a freed QMimeData: a segmentation
+fault in QInternalMimeData::hasFormatHelper(). The call is passed to
+the view's thread instead.
+
+From KRDC's commit b9b97695 ("Relay clipboard text, HTML and images
+between sessions"), which is in 26.12 and does much else; this is its
+thread check alone.
+
+--- a/core/remoteview.cpp
++++ b/core/remoteview.cpp
+@@ -14,13 +14,17 @@
+ #include <QBitmap>
+ #include <QEvent>
+ #include <QKeyEvent>
++#include <QMimeData>
+ #include <QMouseEvent>
+ #include <QStandardPaths>
++#include <QThread>
+ #include <QTimer>
+ #include <QWheelEvent>
+ 
+ #include <qt6keychain/keychain.h>
+ 
++#include <memory>
++
+ #ifdef HAVE_WAYLAND
+ #include "waylandinhibition_p.h"
+ #endif
+@@ -491,6 +495,19 @@
+ 
+ void RemoteView::remoteClipboardChanged(QMimeData *data)
+ {
++    // Backends may deliver clipboard data from their network thread
++    if (QThread::currentThread() != thread()) {
++        // Own the data in the functor so it is freed if the view is
++        // destroyed before the queued call runs
++        QMetaObject::invokeMethod(
++            this,
++            [this, owned = std::unique_ptr<QMimeData>(data)]() mutable {
++                remoteClipboardChanged(owned.release());
++            },
++            Qt::QueuedConnection);
++        return;
++    }
++
+     if (!hostPreferences()->clipboardSharing()) {
+         return;
+     }

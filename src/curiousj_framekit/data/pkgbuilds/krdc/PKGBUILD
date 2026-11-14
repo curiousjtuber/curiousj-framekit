@@ -59,6 +59,13 @@
 # panel, where KRDC's window has the screen's size before it goes full
 # screen and the resize the toolbar waits for never comes.
 #
+# krdc-clipboard-thread.patch is KRDC 26.12's fix for a crash, taken
+# ahead of that release: the RDP backend set the clipboard from its
+# own thread, which freed the data the GUI thread could be answering a
+# request with. gamescope asks for every new selection, so in a cjf
+# panel a copy on the remote side could end KRDC. It goes when pkgver
+# reaches 26.12.
+#
 # For a new KDE Gear release: bump pkgver, update the first b2sum
 # (checked against the tarball's signature from the KDE Gear release
 # keys), and make sure the patches still apply. For a new FreeRDP:
@@ -72,7 +79,7 @@
 
 pkgname=krdc
 pkgver=26.08.3
-pkgrel=5
+pkgrel=6
 pkgdesc='KRDC, RDP and VNC, with the "Remote pointer" option, built for ~/.local on the Steam Frame host'
 arch=('aarch64' 'x86_64')
 url='https://apps.kde.org/krdc'
@@ -141,6 +148,7 @@ source=(
   freerdp-h264-v4l2m2m.patch
   krdc-bgrx-buffer.patch
   krdc-fullscreen-toolbar.patch
+  krdc-clipboard-thread.patch
   krdc-embed-cursor.patch
 )
 # The tarballs as checked against their signatures: krdc's by Heiko
@@ -157,6 +165,7 @@ b2sums=('5d340d03d4b99d00722ae7d60f51602ae825f5eec7fa1d64046190c72ed770e7c63b7c3
         '23b284c3166eeb4328934e10a53ffa7d2013055454c758e2cba098b51bc83360572a72f18e957870c6eeeb4271db52cd705dd351d00fe666e24b8f5ce0a915a7'
         '0b015168caa68647dd422fbc6abca8d8bcaf738c5e4e08c456f5349f65b1f967f14f630e5b5b67f5f9c7d4fe67adaeb79eeef385dc795c33d792457e5cad7c32'
         '86288fa7cbf257eadcf53c5ee0aa63d07539848418754c22e9ed494d8564f9229e58a1a5f6077bd5927ebe2b1fa96b754ba81bc2aaaf39c4f7a646e30f292762'
+        'bf009ccf979ae9de21876d604a6887c848e50e8eed086033e04320cf424a26ac102556bd56db860c5115297252105100b870db051060405fd0fb270b9fb9e693'
         'e5cba5b301d8c3a6b22aa316ffb989dab36eadb824700fa6df8495c3cdc97e263259f6f394e4a6d236838850390c8c7f7425543274a5ccb481bb6d816901d11e')
 
 _prefix=$HOME/.local
@@ -172,6 +181,7 @@ prepare() {
   patch -p1 --forward < "$srcdir/krdc-embed-cursor.patch"
   patch -p1 --forward < "$srcdir/krdc-bgrx-buffer.patch"
   patch -p1 --forward < "$srcdir/krdc-fullscreen-toolbar.patch"
+  patch -p1 --forward < "$srcdir/krdc-clipboard-thread.patch"
 }
 
 build() {

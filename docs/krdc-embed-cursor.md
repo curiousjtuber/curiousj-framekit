@@ -54,7 +54,11 @@ cost of a session, more than the decoding. A fourth,
 `krdc-fullscreen-toolbar.patch`, shows KRDC's full-screen toolbar in a
 `cjf panel`: it slides in at the top centre when full screen starts
 and leaves a thin tab there to point at, which stock KRDC never drew
-in a window that was already the size of the screen. `cjf installed` shows pacman-home's version
+in a window that was already the size of the screen. A fifth,
+`krdc-clipboard-thread.patch`, is KRDC 26.12's fix for a crash, taken
+ahead of that release: a copy on the remote side could end KRDC with
+a segmentation fault, most easily in a `cjf panel`, because the RDP
+backend set the clipboard from its own thread. `cjf installed` shows pacman-home's version
 and says outdated once the PKGBUILD's moves on (a new release, or a
 `pkgrel` bump for a changed patch); `cjf update` rebuilds it then; `cjf uninstall krdc` is `pacman-home -R krdc`, and leaves the
 flatpak, if any, as the menu's KRDC again. On the PC, where cjf does
