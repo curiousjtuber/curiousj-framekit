@@ -19,6 +19,11 @@
 # ~/.config/krdpserverrc (--embed-all) does it for every viewer; this
 # script writes the key false otherwise. The stock binary ignores it.
 #
+# Two patches, in the order upstream is being asked for them:
+# krdp-pointer-cache-check.patch is a fix alone (a viewer without a
+# pointer cache is refused where stock krdp crashed), and
+# krdp-embed-cursor.patch, the feature, applies on top of it.
+#
 # Two servers, not a switch: the distribution's app-org.kde.krdpserver
 # .service keeps port 3389 for viewers that draw their own pointer, and
 # the user unit this script writes, krdpserver-embed-cursor.service,
@@ -384,7 +389,7 @@ verify_tarball() {
 }
 
 do_install() {
-  local installed tarball url staged gen
+  local installed tarball url staged gen p
   for tool in cmake curl tar patch; do
     command -v "$tool" >/dev/null || die "$tool is needed; install it first"
   done
@@ -419,9 +424,12 @@ do_install() {
     rm -rf "${cache:?}/src" "${cache:?}/build" "${cache:?}/stage"
     mkdir -p "$cache/src"
     tar -xJf "$tarball" -C "$cache/src" --strip-components=1
-    say "applying krdp-embed-cursor.patch"
-    patch -d "$cache/src" -p1 --forward < "$here/krdp-embed-cursor.patch" \
-      || die "the patch no longer applies to krdp $version: upstream moved the code, the patch needs refreshing"
+    # The fix first: the feature is made against the source with it.
+    for p in krdp-pointer-cache-check.patch krdp-embed-cursor.patch; do
+      say "applying $p"
+      patch -d "$cache/src" -p1 --forward < "$here/$p" \
+        || die "$p no longer applies to krdp $version: upstream moved the code, the patch needs refreshing"
+    done
 
     gen=()
     command -v ninja >/dev/null && gen=(-G Ninja)

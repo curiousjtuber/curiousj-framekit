@@ -1,0 +1,48 @@
+krdpserver refuses a client without a pointer cache, where it crashed.
+krdp sends a client the pointer's shape through the client's pointer
+cache, and means to refuse a client that advertises none (pointer
+cache size 0): "Client doesn't support pointer caching, aborting". But
+that check runs in the Capabilities callback, which FreeRDP calls
+before the server's Demand Active, on the server's own settings; the
+client's size comes with its Confirm Active. So the check never fires,
+the client is accepted, and the first cursor image evicts from an empty
+cache in Cursor::update and crashes the server. The check moves to
+Activate, where the client's capabilities have been applied.
+
+This is the commit proposed to upstream KRdp (branch
+pointer-cache-check of curiousj/krdp on invent.kde.org, made against
+master), unchanged; it applies to krdp 6.8.2 as it is. It goes when
+the krdp built has it. krdp-embed-cursor.patch applies on top and
+turns the refusal into a pointer painted into the video.
+
+diff --git a/src/RdpConnection.cpp b/src/RdpConnection.cpp
+index 8e46a81..541cf14 100644
+--- a/src/RdpConnection.cpp
++++ b/src/RdpConnection.cpp
+@@ -626,11 +626,6 @@ bool RdpConnection::onCapabilities()
+         freerdp_settings_set_uint32(settings, FreeRDP_ColorDepth, 32);
+     }
+ 
+-    if (freerdp_settings_get_uint32(settings,FreeRDP_PointerCacheSize) <= 0) {
+-        qCWarning(KRDP) << "Client doesn't support pointer caching, aborting";
+-        return false;
+-    }
+-
+     return true;
+ }
+ 
+@@ -656,6 +651,14 @@ static std::optional<quint8> qualitySeedForConnectionType(uint32_t connectionTyp
+ 
+ bool RdpConnection::onActivate()
+ {
++    // The client's pointer cache size arrives with its Confirm Active, which
++    // answers the Demand Active sent after onCapabilities(); until then the
++    // setting holds the server's own default. Cursor relies on a cache.
++    if (freerdp_settings_get_uint32(d->peer->context->settings, FreeRDP_PointerCacheSize) == 0) {
++        qCWarning(KRDP) << "Client doesn't support pointer caching, aborting";
++        return false;
++    }
++
+     setState(State::Activated);
+ 
+     if (!d->qualitySeeded) {

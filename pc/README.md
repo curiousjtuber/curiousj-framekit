@@ -48,7 +48,10 @@ pc/krdpserver-embed-cursor/krdp-embed-cursor.sh install
 
 downloads the krdp release `krdpserver --version` reports, checks its
 signature against the Plasma release keys (fetching a missing one by
-fingerprint), applies the patch, builds, installs the binary and its
+fingerprint), applies the two patches (`krdp-pointer-cache-check.patch`,
+the fix for a crash on a viewer without a pointer cache, and
+`krdp-embed-cursor.patch`, the feature, on top of it), builds, installs
+the binary and its
 private `libKRdp` under `~/.local`, writes the unit, and runs `start`.
 `--port N` picks another port, `--help` lists the rest. The build needs
 the distribution's development packages for Qt 6, KF6, FreeRDP 3,
