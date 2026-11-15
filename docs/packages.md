@@ -19,7 +19,12 @@ the `libfuse.so.2` that every AppImage's runtime loads to mount itself
 and that SteamOS 0.5.7 dropped from the image; `cjf install bsmanager`
 brings it, and runs the AppImage with its directory on
 `LD_LIBRARY_PATH` (the library's own directory, `~/.local/lib/fuse2`,
-so nothing else travels with it). The header of each PKGBUILD says
+so nothing else travels with it). The shell init puts the same
+directory on `LD_LIBRARY_PATH` in every host shell while the package
+is installed and `/usr/lib/libfuse.so.2` is missing, so any other
+AppImage runs from a terminal as it is; one started from a menu entry
+still needs the `env` prefix BSManager's has. The header of each
+PKGBUILD says
 what it leaves out and why. By hand, from a checkout:
 
 ```bash

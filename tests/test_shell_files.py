@@ -28,6 +28,42 @@ class InitSh(unittest.TestCase):
     def test_zsh_parses_init_sh(self):
         self.assertEqual(parses("zsh", init.init_sh_text()), "")
 
+    def fuse2_path(self, shell: str, home: Path, before: str = "") -> str:
+        """LD_LIBRARY_PATH after init.sh's libfuse part ran in HOME, with
+        HOME/usr standing in for the image's /usr and no container."""
+        text = init.init_sh_text()
+        start = text.index("_cjf_fuse2=")
+        part = text[start:text.index("unset _cjf_fuse2", start)]
+        self.assertIn("/usr/lib/libfuse.so.2", part)
+        part = part.replace("/usr/lib/libfuse.so.2", f"{home}/usr/lib/libfuse.so.2")
+        part = part.replace("/run/.containerenv", f"{home}/run/.containerenv")
+        env = {"HOME": str(home), "PATH": "/usr/bin:/bin"}
+        if before:
+            env["LD_LIBRARY_PATH"] = before
+        proc = subprocess.run([shell, "-c", part + '\nprintf %s "${LD_LIBRARY_PATH:-}"'],
+                              capture_output=True, text=True, env=env)
+        self.assertEqual(proc.stderr, "")
+        return proc.stdout
+
+    def test_fuse2_on_the_library_path(self):
+        """Only with the package installed and none in the image, once."""
+        shells = ["bash"] + (["zsh"] if shutil.which("zsh") else [])
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            for shell in shells:
+                self.assertEqual(self.fuse2_path(shell, home, "/opt/lib"), "/opt/lib")
+            lib = home / ".local/lib/fuse2"
+            lib.mkdir(parents=True)
+            (lib / "libfuse.so.2").touch()
+            for shell in shells:
+                self.assertEqual(self.fuse2_path(shell, home), str(lib))
+                self.assertEqual(self.fuse2_path(shell, home, "/opt/lib"), f"{lib}:/opt/lib")
+                self.assertEqual(self.fuse2_path(shell, home, f"/opt/lib:{lib}"), f"/opt/lib:{lib}")
+            (home / "usr/lib").mkdir(parents=True)
+            (home / "usr/lib/libfuse.so.2").touch()
+            for shell in shells:
+                self.assertEqual(self.fuse2_path(shell, home, "/opt/lib"), "/opt/lib")
+
     def test_shim_parses(self):
         self.assertEqual(parses("sh", init.shim_text("podman")), "")
 

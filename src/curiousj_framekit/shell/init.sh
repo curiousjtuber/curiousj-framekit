@@ -86,6 +86,24 @@ function waypipe {
     fi
 }
 
+# --- libfuse 2 for AppImages -------------------------------------------
+# SteamOS 0.5.7 dropped fuse2, and an AppImage's runtime dlopens
+# libfuse.so.2 to mount itself. With the kit's fuse2 package installed
+# and none in the image, its directory goes on LD_LIBRARY_PATH, so an
+# AppImage started from a shell runs as it is; the directory holds
+# nothing but libfuse, so nothing else travels with it. On the host
+# only: a distrobox has its own /usr and its own fuse2 to install. An
+# image that ships fuse2 again turns this off by itself.
+_cjf_fuse2=$HOME/.local/lib/fuse2
+if [[ -e $_cjf_fuse2/libfuse.so.2 && ! -e /usr/lib/libfuse.so.2
+      && -z ${CONTAINER_ID:-} && ! -e /run/.containerenv ]]; then
+    case :${LD_LIBRARY_PATH:-}: in
+        *:"$_cjf_fuse2":*) ;;
+        *) export LD_LIBRARY_PATH="$_cjf_fuse2${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" ;;
+    esac
+fi
+unset _cjf_fuse2
+
 # --- tailscale ---------------------------------------------------------
 # The CLI lives on the persistent home partition, not on PATH; a
 # distrobox sees neither it nor the daemon's socket, so there it runs on
