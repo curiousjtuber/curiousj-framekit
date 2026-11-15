@@ -29,7 +29,7 @@ KPipeWire's cursor bitmap size, merged in October (its row is below).
 | `krdp-pointer-cache-check.patch` | KRdp, `plasma/krdp` on invent.kde.org | [!292](https://invent.kde.org/plasma/krdp/-/merge_requests/292), opened 2026-11-14 from branch `pointer-cache-check` of the fork `curiousj/krdp`, against master `8d8e084`; CI passed, no review yet |
 | `krdp-embed-cursor.patch` | KRdp | not sent; waits for the one above, which it applies on top of. Made against 6.8.2, so it needs a rebase to master. Open merge requests that touch the same ground: !184 (cursor position updates, a draft) and !290 (drops `PlasmaScreencastV1Session`, a file this patch edits) |
 | `krdc-embed-cursor.patch` | KRDC, `network/krdc` | not sent; pointless until a KRdp with the feature exists, since stock KRdp refuses or crashes on the client it makes. Made against 26.08.2 |
-| `freerdp-h264-v4l2m2m.patch` | FreeRDP, on GitHub | not sent; independent of the others. Made against 3.33.1. The `FREERDP_H264_V4L2M2M` environment switch is the part most likely to be asked to become a setting |
+| `freerdp-h264-v4l2m2m.patch` | FreeRDP, on GitHub | [#14183](https://github.com/FreeRDP/FreeRDP/pull/14183), opened 2026-11-14 from branch `h264-v4l2m2m` of the fork `curiousjtuber/FreeRDP`, against master `11bfdcf84`; independent of the others. That version differs from the kit's, which is for 3.33.1: it is compiled under `WITH_FFMPEG_HWACCEL`, takes its off switch from `ffmpeg.json` (`useV4l2Decoder`) as well as the environment, and stays out of the way of HEVC, which master decodes through the same file |
 
 ## Every patch
 
@@ -70,7 +70,7 @@ pre-release, so the bump to 26.12 drops them together.
 
 | Patch | Applied by | Kind | Upstream |
 |---|---|---|---|
-| `pkgbuilds/krdc/freerdp-h264-v4l2m2m.patch` | `krdc` package, to its own FreeRDP 3.33.1 | ours, not upstream | to send; master has no V4L2 decoder |
+| `pkgbuilds/krdc/freerdp-h264-v4l2m2m.patch` | `krdc` package, to its own FreeRDP 3.33.1 | ours, not upstream | being sent, see above |
 
 ### gamescope
 
