@@ -47,6 +47,7 @@ release, run it once, then update.
 | `cjf update [NAME...]` | install what `outdated` finds newer, asked once; `cjf --check update` only lists |
 | `cjf uninstall NAME` | remove one item, or print the steps |
 | `cjf init` | the base, again: it changes only what differs |
+| `cjf init --remove` | the base taken out again, before uninstalling the kit |
 | `cjf cursor size\|theme\|apply\|software` | the mouse cursor in Desktop Mode and Frametop's desktop: its size and theme, and Desktop Mode's software cursor ([docs/cursor.md](docs/cursor.md)) |
 | `cjf wifi [--all]` | the saved Wi-Fi networks in range, strongest first; Desktop Mode has no network applet |
 | `cjf vr [off [left\|right]]` | the headset's battery from the kernel, then SteamVR's controllers with theirs (and the AA cell's voltage under load and the NiMH charge left, worked back from the firmware's percentage); `off` as the dashboard's power menu does |
@@ -108,6 +109,18 @@ what each one checks.
 | `~/.config/curiousj-framekit/config.toml` | the choices: the software cursor, the Flatpak scope, the RDP port |
 | `~/.local/state/curiousj-framekit/` | the Beat Saber song history, what `after-update` last saw |
 | `~/.bashrc`, `~/.zshrc`, `~/.distroboxrc` | one marked block each, which `cjf init` keeps |
+
+To take the kit off the Frame, undo the base first: uv removes `cjf`
+and nothing `cjf` wrote.
+
+```bash
+cjf init --remove && uv tool uninstall curiousj-framekit
+```
+
+`cjf init --remove` takes out `init.sh`, the completion files, the
+shim, the marked blocks and the cursor fix, and names what it leaves:
+the `~/.local/bin` line on `PATH`, the catalog's items (`cjf uninstall
+NAME`), and the config, state and cache directories.
 
 The host and its distroboxes share the home directory, so `cjf` runs in
 a box too; what needs the host says so, with the

@@ -83,3 +83,51 @@ class Init(FakeHome):
         bashrc = (self.home / ".bashrc").read_text()
         self.assertEqual(bashrc.count("/.local/bin"), 1)
         self.assertTrue((self.home / ".zshrc").read_text().startswith("# >>> curiousj-framekit: init >>>"))
+
+
+class Remove(FakeHome):
+    def run_remove(self, **kw):
+        with redirect_stdout(self.out):
+            return init.run_remove(Options(yes=True, **kw))
+
+    def test_after_init(self):
+        (self.home / ".zshrc").write_text("# mine\n")
+        self.run_init()
+        share = self.home / ".local/share/curiousj-framekit"
+        (share / "init.sh.bak-20261117-155806").write_text("")
+        (share / "shims/podman.bak-20261117-155806").write_text("")
+        changed = self.run_remove()
+        self.assertTrue(all(changed.values()), changed)
+        self.assertEqual((self.home / ".bashrc").read_text(), init.PATH_LINE + "\n")
+        self.assertEqual((self.home / ".zshrc").read_text(), "# mine\n")
+        self.assertFalse((self.home / ".distroboxrc").exists())
+        self.assertFalse((self.home / ".local/share/curiousj-framekit").exists())
+        self.assertFalse(cursor.conf_path().exists())
+        self.assertFalse((self.home / ".config/autostart" / cursor.ENTRY_NAME).exists())
+
+    def test_second_run_changes_nothing(self):
+        self.run_init()
+        self.run_remove()
+        changed = self.run_remove()
+        self.assertFalse(any(changed.values()), changed)
+
+    def test_check_removes_nothing(self):
+        self.run_init()
+        changed = self.run_remove(check=True)
+        self.assertTrue(all(changed.values()), changed)
+        self.assertIn("curiousj-framekit: init", (self.home / ".bashrc").read_text())
+        self.assertTrue((self.home / ".local/share/curiousj-framekit/shims/podman").exists())
+        self.assertTrue(cursor.conf_path().exists())
+
+    def test_what_is_not_the_kits_stays(self):
+        self.run_init()
+        share = self.home / ".local/share/curiousj-framekit"
+        (share / "mine").write_text("")
+        rc = self.home / ".distroboxrc"
+        rc.write_text("# mine\n" + rc.read_text())
+        cursor.conf_path().write_text("KWIN_FORCE_SW_CURSOR=1\nOTHER=1\n")
+        changed = self.run_remove()
+        self.assertFalse(changed["conf"])
+        self.assertEqual([p.name for p in share.iterdir()], ["mine"])
+        self.assertEqual(rc.read_text(), "# mine\n")
+        self.assertTrue(cursor.conf_path().exists())

@@ -5,6 +5,7 @@ differs, asks before each change, and backs up a file before its first
 change.
 
     cjf init
+    cjf init --remove
 
 What it puts in place:
 
@@ -36,6 +37,14 @@ run in all of them; init.sh is written for that. A `mise activate` line
 of your own in an rc file keeps working beside init.sh's, which skips
 itself when mise is active already, and is noted so that you can drop
 it.
+
+--remove takes all of that out again, asking the same way: the files
+and the marked blocks, and the cursor fix when the file is the kit's.
+Run it before `uv tool uninstall curiousj-framekit`, which removes cjf
+and nothing cjf wrote. It leaves the ~/.local/bin PATH line, which
+other tools need and which may have been yours, the catalog's items
+(`cjf uninstall NAME`), and the kit's config, state and cache
+directories, which it names at the end.
 """
 
 from __future__ import annotations
@@ -186,6 +195,77 @@ def run_init(opts: Options) -> dict[str, bool]:
     return changed
 
 
+def remove_rc_block(opts: Options, rc: Path, part: str) -> bool:
+    """Take the kit's block out of rc; a file left empty by that held
+    nothing else, and goes."""
+    name = cmdline.tilde(rc)
+    text = rc.read_text() if rc.exists() else ""
+    new = blocks.remove(text, part)
+    if new == text:
+        cmdline.say("ok", f"{name}: no {part} block")
+        return False
+    if not new:
+        return cmdline.remove_file(opts, rc, f"only the {part} block was in it")
+    return cmdline.write_file(opts, rc, new)
+
+
+def remove_share(opts: Options) -> bool:
+    """The files init wrote under share_dir() and the backups it made of
+    them there, then the directories when nothing else is in them."""
+    files = [init_sh_path(), share_dir() / "completion.bash", share_dir() / "completion.zsh",
+             shims_dir() / "podman"]
+    changed = False
+    for path in files:
+        changed |= cmdline.remove_file(opts, path)
+        for old in sorted(path.parent.glob(path.name + ".bak-*")):
+            changed |= cmdline.remove_file(opts, old, "init's backup")
+    if opts.check:
+        return changed
+    for d in (shims_dir(), share_dir()):
+        if not d.is_dir():
+            continue
+        try:
+            d.rmdir()
+        except OSError:
+            cmdline.say("skip", f"{cmdline.tilde(d)}: not empty; left alone")
+    if not changed:
+        cmdline.say("ok", f"{cmdline.tilde(share_dir())}: nothing of init's")
+    return changed
+
+
+def run_remove(opts: Options) -> dict[str, bool]:
+    """init undone, but for the ~/.local/bin PATH line; the flags say
+    what changed. The rc blocks go first, so that no shell started
+    meanwhile sources a file half removed."""
+    home = Path.home()
+    changed = {"rc": False, "distroboxrc": False, "share": False, "conf": False,
+               "entries": False}
+    for rc in (home / ".bashrc", home / ".zshrc"):
+        changed["rc"] |= remove_rc_block(opts, rc, "init")
+    changed["distroboxrc"] = remove_rc_block(opts, home / ".distroboxrc", "shims")
+    changed["share"] = remove_share(opts)
+    changed["conf"], changed["entries"] = cursor.remove_software(opts)
+    return changed
+
+
+def report_remove(opts: Options, changed: dict[str, bool]) -> None:
+    left = [d for d in (config.config_dir(), config.state_dir(), config.cache_dir())
+            if d.exists()]
+    if not any(changed.values()):
+        print("nothing of init's is in place")
+    elif opts.check:
+        print("run without --check to apply")
+    else:
+        if changed["conf"]:
+            print("reboot: environment.d is read at login, KWin takes the variable at its start")
+        print("done: open a new shell" if changed["rc"] or changed["share"] else "done")
+    print("left: the ~/.local/bin PATH line in ~/.bashrc and ~/.profile; the catalog's items "
+          "(cjf installed, cjf uninstall NAME)")
+    for d in left:
+        print(f"left: {cmdline.tilde(d)}")
+    print("the kit itself: uv tool uninstall curiousj-framekit")
+
+
 def report(opts: Options, changed: dict[str, bool]) -> None:
     if not any(changed.values()):
         print("everything is in place")
@@ -205,8 +285,13 @@ def report(opts: Options, changed: dict[str, bool]) -> None:
 
 @click.command(cls=cmdline.Command, help=__doc__,
                short_help="the base: PATH, init.sh, the shims, the rc blocks, the cursor fix")
+@click.option("--remove", is_flag=True,
+              help="Take out what init put in place; run before uninstalling the kit.")
 @pass_options
-def init(opts: Options) -> int:
+def init(opts: Options, remove: bool) -> int:
     where.require_frame("init")
-    report(opts, run_init(opts))
+    if remove:
+        report_remove(opts, run_remove(opts))
+    else:
+        report(opts, run_init(opts))
     return 0

@@ -264,7 +264,8 @@ def put_entries(opts: Options) -> bool:
     return changed
 
 
-def remove_entries(opts: Options) -> bool:
+def remove_entries(opts: Options,
+                   why: str = "without the software cursor the size keeps") -> bool:
     changed = False
     for base, present in autostart_dirs():
         for name in (ENTRY_NAME, OLD_ENTRY_NAME):
@@ -272,13 +273,29 @@ def remove_entries(opts: Options) -> bool:
             if not dst.exists() and not dst.is_symlink():
                 continue
             if is_our_entry(read_text(dst) or ""):
-                changed |= cmdline.remove_file(
-                    opts, dst, "without the software cursor the size keeps")
+                changed |= cmdline.remove_file(opts, dst, why)
             else:
                 cmdline.say("skip", f"{cmdline.tilde(dst)} isn't the kit's entry; left alone")
     if not changed:
-        cmdline.say("ok", "no cursor size entry: without the software cursor the size keeps")
+        cmdline.say("ok", f"no cursor size entry: {why}")
     return changed
+
+
+def remove_software(opts: Options) -> tuple[bool, bool]:
+    """Take the cursor fix out, for `cjf init --remove`: the
+    environment.d file when it is the kit's, and the autostart entries,
+    which run cjf. (conf changed, entries changed). The choice in the
+    config file stays, for a later `cjf init`."""
+    path = conf_path()
+    _, kind = conf_state(read_text(path), config.get("cursor", "software"))
+    conf_changed = False
+    if kind == "other":
+        cmdline.say("skip", f"{cmdline.tilde(path)} isn't the kit's cursor fix; left alone")
+    elif kind == "none":
+        cmdline.say("ok", f"{cmdline.tilde(path)}: not there")
+    else:
+        conf_changed = cmdline.remove_file(opts, path, "the software cursor")
+    return conf_changed, remove_entries(opts, "it runs cjf")
 
 
 def show_software(opts: Options) -> int:
