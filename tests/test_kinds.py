@@ -8,63 +8,15 @@ from curiousj_framekit.cmdline import Options
 from curiousj_framekit.install import catalog
 from curiousj_framekit.install.catalog import Check, Fresh, Item, State, Status
 from curiousj_framekit.frame import pkg
-from curiousj_framekit.install.kinds import base, flatpak, tailscale, upstream, uv_tool
-
-SUMS = ("abc123  other.tar.gz\n"
-        "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef  framekeyboard-1.2.3-aarch64.tar.gz\n"
-        "fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210 *Frametop.zip\n")
-
+from curiousj_framekit.beatsaber import manager
+from curiousj_framekit.install.kinds import base, tailscale, uv_tool
 
 class Base(unittest.TestCase):
-    def test_sum_for(self):
-        self.assertEqual(base.sum_for(SUMS, "framekeyboard-1.2.3-aarch64.tar.gz"), "0123456789abcdef" * 4)
-        self.assertEqual(base.sum_for(SUMS, "Frametop.zip"), "fedcba9876543210" * 4)
-        self.assertIsNone(base.sum_for(SUMS, "other.tar.gz"))  # not a sha256
-        self.assertIsNone(base.sum_for(SUMS, "missing"))
-
-    def test_sha256_and_verify(self):
+    def test_sha256(self):
         with tempfile.NamedTemporaryFile("wb", delete=False) as f:
             f.write(b"hello\n")
         digest = base.sha256_of(Path(f.name))
         self.assertEqual(digest, "5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03")
-        base.verify(Path(f.name), digest, "x")
-        with self.assertRaises(cmdline.Error):
-            base.verify(Path(f.name), "0" * 64, "x")
-
-
-class Upstream(unittest.TestCase):
-    def test_take_version(self):
-        self.assertEqual(upstream.take_version(["--version", "v0.2.3", "--yes"], "x"), ("0.2.3", ["--yes"]))
-        self.assertEqual(upstream.take_version(["--yes"], "x"), (None, ["--yes"]))
-        with self.assertRaises(cmdline.Error):
-            upstream.take_version(["--version", "latest"], "x")
-        with self.assertRaises(cmdline.Error):
-            upstream.take_version(["--version=0.2.3"], "x")
-
-    def test_keyboard_archive_regex(self):
-        m = upstream.KEYBOARD_ARCHIVE.search(SUMS)
-        self.assertEqual(m.group(1), "1.2.3")
-
-    def test_current_release(self):
-        with tempfile.TemporaryDirectory() as d:
-            root = Path(d)
-            self.assertIsNone(upstream.current_release(root))
-            (root / "releases" / "0.2.2").mkdir(parents=True)
-            (root / "current").symlink_to("releases/0.2.2")
-            self.assertEqual(upstream.current_release(root), "0.2.2")
-
-    def test_frametop_status_against_catalog(self):
-        item = catalog.load()["frametop"]
-        with tempfile.TemporaryDirectory() as d:
-            root = Path(d)
-            with mock.patch.object(upstream, "FRAMETOP_RELEASES", root):
-                self.assertEqual(upstream.frametop_status(item, Options()).state, State.MISSING)
-                (root / "releases" / item["version"]).mkdir(parents=True)
-                (root / "current").symlink_to(f"releases/{item['version']}")
-                self.assertEqual(upstream.frametop_status(item, Options()).state, State.OK)
-                (root / "current").unlink()
-                (root / "current").symlink_to("releases/0.1.0")
-                self.assertEqual(upstream.frametop_status(item, Options()).state, State.OUTDATED)
 
 
 class KrdcPkgbuild(unittest.TestCase):
@@ -143,27 +95,6 @@ class Tailscale(unittest.TestCase):
                 self.assertEqual(tailscale.Kind().status(item, Options()).state, State.MISSING)
 
 
-class UvTool(unittest.TestCase):
-    def test_installed_version_parses_uv_tool_list(self):
-        listing = "curiousj-tools v0.1.0\n- cjf\ncurious-other v2\n"
-        with mock.patch.object(uv_tool, "uv_path", return_value="uv"), \
-             mock.patch.object(cmdline, "run", return_value=mock.Mock(returncode=0, stdout=listing)):
-            self.assertEqual(uv_tool.installed_version(Options(), "curiousj-tools"), "v0.1.0")
-            self.assertIsNone(uv_tool.installed_version(Options(), "nothing"))
-
-
-class Flatpak(unittest.TestCase):
-    def test_scope(self):
-        with mock.patch("curiousj_framekit.config.get", return_value="user"):
-            self.assertEqual(flatpak.scope_of(Options(), []), "user")
-            self.assertEqual(flatpak.scope_of(Options(), ["--system"]), "system")
-        with mock.patch("curiousj_framekit.config.get", return_value="system"):
-            self.assertEqual(flatpak.scope_of(Options(), []), "system")
-        with mock.patch("curiousj_framekit.config.get", return_value="odd"):
-            with self.assertRaises(cmdline.Error):
-                flatpak.scope_of(Options(), [])
-
-
 class Versions(unittest.TestCase):
     def test_version_tuple(self):
         self.assertEqual(base.version_tuple("v3.5.1"), (3, 5, 1))
@@ -185,26 +116,6 @@ class Checks(unittest.TestCase):
     """The parsers over captured output, and the checks that need no
     network."""
 
-    def test_flatpak_updates(self):
-        found = flatpak.parse_updates("org.deskflow.deskflow\t1.27.0\tflathub\n")
-        self.assertEqual(found, {"org.deskflow.deskflow": ("1.27.0", "flathub")})
-        self.assertEqual(flatpak.parse_updates(""), {})
-
-    def test_brew_outdated(self):
-        from curiousj_framekit.install.kinds import brew
-        text = '{"formulae":[{"name":"zsh","installed_versions":["5.9"],"current_version":"5.9.1"}],"casks":[]}'
-        self.assertEqual(brew.parse_outdated(text), {"zsh": ("5.9", "5.9.1")})
-        self.assertEqual(brew.parse_outdated('{"formulae":[],"casks":[]}'), {})
-        with self.assertRaises(cmdline.Error):
-            brew.parse_outdated("==> not json")
-
-    def test_mise_outdated(self):
-        from curiousj_framekit.install.kinds import mise
-        text = '{"rust": {"name": "rust", "requested": "latest", "current": "1.91.0", "latest": "1.92.0"}}'
-        self.assertEqual(mise.parse_outdated(text, "rust"), ("1.91.0", "1.92.0"))
-        self.assertIsNone(mise.parse_outdated("{}", "rust"))
-        self.assertIsNone(mise.parse_outdated("", "rust"))
-
     def test_uv_tool_origin(self):
         self.assertEqual(uv_tool.origin_of({"url": "file:///home/steamos/curiousj-tools",
                                             "dir_info": {"editable": True}}),
@@ -215,22 +126,6 @@ class Checks(unittest.TestCase):
         self.assertIsNone(uv_tool.origin_of({}))
         self.assertIsNone(uv_tool.origin_of({"url": "https://files.pythonhosted.org/x.whl",
                                              "archive_info": {}}))
-
-    def test_frametop_check_against_catalog(self):
-        item = catalog.load()["frametop"]
-        with tempfile.TemporaryDirectory() as d:
-            root = Path(d)
-            (root / "releases" / "0.2.1").mkdir(parents=True)
-            (root / "current").symlink_to("releases/0.2.1")
-            with mock.patch.object(upstream, "FRAMETOP_RELEASES", root), \
-                    mock.patch.object(upstream, "latest_tag", return_value=f"v{item['version']}"):
-                check = upstream.frametop_check(item, Options(), Status(State.OUTDATED, "x"))
-            self.assertEqual((check.fresh, check.installed, check.available), (Fresh.OUTDATED, "0.2.1", item["version"]))
-            with mock.patch.object(upstream, "FRAMETOP_RELEASES", root), \
-                    mock.patch.object(upstream, "latest_tag", return_value="v9.0.0"):
-                check = upstream.frametop_check(item, Options(), Status(State.OUTDATED, "x"))
-            self.assertEqual(check.fresh, Fresh.BEHIND)
-            self.assertIn("bump version and sha256", check.note)
 
     def test_local_outdated_wins(self):
         """A missing part or a moved pin is outdated whatever upstream says."""
@@ -250,16 +145,16 @@ class Checks(unittest.TestCase):
         lines = update.check_lines({
             "tailscale": Check(Fresh.OUTDATED, "1.102.4", "1.104.5", "pkgs.tailscale.com stable"),
             "emacs": Check(Fresh.BEHIND, "31.1-1", "31.2", "Arch Linux ARM", "the PKGBUILD has 31.1: bump it"),
-            "frametop": Check(Fresh.CURRENT, "0.2.2", source="GitHub release"),
-            "bsmanager": Check(Fresh.UNKNOWN, "AppImage", note="updates itself"),
+            "fuse2": Check(Fresh.CURRENT, "2.9.9-1", source="the kit's PKGBUILD"),
+            "waypipe": Check(Fresh.UNKNOWN, "0.11.3-1", note="can't tell: no network"),
             "krdc": Check(Fresh.OUTDATED, "26.08.2-1", "26.08.2-1", "the kit's PKGBUILD",
                           "26.08.2-1 installed, but the host no longer has libxml2.so.2 (a SteamOS update): rebuild it"),
         })
         self.assertEqual(lines, [
             "outdated  tailscale  1.102.4 -> 1.104.5 (pkgs.tailscale.com stable)",
             "behind    emacs      31.1-1 -> 31.2 (Arch Linux ARM); the PKGBUILD has 31.1: bump it",
-            "current   frametop   0.2.2 (GitHub release)",
-            "?         bsmanager  AppImage; updates itself",
+            "current   fuse2      2.9.9-1 (the kit's PKGBUILD)",
+            "?         waypipe    0.11.3-1; can't tell: no network",
             "outdated  krdc       26.08.2-1 (the kit's PKGBUILD); 26.08.2-1 installed, but the host no longer has "
             "libxml2.so.2 (a SteamOS update): rebuild it",
         ])
@@ -341,35 +236,10 @@ class PacmanHomeBroken(unittest.TestCase):
 
 
 class BSManagerFuse(unittest.TestCase):
-    def test_exec_line_gets_the_library_path_once(self):
-        from curiousj_framekit.install.kinds import upstream
-        line = 'Exec="/home/steamos/Applications/BSManager.AppImage" --no-sandbox %U'
-        fixed = upstream.fuse_exec(line)
-        self.assertEqual(fixed, f"Exec=env LD_LIBRARY_PATH={upstream.FUSE2_LIB} "
-                                '"/home/steamos/Applications/BSManager.AppImage" --no-sandbox %U')
-        self.assertEqual(upstream.fuse_exec(fixed), fixed)
-        self.assertFalse(upstream.menu_entry_has_fuse(f"[Desktop Entry]\n{line}\nName=BSManager\n"))
-        self.assertTrue(upstream.menu_entry_has_fuse(f"[Desktop Entry]\n{fixed}\nName=BSManager\n"))
-
-    def test_fix_menu_entry_rewrites_exec_only(self):
-        from curiousj_framekit.install.kinds import upstream
-        with tempfile.TemporaryDirectory() as tmp:
-            desktop = Path(tmp) / "bs-manager.desktop"
-            desktop.write_text('[Desktop Entry]\nName=BSManager\nExec="/x/BSManager.AppImage" --no-sandbox %U\n'
-                               "Icon=/y/bs-manager.png\n")
-            with mock.patch.object(upstream, "BSM_DESKTOP", desktop):
-                self.assertTrue(upstream.fix_menu_entry())
-                self.assertFalse(upstream.fix_menu_entry())
-            self.assertEqual(desktop.read_text(), f"[Desktop Entry]\nName=BSManager\nExec=env LD_LIBRARY_PATH="
-                             f'{upstream.FUSE2_LIB} "/x/BSManager.AppImage" --no-sandbox %U\nIcon=/y/bs-manager.png\n')
-
     def test_env_puts_the_library_first(self):
-        from curiousj_framekit.install.kinds import upstream
-        env = upstream.appimage_env({"LD_LIBRARY_PATH": "/opt/lib", "HOME": "/h"})
-        self.assertEqual(env["LD_LIBRARY_PATH"], f"{upstream.FUSE2_LIB}:/opt/lib")
-        self.assertEqual(upstream.appimage_env({})["LD_LIBRARY_PATH"], str(upstream.FUSE2_LIB))
+        env = manager.appimage_env({"LD_LIBRARY_PATH": "/opt/lib", "HOME": "/h"})
+        self.assertEqual(env["LD_LIBRARY_PATH"], f"{manager.FUSE2_LIB}:/opt/lib")
+        self.assertEqual(manager.appimage_env({})["LD_LIBRARY_PATH"], str(manager.FUSE2_LIB))
 
-    def test_bsmanager_needs_fuse2(self):
-        items = catalog.load()
-        self.assertIn("fuse2", items["bsmanager"].needs)
-        self.assertEqual(items["fuse2"].kind, "pacman-home")
+    def test_fuse2_is_still_an_item(self):
+        self.assertEqual(catalog.load()["fuse2"].kind, "pacman-home")

@@ -10,7 +10,7 @@ from curiousj_framekit.cmdline import Options
 class Dumps(unittest.TestCase):
     def test_roundtrip(self):
         data = {"cursor": {"software": True, "size": 32, "theme": "breeze_cursors"},
-                "flatpak": {"scope": "user"}, "rdp": {"port": 3391}}
+                "rdp": {"port": 3391}}
         text = config.dumps(data)
         self.assertIn("[cursor]\nsoftware = true\nsize = 32\ntheme = \"breeze_cursors\"\n", text)
         with tempfile.TemporaryDirectory() as d:

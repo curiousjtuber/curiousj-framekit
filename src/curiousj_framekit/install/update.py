@@ -7,22 +7,19 @@ upstreams, and the newer ones installed.
                                asked once; `cjf --check update` only lists
 
 `cjf installed` sees what is here without the network; this asks the
-other side: Flathub and the apps' own remotes (flatpak remote-ls
---updates), Arch Linux ARM and the AUR (as pacman-home outdated), the
-GitHub releases, pkgs.tailscale.com, Homebrew, mise, and git for the
-kit and the tools installed from a checkout. The checks run together,
-and each line is one of:
+other side: Arch Linux ARM and the AUR (as pacman-home outdated),
+pkgs.tailscale.com, and git for the kit. The checks run together, and
+each line is one of:
 
     current     what is installed is what is there
     outdated    a newer one is there; `cjf update` installs it, the way
                 `cjf install NAME` again does, or the kind's own way
-                (Tailscale's binaries over the old ones, brew upgrade,
-                mise upgrade, git pull --ff-only in a checkout)
-    behind      upstream moved past what the kit pins: the version in a
-                PKGBUILD, or Frametop's in the catalog. That is a bump in
-                the kit, said on the line, not an install here
-    ?           no way to tell: BSManager updates itself, the cursor is
-                two files
+                (Tailscale's binaries over the old ones, git pull
+                --ff-only in a checkout)
+    behind      upstream moved past what the kit pins, the version in a
+                PKGBUILD. That is a bump in the kit, said on the line,
+                not an install here
+    ?           no way to tell, or the check failed (said on the line)
 
 `cjf update NAME` with a current NAME does nothing and says so.
 """

@@ -12,38 +12,32 @@ is Arch Linux ARM.
 |---|---|---|
 | `cursor` | this kit | nothing to fetch: two files in the home directory |
 | `tailscale` | pkgs.tailscale.com, Tailscale | the tarball against the .sha256 beside it |
-| `homebrew` | Homebrew's git repository and bottles | each bottle against the sha256 in its formula; the installer itself is curl | bash of HEAD, run once |
-| `zsh` | Homebrew | the bottle against the sha256 in its formula |
-| `rust` | mise's download checks, rust-lang.org | mise's own |
-| `nerd-fonts` | GitHub's TLS, the nerd-fonts project | each archive against the release's SHA-256.txt; data, not code |
 | `waypipe` | Arch Linux ARM's Build System key, pinned by fingerprint in pacman-home | the package's PGP signature, by pacman; the keyring once, against the pinned fingerprint |
 | `emacs` | gnu.org's release tarball, your review of the PKGBUILD | the BLAKE2 sum in the PKGBUILD, by makepkg |
-| `distrobox` | GitHub's TLS, distrobox's account | nothing: curl | sh of the main branch, unpinned |
-| `curiousj-tools` | GitHub's TLS, curiousjtuber's account | nothing beyond TLS: a git checkout built by uv |
-| `frametop` | GitHub's TLS and the Frametop organization's account | the release zip against the sha256 recorded here, then the image inside against the zip's own metadata |
-| `stream-frame` | Boxtree's GPG key, fetched once over HTTPS from streamframe.app | every commit's signature, by flatpak |
-| `moonlight` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
 | `krdc` | download.kde.org's and pub.freerdp.com's release tarballs, LibVNCServer's GitHub tag archive and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
 | `fuse2` | libfuse's GitHub release tarball, your review of the PKGBUILD | the BLAKE2 sums in the PKGBUILD, by makepkg |
-| `deskflow` | Flathub's GPG key, fetched once over HTTPS | every commit's signature, by flatpak |
 | `krdpserver` | download.kde.org's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
 | `gamescope-panel` | the gamescope, wlroots, openvr and other git repositories on GitHub and freedesktop.org, your review of the PKGBUILD and the patch | every git source pinned to a commit in the PKGBUILD, glm and stb to the revisions in gamescope's wrap files; the patch's BLAKE2 sum, by makepkg |
-| `bsmanager` | GitHub's TLS and DaVarga's account, continuously | nothing: the fork's latest install.sh, then an AppImage that updates itself |
-| `full-keyboard` | GitHub's TLS and TaiKeid's account | the archive against the release's own SHA256SUMS |
 
-`cjf outdated` asks the same sources for their newest version (and
-GitHub's release listing, for the items pinned here) and changes
-nothing; `cjf update` then installs through the same steps as `cjf
-install`, so the table holds for an update too. Nothing runs as root
-except Tailscale, the one-time creation of `/home/linuxbrew`, and
-Frametop's two optional parts. The common root
-of trust is TLS to GitHub, gnu.org, download.kde.org,
-pkgs.tailscale.com, Flathub, streamframe.app and one ALARM mirror, plus
-each project's own account.
-Everything is in the open: the kit's kinds are in `install/kinds/`, the
-flatpaks have public manifests, and the GitHub apps have public source.
+`cjf outdated` asks the same sources for their newest version and
+changes nothing; `cjf update` then installs through the same steps as
+`cjf install`, so the table holds for an update too. Nothing the kit
+installs runs as root except Tailscale. The common root of trust is
+TLS to GitHub, gnu.org, download.kde.org, pkgs.tailscale.com and one
+ALARM mirror, plus each project's own account.
+Everything is in the open: the kit's kinds are in `install/kinds/`,
+and every source has public code.
 What differs is whether anything stands between a changed upstream
 artifact and your headset.
+
+What a package manager installs, or an upstream's own instructions,
+is no longer in the catalog, so not in this table: rust through mise,
+Homebrew and zsh, distrobox, curiousj-tools, the Flatpak apps
+(Moonlight, Deskflow, Stream Frame), Nerd Fonts, BSManager, Full
+Keyboard and Frametop. [simple-installs.md](simple-installs.md) has
+each one's commands, its upstream's page and its trust; BSManager's
+and distrobox's unpinned installers are the weakest of them. Frametop
+keeps its section below, for what was found in its release.
 
 ## The base: mise, uv, the kit
 
@@ -62,22 +56,14 @@ Arch's or the AUR's PKGBUILD and prints the rewrite for review before
 anything builds, so a person is in the loop. This is the same tier as
 KRdp's server among the apps.
 
-## Tailscale and Nerd Fonts
+## Tailscale
 
-Both download a release and check it against a sha256 published beside
-it. That catches a corrupt download, not a replaced release, since the
-sum comes from the same place. Tailscale's tarball comes from
-pkgs.tailscale.com and installs as a root system daemon, so the trust is
-Tailscale's TLS and Tailscale itself. Nerd Fonts are data rather than
-code and stay in the home directory, so the stakes are low.
+The kit downloads a release and checks it against a sha256 published
+beside it. That catches a corrupt download, not a replaced release,
+since the sum comes from the same place. The tarball comes from
+pkgs.tailscale.com and installs as a root system daemon, so the trust
+is Tailscale's TLS and Tailscale itself.
 
-
-## Homebrew
-
-Bottles are checked against the sha256 in each formula, and formulae
-come from Homebrew's git repository, so a package is as trustworthy as
-Homebrew. The installer itself is `curl | bash` of `HEAD` of Homebrew's
-install repository, unpinned, run once.
 
 ## waypipe for the host
 
@@ -94,21 +80,9 @@ so which versions exist is still the mirror's word, as with every
 pacman. Until 2026-10-15 this route ran with `SigLevel = Never` and the
 database's checksum alone.
 
-## distrobox
-
-Both are `curl | sh` with nothing pinned. distrobox's install script is
-fetched from the `main` branch of its GitHub repository, so what runs
-changes with every upstream commit; Frametop, by contrast, pins
-distrobox to a commit. mise comes from mise.run, and `mise use -g rust`
-then pulls the Rust toolchain through mise, trusting mise's own download
-checks. Both install only into the home directory, which limits the
-blast radius, but it is the same pattern BSManager is marked weakest for
-among the apps.
-
 ## What would raise the floor, for the base and the host packages
 
-- A pinned release and recorded sha256 for distrobox's installer, as
-  Frametop does, and the same for mise.
+- A pinned release and recorded sha256 for mise's installer.
 - A digest for the arch image.
 
 ## KRdp's server
@@ -146,29 +120,18 @@ and one of FreeRDP, are in this repo for review, each with its own
 sum. The package installs under
 `~/.local` through `pacman-home -U`, unsandboxed, as a distribution's
 KRDC would be. Until 2026-11-03 this item was the Flathub flatpak,
-under the trust below; a copy of it stays installed and shadowed.
-
-## Moonlight and Deskflow
-
-The remote is added from Flathub's `.flatpakrepo` file over HTTPS. That
-file carries Flathub's GPG key, and flatpak checks every commit it pulls
-against it. Flathub builds from public manifests with a review step. The
-trust is Flathub's signing key, the first HTTPS fetch of it, and the
-upstream project. `flatpak info --show-permissions APP` shows what each
-sandbox reaches.
-
-## Stream Frame
-
-The same mechanism, but the remote is Boxtree's own at streamframe.app,
-so the key and every build come from one vendor with no third party's
-review. The trust is the first HTTPS fetch of their repo file and then
-Boxtree outright. Flatpak's sandbox still applies.
+under Flathub's trust
+([simple-installs.md](simple-installs.md#flatpak-apps)); a copy of it
+stays installed and shadowed.
 
 ## Frametop
 
-`cjf install frametop` takes Frametop's release route, not its `curl |
-bash` one. Release 0.2.2 was checked end to end on 2026-10-15; this is
-what was found.
+Frametop is installed by its own instructions now
+([simple-installs.md](simple-installs.md#frametop)), by their release
+route, `get.sh --release`, not the build on the headset. Until
+2026-11-17 `cjf install frametop` took the same release with one
+thing added, a sha256 recorded for the version it named. Release 0.2.2
+was checked end to end on 2026-10-15; this is what was found.
 
 **The release artifact is coherent.** The zip's sha256 matches GitHub's
 server-computed asset digest, the release's `SHA256SUMS` and the
@@ -195,9 +158,11 @@ is no build-provenance attestation. The root of trust is GitHub's TLS
 plus control of the Frametop organization, which is one person's
 project: DeeJanuz wrote about nine tenths of the commits, the
 organization was created on 2026-10-08, and the repository moved into it
-the day after. The recorded sha256 in the installer turns that into "the
-artifact that was checked" rather than "whatever the account publishes
-next"; `--version` gives that up and says so.
+the day after. The sha256 the kit's installer recorded turned that into
+"the artifact that was checked" rather than "whatever the account
+publishes next"; `get.sh` has only the release's own `SHA256SUMS`, so
+that is given up, and simple-installs.md keeps the 0.2.2 sum to
+compare by hand.
 
 **The build runs on a third party's machines.** Depot's arm64 runners,
 not GitHub-hosted ones. Depot can see the build and could in principle
@@ -223,34 +188,15 @@ Recorder's upload of hand recordings to a Hugging Face dataset, which
 asks for consent and a login first and is not part of the stable
 release.
 
-**Frametop's own route is weaker.** The one-liner pipes `get.sh` from
-GitHub Pages into bash, clones a branch head, and builds on the headset
-in a Fedora container that pulls unpinned packages; the project's own
-`pack/README.md` calls that recipe the weak point. The release route is
-the maintainer's answer to it, and this installer adds the pin.
-
-## Full Keyboard
-
-`cjf install full-keyboard` checks the archive against the release's
-`SHA256SUMS`, but that file comes from the same release, so it only
-catches a corrupt or truncated download. Whoever can replace the archive
-can replace the sums. The archive's `install.sh` then runs unsandboxed
-in the home directory. The trust is GitHub's TLS and TaiKeid's account.
-
-## BSManager
-
-`cjf install bsmanager` fetches whatever `releases/latest` points at and
-runs it, unpinned and unchecked: curl-pipe-bash with an extra step. That
-script fetches an AppImage, which runs unsandboxed and then updates
-itself from the fork's releases. The trust is GitHub's TLS and DaVarga's
-account, for every later update too, with no way to tell a replaced
-release from a new one.
+**Frametop's default route is weaker.** The one-liner pipes `get.sh`
+from GitHub Pages into bash, and its first two choices clone a branch
+head and build on the headset in a Fedora container that pulls
+unpinned packages; the project's own `pack/README.md` calls that
+recipe the weak point. The release route is the maintainer's answer to
+it. `get.sh` itself is fetched from GitHub Pages unpinned either way.
 
 ## What would raise the floor, for the apps
 
-- A recorded sha256 in `cjf install bsmanager` for a pinned release, and
-  one in `cjf install full-keyboard` beside the release's own sums, so a
-  replaced release fails there as it does for Frametop.
 - Upstream, for Frametop: signed tags, GitHub's build-provenance
   attestation on the release, and an independent reproduction of the
   zip.

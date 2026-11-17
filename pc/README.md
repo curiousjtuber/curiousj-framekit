@@ -124,7 +124,8 @@ left 0755).
 ## Commands the Frame's docs assume on the PC
 
 - **BSManager in a window on the PC**, through waypipe (the Frame needs
-  `cjf install waypipe` and `cjf install bsmanager`):
+  `cjf install waypipe`, `cjf install fuse2` and BSManager, by
+  [its own installer](../docs/simple-installs.md#bsmanager)):
 
   ```bash
   waypipe --remote-bin /home/steamos/.local/bin/waypipe ssh steamos@frame.local bsmanager
@@ -132,6 +133,9 @@ left 0755).
 
 - **The Frame's desktop on the PC**: `cjf rdp start` on the Frame, then
   KRDC to `frame.local:3391`; see [docs/apps.md](../docs/apps.md).
-- **The PC's mouse and keyboard on the Frametop desktop**: Deskflow's
+- **The PC's mouse and keyboard on the Frame's desktop** (Desktop
+  Mode, or Frametop's): Deskflow's
   server on the PC (it needs the InputCapture portal, which Plasma 6.7
-  offers), `cjf install deskflow` on the Frame.
+  offers), and on the Frame `flatpak --user install flathub
+  org.deskflow.deskflow`
+  ([simple-installs.md](../docs/simple-installs.md#flatpak-apps)).

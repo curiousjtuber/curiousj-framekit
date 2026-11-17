@@ -70,22 +70,24 @@ a diff and asked about, and the file is backed up with a timestamp.
 |---|---|
 | `cursor` | the software mouse cursor in Desktop Mode, and the cursor size entry |
 | `tailscale` | Tailscale as a system service that survives updates (sudo); `--trust` opens the tailnet past SSH ([docs/tailscale.md](docs/tailscale.md)) |
-| `homebrew`, `zsh` | Homebrew in `/home/linuxbrew` with wl-clipboard (sudo once), and zsh from it |
-| `rust` | rust through mise, for a Rust package built with `cjf pkg` |
-| `nerd-fonts` | JetBrainsMono and NerdFontsSymbolsOnly in `~/.local/share/fonts`, or the names you give |
 | `waypipe` | Arch Linux ARM's package, relocated under `~/.local` |
-| `emacs`, `krdc`, `fuse2` | Emacs with PGTK, KRDC with the kit's "Remote pointer" patch in place of the Flatpak ([docs/krdc-embed-cursor.md](docs/krdc-embed-cursor.md)), and libfuse 2 for the AppImages (SteamOS 0.5.7 dropped it), built on the Frame for `~/.local` from the kit's PKGBUILDs |
-| `distrobox` | distrobox under `~/.local`, working from Desktop Mode and Frametop's desktop |
-| `curiousj-tools` | my ssh, tmux and Emacs tools, as a uv tool |
-| `frametop` | [Frametop](https://github.com/Frametop/frametop), the multi-screen Plasma desktop and 3D mouse, from its release zip, checked against a recorded sha256 |
-| `stream-frame`, `moonlight`, `deskflow` | Flatpaks: Stream Frame from Boxtree's repo, the others from Flathub; `--user` (default) or `--system` |
+| `emacs`, `krdc`, `fuse2` | Emacs with PGTK, KRDC with hardware H.264 decode and the kit's "Remote pointer" option, in place of the Flatpak ([docs/krdc-embed-cursor.md](docs/krdc-embed-cursor.md)), and libfuse 2 for the AppImages (SteamOS 0.5.7 dropped it), built on the Frame for `~/.local` from the kit's PKGBUILDs |
 | `krdpserver` | KRdp's server, built on the Frame for `~/.local` against the host's libraries (a few minutes; `cjf rdp` runs it) |
 | `gamescope-panel` | gamescope built on the Frame for `~/.local` with one patch, so that its VR backend starts above 1080p; `cjf panel` runs an app, or SteamOS's Desktop Mode, in it as a SteamVR panel of any size ([docs/panel.md](docs/panel.md)) |
-| `bsmanager`, `full-keyboard` | BSManager and Full Keyboard, through their own installers |
 
 [docs/install.md](docs/install.md) has the reasons behind each part,
 [docs/apps.md](docs/apps.md) the apps in detail, [docs/TRUST.md](docs/TRUST.md)
 what each one checks.
+
+The catalog holds only what the kit has to do itself. What a package
+manager installs, or an upstream's own instructions, is in
+[docs/simple-installs.md](docs/simple-installs.md), each with its
+commands and the upstream page they come from: rust (`mise use`),
+Homebrew, wl-clipboard and zsh (`brew install`), curiousj-tools (`uv
+tool install`), the Flatpaks Moonlight, Deskflow and Stream Frame
+(`flatpak install`), and distrobox, Nerd Fonts, BSManager, Full
+Keyboard and [Frametop](https://github.com/Frametop/frametop) by
+their own installers.
 
 ## Layout
 
@@ -95,7 +97,7 @@ what each one checks.
 | `src/curiousj_framekit/data/pkgbuilds/` | the kit's PKGBUILDs, built for `~/.local` in `~/.cache/curiousj-framekit/build/`: emacs, krdc, fuse2, krdpserver, gamescope-panel |
 | `pc/` | the PC side: krdpserver patched to paint the PC's pointer into the video for a viewer that asks, built by script, Frame Control's PKGBUILD, and what the Frame's docs assume there ([pc/README.md](pc/README.md)) |
 | `src/curiousj_framekit/data/krdc-embed-cursor/` | KRDC with the option that asks for it: the patch, which the Frame's PKGBUILD applies too, and the script that builds it on the PC ([docs/krdc-embed-cursor.md](docs/krdc-embed-cursor.md)) |
-| `docs/` | [install.md](docs/install.md), [apps.md](docs/apps.md), [tailscale.md](docs/tailscale.md), [shell-init.md](docs/shell-init.md), [cursor.md](docs/cursor.md), [packages.md](docs/packages.md), [krdc-embed-cursor.md](docs/krdc-embed-cursor.md), [panel.md](docs/panel.md), [patches.md](docs/patches.md) (every patch the kit carries and where it stands upstream), [TRUST.md](docs/TRUST.md); and the memos: [the desktop cursor on 0.5.6](docs/desktop-cursor.md), [packages under ~/.local](docs/home-packages.md), [paru](docs/paru.md), [the proximity sensor](docs/proximity-sensor.md), [the screen reader](docs/orca-screen-reader.md), [Arch distrobox images](docs/arch-distrobox-images.md); `notes/` has the AA calibration data |
+| `docs/` | [install.md](docs/install.md), [simple-installs.md](docs/simple-installs.md), [apps.md](docs/apps.md), [tailscale.md](docs/tailscale.md), [shell-init.md](docs/shell-init.md), [cursor.md](docs/cursor.md), [packages.md](docs/packages.md), [krdc-embed-cursor.md](docs/krdc-embed-cursor.md), [panel.md](docs/panel.md), [patches.md](docs/patches.md) (every patch the kit carries and where it stands upstream), [TRUST.md](docs/TRUST.md); and the memos: [the desktop cursor on 0.5.6](docs/desktop-cursor.md), [packages under ~/.local](docs/home-packages.md), [paru](docs/paru.md), [the proximity sensor](docs/proximity-sensor.md), [the screen reader](docs/orca-screen-reader.md), [Arch distrobox images](docs/arch-distrobox-images.md); `notes/` has the AA calibration data |
 | `docs/reorg/` | the reorganization from `steam-frame-utils`, closed 2026-11-01: [plan.md](docs/reorg/plan.md) (its decisions), [steps.md](docs/reorg/steps.md) (its stages), [scenarios.md](docs/reorg/scenarios.md) (the usage it aimed at) |
 | `install.sh` | the bootstrap: mise, uv, fzf, the kit, `cjf init` |
 | `tests/` | pytest, over the pure logic and the shell files (`bash -n`, `zsh -n`) |
@@ -106,7 +108,7 @@ what each one checks.
 |---|---|
 | `~/.local/bin` | `cjf`, `curiousj-framekit`, `pacman-home`, `beat-saber-recent`, `bsmanager`, uv's and mise's commands |
 | `~/.local/share/curiousj-framekit/` | `init.sh` and the completion files, `shims/podman` |
-| `~/.config/curiousj-framekit/config.toml` | the choices: the software cursor, the Flatpak scope, the RDP port |
+| `~/.config/curiousj-framekit/config.toml` | the choices: the software cursor, the RDP port |
 | `~/.local/state/curiousj-framekit/` | the Beat Saber song history, what `after-update` last saw |
 | `~/.bashrc`, `~/.zshrc`, `~/.distroboxrc` | one marked block each, which `cjf init` keeps |
 
@@ -120,7 +122,8 @@ cjf init --remove && uv tool uninstall curiousj-framekit
 `cjf init --remove` takes out `init.sh`, the completion files, the
 shim, the marked blocks and the cursor fix, and names what it leaves:
 the `~/.local/bin` line on `PATH`, the catalog's items (`cjf uninstall
-NAME`), and the config, state and cache directories.
+NAME`), what [docs/simple-installs.md](docs/simple-installs.md)
+installed, and the config, state and cache directories.
 
 The host and its distroboxes share the home directory, so `cjf` runs in
 a box too; what needs the host says so, with the

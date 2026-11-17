@@ -4,7 +4,6 @@ a copy of, and a base class with the no-op defaults."""
 from __future__ import annotations
 
 import hashlib
-import os
 import re
 import shutil
 import tempfile
@@ -44,11 +43,6 @@ class Base:
             raise Error(f"{item.name} takes no options; got {' '.join(args)}")
 
 
-def require_user() -> None:
-    if os.geteuid() == 0:
-        raise Error("run it as your user, not with sudo: it installs into your home directory")
-
-
 def require_commands(*names: str) -> None:
     missing = [n for n in names if not shutil.which(n)]
     if missing:
@@ -75,24 +69,6 @@ def fetch_text(url: str, timeout: float = 30) -> str:
         raise Error(f"can't download {url}: {e}") from None
 
 
-def final_url(url: str, timeout: float = 30) -> str:
-    """Where url redirects to (a GitHub releases/latest, say)."""
-    try:
-        with urllib.request.urlopen(url, timeout=timeout) as r:
-            return r.geturl()
-    except OSError as e:
-        raise Error(f"can't reach {url}: {e}") from None
-
-
-def latest_tag(repo: str) -> str:
-    """The tag a GitHub repository's releases/latest redirects to, as
-    written (v0.2.2, 1.8.2.5)."""
-    tag = final_url(f"{repo}/releases/latest").rstrip("/").rsplit("/", 1)[-1]
-    if tag == "latest" or tag == "releases":
-        raise Error(f"{repo} has no release")
-    return tag
-
-
 def version_tuple(version: str) -> tuple[int, ...]:
     """The leading dotted numbers of a version, for comparing: v3.5.1 is
     (3, 5, 1), 0.12.0-install-H62l1s is (0, 12, 0). () when it doesn't
@@ -117,21 +93,6 @@ def sha256_of(path: Path) -> str:
         for chunk in iter(lambda: f.read(1 << 20), b""):
             h.update(chunk)
     return h.hexdigest()
-
-
-def sum_for(sums_text: str, filename: str) -> str | None:
-    """The sha256 that a SHA256SUMS-style text gives for filename."""
-    for line in sums_text.splitlines():
-        parts = line.split()
-        if len(parts) >= 2 and parts[-1].lstrip("*") == filename and re.fullmatch(r"[0-9a-f]{64}", parts[0]):
-            return parts[0]
-    return None
-
-
-def verify(path: Path, expected: str, what: str) -> None:
-    actual = sha256_of(path)
-    if actual != expected:
-        raise Error(f"checksum mismatch for {what}: expected {expected}, got {actual}")
 
 
 class TempDir:

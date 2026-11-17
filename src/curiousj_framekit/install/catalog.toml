@@ -1,7 +1,9 @@
 # curiousj-framekit: the catalog of optional items, one entry each. The
 # kinds (install/kinds/) do the work; an entry says what it is, how it
 # installs, what it needs, and what is checked (the trust columns, from
-# which TRUST.md is kept). Order here is the picker's order.
+# which TRUST.md is kept). Order here is the picker's order. What a
+# package manager or upstream's own instructions install is not here:
+# docs/simple-installs.md.
 
 [item.cursor]
 kind = "config"
@@ -15,36 +17,6 @@ description = "Tailscale as a system service that survives updates (sudo)"
 needs_root = true
 trust_root = "pkgs.tailscale.com, Tailscale"
 trust_checks = "the tarball against the .sha256 beside it"
-
-[item.homebrew]
-kind = "brew"
-description = "Homebrew in /home/linuxbrew, with wl-clipboard (sudo once, to create the directory)"
-formulae = ["wl-clipboard"]
-trust_root = "Homebrew's git repository and bottles"
-trust_checks = "each bottle against the sha256 in its formula; the installer itself is curl | bash of HEAD, run once"
-
-[item.zsh]
-kind = "brew"
-description = "zsh from Homebrew (needs homebrew)"
-needs = ["homebrew"]
-formulae = ["zsh"]
-trust_root = "Homebrew"
-trust_checks = "the bottle against the sha256 in its formula"
-
-[item.rust]
-kind = "mise"
-description = "rust through mise, for a Rust package built with `cjf pkg`"
-tool = "rust"
-command = "cargo"
-trust_root = "mise's download checks, rust-lang.org"
-trust_checks = "mise's own"
-
-[item.nerd-fonts]
-kind = "fonts"
-description = "JetBrainsMono and NerdFontsSymbolsOnly in ~/.local/share/fonts"
-fonts = ["JetBrainsMono", "NerdFontsSymbolsOnly"]
-trust_root = "GitHub's TLS, the nerd-fonts project"
-trust_checks = "each archive against the release's SHA-256.txt; data, not code"
 
 [item.waypipe]
 kind = "pacman-home"
@@ -62,58 +34,9 @@ pkgbuild = "emacs"
 trust_root = "gnu.org's release tarball, your review of the PKGBUILD"
 trust_checks = "the BLAKE2 sum in the PKGBUILD, by makepkg"
 
-[item.distrobox]
-kind = "installer-script"
-description = "distrobox under ~/.local, working from Desktop Mode and Frametop"
-url = "https://raw.githubusercontent.com/89luca89/distrobox/main/install"
-repo = "https://github.com/89luca89/distrobox"
-args = ["--prefix", "~/.local"]
-command = "distrobox"
-version_args = ["version"]
-trust_root = "GitHub's TLS, distrobox's account"
-trust_checks = "nothing: curl | sh of the main branch, unpinned"
-
-[item.curiousj-tools]
-kind = "uv-tool"
-description = "sshtsf, xssh, pssh and the rest of curiousj-tools, as a uv tool"
-source = "git+https://github.com/curiousjtuber/curiousj-tools"
-tool = "curiousj-tools"
-trust_root = "GitHub's TLS, curiousjtuber's account"
-trust_checks = "nothing beyond TLS: a git checkout built by uv"
-
-[item.frametop]
-kind = "upstream"
-installer = "frametop"
-description = "Frametop, the multi-screen Plasma desktop and 3D mouse (about 1.1 GB; two optional sudo parts)"
-repo = "https://github.com/Frametop/frametop"
-version = "0.2.2"
-sha256 = "2afa2a949010a05f98bd5181bb2bebe34778fff9d57c3a8a4e042da1a366588e"
-trust_root = "GitHub's TLS and the Frametop organization's account"
-trust_checks = "the release zip against the sha256 recorded here, then the image inside against the zip's own metadata"
-
-[item.stream-frame]
-kind = "flatpak"
-description = "Stream Frame: watch, record and screenshot the headset (Flatpak, Boxtree's repo)"
-app = "com.boxtree.StreamFrame"
-remote = "stream-frame"
-remote_url = "https://streamframe.app/flatpak/stream-frame.flatpakrepo"
-runtime_note = "the KDE runtime 6.10, a few hundred MB, unless it is there already"
-trust_root = "Boxtree's GPG key, fetched once over HTTPS from streamframe.app"
-trust_checks = "every commit's signature, by flatpak"
-
-[item.moonlight]
-kind = "flatpak"
-description = "Moonlight game streaming client (Flatpak, Flathub)"
-app = "com.moonlight_stream.Moonlight"
-remote = "flathub"
-remote_url = "https://dl.flathub.org/repo/flathub.flatpakrepo"
-runtime_note = "the KDE runtime 6.11, about 400 MB, unless it is there already"
-trust_root = "Flathub's GPG key, fetched once over HTTPS"
-trust_checks = "every commit's signature, by flatpak"
-
 [item.krdc]
 kind = "pacman-home"
-description = "KRDC, KDE's RDP and VNC client, built here with the Remote pointer option for ~/.local (a few minutes; shadows the Flatpak)"
+description = "KRDC, KDE's RDP and VNC client, built here for ~/.local with hardware H.264 decode and the Remote pointer option (a few minutes; shadows the Flatpak)"
 package = "krdc"
 pkgbuild = "krdc"
 trust_root = "download.kde.org's and pub.freerdp.com's release tarballs, LibVNCServer's GitHub tag archive and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches"
@@ -126,16 +49,6 @@ package = "fuse2"
 pkgbuild = "fuse2"
 trust_root = "libfuse's GitHub release tarball, your review of the PKGBUILD"
 trust_checks = "the BLAKE2 sums in the PKGBUILD, by makepkg"
-
-[item.deskflow]
-kind = "flatpak"
-description = "Deskflow, the PC's mouse and keyboard on the Frametop desktop (Flatpak, Flathub)"
-app = "org.deskflow.deskflow"
-remote = "flathub"
-remote_url = "https://dl.flathub.org/repo/flathub.flatpakrepo"
-runtime_note = "the KDE runtime 6.11, which Moonlight brings, else about 400 MB"
-trust_root = "Flathub's GPG key, fetched once over HTTPS"
-trust_checks = "every commit's signature, by flatpak"
 
 [item.krdpserver]
 kind = "pacman-home"
@@ -153,20 +66,3 @@ package = "gamescope-panel"
 pkgbuild = "gamescope-panel"
 trust_root = "the gamescope, wlroots, openvr and other git repositories on GitHub and freedesktop.org, your review of the PKGBUILD and the patch"
 trust_checks = "every git source pinned to a commit in the PKGBUILD, glm and stb to the revisions in gamescope's wrap files; the patch's BLAKE2 sum, by makepkg"
-
-[item.bsmanager]
-kind = "upstream"
-installer = "bsmanager"
-needs = ["fuse2"]
-description = "BSManager, Beat Saber versions, mods and maps (its own installer, unpinned)"
-installer_url = "https://github.com/DaVarga/bs-manager/releases/latest/download/install.sh"
-trust_root = "GitHub's TLS and DaVarga's account, continuously"
-trust_checks = "nothing: the fork's latest install.sh, then an AppImage that updates itself"
-
-[item.full-keyboard]
-kind = "upstream"
-installer = "full-keyboard"
-description = "Full Keyboard for the dashboard and local apps (its own installer, from the release archive)"
-repo = "https://github.com/TaiKeid/steam-frame-full-keyboard"
-trust_root = "GitHub's TLS and TaiKeid's account"
-trust_checks = "the archive against the release's own SHA256SUMS"

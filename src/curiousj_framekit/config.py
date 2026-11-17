@@ -1,6 +1,6 @@
 """The kit's own files: ~/.config/curiousj-framekit/config.toml for the
 choices that used to live in marker lines (the software cursor, the
-cursor size, the RDP port, the Flatpak scope), and
+cursor size, the RDP port), and
 ~/.local/state/curiousj-framekit/ for what commands record, and
 ~/.cache/curiousj-framekit/ for what can be made again (builds).
 

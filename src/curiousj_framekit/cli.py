@@ -4,7 +4,7 @@
     cjf                                 pick a command from a menu
 
     status        the versions of SteamOS, SteamVR and the Steam client, the live state
-    install       install or update an optional item: apps, packages, services, fonts
+    install       install or update an optional item: host packages, Tailscale, the cursor fix
     installed     every catalog item's state
     outdated      every installed item against its upstream: current, outdated, behind
     update        install the newer versions outdated finds

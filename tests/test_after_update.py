@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 from curiousj_framekit.frame import after_update
@@ -36,3 +37,27 @@ class Elf(unittest.TestCase):
 
     def test_unresolved_on_a_resolving_binary(self):
         self.assertEqual(after_update.unresolved(Path("/bin/sh").resolve()), [])
+
+
+class Frametop(unittest.TestCase):
+    def lines(self, home: Path) -> list[str]:
+        with mock.patch.object(Path, "home", return_value=home):
+            return after_update.check_frametop()
+
+    def test_no_launcher_a_release_and_a_checkout(self):
+        with tempfile.TemporaryDirectory() as d:
+            home = Path(d)
+            self.assertIn("not installed", self.lines(home)[0])
+            releases = home / ".local/share/frametop/releases"
+            (releases / "0.2.2").mkdir(parents=True)
+            (releases / "current").symlink_to("0.2.2")
+            launcher = home / after_update.LAUNCHER
+            launcher.parent.mkdir(parents=True)
+            launcher.write_text(f"[Desktop Entry]\nExec={releases}/current/bin/desktop\n")
+            (line,) = self.lines(home)
+            self.assertTrue(line.startswith("ok"))
+            self.assertIn("the Frametop release, 0.2.2 (", line)
+            launcher.write_text(f"[Desktop Entry]\nExec={home}/frametop/desktops.sh start\n")
+            (line,) = self.lines(home)
+            self.assertTrue(line.startswith("note"))
+            self.assertIn("a checkout", line)

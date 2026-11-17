@@ -9,8 +9,8 @@
 # is LD_LIBRARY_PATH, which the launcher must set and which reaches
 # everything the program then starts: a directory with nothing but
 # libfuse in it is all that gets passed along. The kit's `bsmanager`
-# sets it, and `cjf install bsmanager` writes it into BSManager's menu
-# entry.
+# sets it, and the sed line in docs/simple-installs.md writes it into
+# BSManager's menu entry.
 #
 # The library mounts through a setuid helper: it runs fusermount from
 # its compiled-in bindir, here ~/.local/bin, before looking on PATH. A

@@ -12,10 +12,11 @@ From the PC, the session and the command in one line:
 --no-gpu turns off BSManager's GPU rendering, for a blank or crashing
 window; pass waypipe -n on the PC as well, so the window travels as
 plain pixels instead of GPU buffers. The Frame needs waypipe (`cjf
-install waypipe`) and BSManager (`cjf install bsmanager`), which brings
-fuse2, the libfuse.so.2 the AppImage's runtime loads and SteamOS 0.5.7
-dropped; it runs the AppImage with that library's directory on
-LD_LIBRARY_PATH, as BSManager's menu entry does.
+install waypipe`), BSManager (its own installer: docs/simple-installs.md)
+and fuse2 (`cjf install fuse2`), the libfuse.so.2 the AppImage's
+runtime loads and SteamOS 0.5.7 dropped; it runs the AppImage with
+that library's directory on LD_LIBRARY_PATH, as BSManager's menu entry
+does once that doc's sed line has run.
 
 BSManager allows one instance: a second hands off to the first and
 exits, with no new window, so this refuses while one runs. Its Electron
@@ -29,13 +30,28 @@ import os
 import subprocess
 import sys
 
+from pathlib import Path
+
 import click
 
 from .. import cmdline, where
 from ..cmdline import Options, pass_options
 
 APPIMAGE = "/home/steamos/Applications/BSManager.AppImage"
+FUSE2_LIB = Path.home() / ".local/lib/fuse2"     # the kit's fuse2 package: libfuse.so.2, nothing else
+SIMPLE_INSTALLS = "https://github.com/curiousjtuber/curiousj-framekit/blob/main/docs/simple-installs.md#bsmanager"
 RUNNING = r"^/tmp/[.]mount_BSMan[^/]*/bs-manager"
+
+
+def appimage_env(env: dict[str, str] | None = None) -> dict[str, str]:
+    """The environment an AppImage runs in here: LD_LIBRARY_PATH with the
+    kit's libfuse.so.2 in front, since the runtime dlopens it and SteamOS
+    0.5.7 dropped fuse2. The variable reaches everything the program
+    starts, which is why that directory holds nothing else."""
+    out = dict(os.environ if env is None else env)
+    rest = out.get("LD_LIBRARY_PATH", "")
+    out["LD_LIBRARY_PATH"] = str(FUSE2_LIB) + (f":{rest}" if rest else "")
+    return out
 
 
 def is_running(opts: Options) -> bool:
@@ -64,10 +80,10 @@ def cli(opts: Options, no_gpu: bool, args: tuple[str, ...]) -> int:
                             "the PC: waypipe --remote-bin /home/steamos/.local/bin/waypipe "
                             "ssh steamos@frame.local bsmanager")
     from ..install import catalog
-    from ..install.kinds import upstream
     if not os.access(APPIMAGE, os.X_OK):
-        catalog.needs("bsmanager", "bsmanager", opts)
-    if not (upstream.FUSE2_LIB / "libfuse.so.2").exists():
+        raise cmdline.Error(f"bsmanager needs BSManager's AppImage, {APPIMAGE}; its installer's "
+                            f"line is in {SIMPLE_INSTALLS}")
+    if not (FUSE2_LIB / "libfuse.so.2").exists():
         catalog.needs("fuse2", "bsmanager", opts)
     if is_running(opts):
         raise cmdline.Error("BSManager is already running, in the window it was started in; "
@@ -77,7 +93,7 @@ def cli(opts: Options, no_gpu: bool, args: tuple[str, ...]) -> int:
         argv.append("--disable-gpu")
     argv += list(args)
     cmdline.log(opts, "+ " + " ".join(argv))
-    os.execve(APPIMAGE, argv, upstream.appimage_env())
+    os.execve(APPIMAGE, argv, appimage_env())
 
 
 def main(argv: list[str] | None = None) -> int:

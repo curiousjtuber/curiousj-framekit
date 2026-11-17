@@ -1,5 +1,5 @@
 """cjf install, cjf installed, cjf uninstall -- the catalog of optional
-items: apps, host packages, services, fonts, and the cursor fix.
+items: host packages, Tailscale's service, and the cursor fix.
 
     cjf install                       pick items from the catalog (TAB marks several)
     cjf install NAME...               install or update the items named
@@ -10,21 +10,18 @@ items: apps, host packages, services, fonts, and the cursor fix.
 
 An installed item is updated by installing it again, as every script
 did on a re-run; `cjf outdated` says which have something newer, and
-`cjf update` installs those. An item that needs another (zsh needs
-homebrew) brings it along, listed up front as one question. The global
-options go first: `cjf --check install NAME` says what would happen,
-`cjf --yes install NAME` asks nothing.
+`cjf update` installs those. An item that needs another brings it
+along, listed up front as one question. The global options go first:
+`cjf --check install NAME` says what would happen, `cjf --yes install
+NAME` asks nothing. What a package manager installs (brew, mise,
+flatpak, uv) or an app's own instructions do (Frametop, BSManager,
+Full Keyboard, Nerd Fonts) is not in the catalog:
+docs/simple-installs.md has those, each with its upstream's page.
 
 Items with options of their own:
 
     cursor         [on|off|default]
     tailscale      [--trust]
-    nerd-fonts     [NAME...]
-    frametop       [--version X.Y.Z] [--yes] [--no-eye-tracker] [--no-bluetooth | --bluetooth]
-                   [--any-steamos] [--unpack-only]
-    full-keyboard  [--version X.Y.Z]
-    bsmanager      [--uninstall | --appimage FILE]
-    Flatpak apps   [--user | --system]
 """
 
 from __future__ import annotations
@@ -79,7 +76,7 @@ def pick_items(items: dict[str, catalog.Item], statuses: dict[str, catalog.Statu
     return [line.split()[1] for line in chosen]
 
 
-@click.command(cls=cmdline.Command, help=__doc__, short_help="install or update an optional item: apps, packages, services, fonts",
+@click.command(cls=cmdline.Command, help=__doc__, short_help="install or update an optional item: host packages, Tailscale, the cursor fix",
                context_settings={"ignore_unknown_options": True, "allow_extra_args": True})
 @click.argument("words", nargs=-1, type=click.UNPROCESSED)
 @pass_options

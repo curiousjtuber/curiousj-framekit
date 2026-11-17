@@ -42,7 +42,7 @@ class Item:
 @dataclass
 class Status:
     state: State
-    detail: str = ""      # "0.11.2-1", "2 of 2 fonts", "pid 4102"
+    detail: str = ""      # "0.11.2-1", "1.102.4", "pid 4102"
 
     def __str__(self) -> str:
         return self.state.value + (f" ({self.detail})" if self.detail else "")
@@ -54,8 +54,8 @@ class Fresh(Enum):
     CURRENT = "current"
     OUTDATED = "outdated"    # a newer one is there; cjf update installs it
     BEHIND = "behind"        # upstream moved past what the kit pins (a
-                             # PKGBUILD, the catalog): a bump here, not an
-                             # install there
+                             # PKGBUILD): a bump here, not an install
+                             # there
     UNKNOWN = "?"            # no way to tell
 
 
@@ -64,7 +64,7 @@ class Check:
     fresh: Fresh
     installed: str = ""      # "1.102.4", "0.11.3-1", "582a119"
     available: str = ""      # "1.104.5"; for BEHIND, the upstream version
-    source: str = ""         # "Flathub", "Arch Linux ARM", "the catalog"
+    source: str = ""         # "Arch Linux ARM", "the kit's PKGBUILD"
     note: str = ""           # "bump the PKGBUILD", "updates itself"
 
 

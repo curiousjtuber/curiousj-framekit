@@ -1,206 +1,240 @@
-## Apps
+# Apps
 
-Each app is a catalog item now: `cjf install frametop`, `cjf install
-moonlight`, and so on, with the options the scripts took after the name
-(`cjf install --help` lists them), and `cjf uninstall NAME`. The text
-below still names the scripts; the behaviour is the same.
+What each app is for on the Frame, what it needs set up, and the kit's
+commands that go with it. How each is installed is elsewhere: the ones
+the kit builds are catalog items (`cjf install NAME`,
+[packages.md](packages.md)), the rest are in
+[simple-installs.md](simple-installs.md) with their upstream's
+instructions. [TRUST.md](TRUST.md) says who is trusted for what.
 
-`apps/` holds one installer per app. `setup.sh` doesn't run them; each
-is run by hand, and a re-run updates. The header comment of each has the
-details and the uninstall steps. [TRUST.md](TRUST.md) says
-what each one verifies, who is trusted at the root, and what the app
-gets on the headset.
-
-| Script | App | Where it goes |
+| App | For | Install |
 |---|---|---|
-| `install-stream-frame.sh [--yes]` | [Stream Frame](https://streamframe.app), for watching, recording and screenshotting the headset from another device | Flatpak `com.boxtree.StreamFrame`, in the user installation, from Boxtree's repo; no root |
-| `install-moonlight.sh [--yes]` | [Moonlight](https://moonlight-stream.org), for streaming games from a Sunshine or GeForce Experience host | Flatpak `com.moonlight_stream.Moonlight`, in the user installation, from Flathub; no root |
-| `install-krdc.sh [--yes]` | [KRDC](https://apps.kde.org/krdc), KDE's RDP and VNC client, for a Plasma desktop shared with KRdp | was Flatpak `org.kde.krdc` from Flathub; since 2026-11-03 `cjf install krdc` builds KRDC with the kit's patch from the kit's PKGBUILD, a pacman-home package under `~/.local`, and the flatpak, if installed, is shadowed ([krdc-embed-cursor.md](krdc-embed-cursor.md)) |
-| `install-deskflow.sh [--yes]` | [Deskflow](https://deskflow.org), keyboard and mouse sharing, so a PC's mouse and keyboard reach the Frametop desktop | Flatpak `org.deskflow.deskflow`, in the user installation, from Flathub; no root |
-| `install-bsmanager.sh` | [BSManager](https://github.com/DaVarga/bs-manager), DaVarga's arm64 fork, for Beat Saber versions, mods and maps | `~/Applications/BSManager.AppImage`, with a menu entry and the BeatSaver OneClick links |
-| `install-full-keyboard.sh [--version X.Y.Z \| --uninstall]` | [Full Keyboard](https://github.com/TaiKeid/steam-frame-full-keyboard), TaiKeid's full-size virtual keyboard for the dashboard and local apps | `~/.local/share/framekeyboard`, with the launcher `~/.local/bin/framekeyboard` and a menu entry |
-| `install-frametop.sh [--version X.Y.Z] [--yes] [--no-eye-tracker] [--no-bluetooth \| --bluetooth] [--any-steamos] [--unpack-only] \| --uninstall` | [Frametop](https://github.com/Frametop/frametop), the multi-screen Plasma desktop and 3D mouse that run on the Frame itself | `~/.local/share/frametop/releases/<version>`, with a podman image and container from the release's `Frametop.zip`, and services in the home directory; two optional parts use sudo |
-| `install-krdp.sh [--bundle [FILE] \| --uninstall]` | [KRdp](https://invent.kde.org/plasma/krdp)'s server, krdpserver, for serving a Plasma desktop on the Frame over RDP to KRDC, Remmina or Windows Remote Desktop | was a Flatpak built here, `io.github.curiousjtuber.Krdp`; since 2026-11-14 only `cjf install krdpserver`, a package built on the Frame for `~/.local`; no root. Run with `cjf rdp`, or KRdp Server in the menu |
+| [Frametop](#frametop) | a multi-screen Plasma desktop and 3D mouse, running on the Frame itself | [its own installer](simple-installs.md#frametop) |
+| [KRDC](#krdc) | a PC's desktop in the headset, over RDP or VNC | `cjf install krdc` |
+| [Moonlight](#moonlight) | games streamed from a Sunshine or GeForce Experience host | [Flatpak](simple-installs.md#flatpak-apps) |
+| [Deskflow](#deskflow) | the PC's mouse and keyboard on the Frame's desktop, no streaming | [Flatpak](simple-installs.md#flatpak-apps) |
+| [Stream Frame](#stream-frame) | watching, recording and screenshotting the headset from another device | [Flatpak](simple-installs.md#flatpak-apps) |
+| [KRdp's server](#krdps-server-and-cjf-rdp) | the other direction: the Frame's Plasma desktop on a PC, over RDP | `cjf install krdpserver`, run by `cjf rdp` |
+| [A panel of any size](#cjf-panel) | one app, or Desktop Mode, in a SteamVR panel of its own | `cjf install gamescope-panel`, run by `cjf panel` |
+| [Full Keyboard](#full-keyboard) | a full-size keyboard for the dashboard and local apps | [its own installer](simple-installs.md#full-keyboard) |
+| [BSManager](#bsmanager) | Beat Saber versions, mods and maps | [its own installer](simple-installs.md#bsmanager) |
 
-- **The Flatpak apps** go into the user installation,
-  `~/.local/share/flatpak`, like Frametop and krdpserver: no root and no
-  polkit, so the scripts work over SSH, and SteamOS updates keep the
-  home directory. Each pulls its KDE runtime into the user installation
-  too, even when a system one would do, so removing system Flatpaks
-  later can't break it. A system copy, say one Discover installed, is
-  reported: the user copy wins the menu and `flatpak run`, so remove the
-  system one with `sudo flatpak uninstall --system <app>`. Run the
-  scripts on the host, not in a distrobox.
-- **Stream Frame** is the app Discover installs from the website, from
-  the same repo. The first install also pulls the KDE runtime from
-  Flathub, a few hundred MB, and asks first unless given `--yes`. It
-  needs ffmpeg on the headset, and SteamOS already has it in `/usr/bin`.
-- **Moonlight** comes from Flathub because Ubuntu 26.04 has no
-  `moonlight-qt` for arm64. The first install pulls KDE runtime 6.11,
-  about 400 MB, and asks first unless given `--yes`. The sandbox can
-  reach gamescope, so it can also be added as a non-Steam game for Game
-  Mode.
-- **KRDC** is for desktop work, Moonlight for games. KRdp, Plasma's
-  Remote Desktop, streams every monitor as one picture and moves the
-  pointer through KWin, so it lines up on a multi-monitor host, where
-  Sunshine's absolute mouse spans the whole desktop but the stream shows
-  one monitor. Run it on the host. It uses the KDE runtime 6.10 that
-  Stream Frame already installs. On the PC, run `krdpserver` with
-  `--plasma` (a systemd drop-in for `app-org.kde.krdpserver.service`):
-  without it, KRdp goes through the desktop portal, whose permission
-  prompt shows on the PC's screen, and KRDC gets a blank blue screen
-  until someone answers it there. KRdp sends KRDC the pointer's shape,
-  drawn at the Frame's own pointer, so a mouse moved at the PC shows
-  only as focus changes. Two patches fix that, one on each side, both
-  meant for upstream: `pc/krdpserver-embed-cursor/krdp-embed-cursor.sh
-  install` builds krdpserver from the Plasma release the PC runs into
-  `~/.local` as a second server beside `krdp` on port 3390, on any
-  distribution with Plasma 6, and `cjf install krdc` on the Frame (the
-  same script, `krdc-embed-cursor.sh install`, on the PC) builds KRDC
-  with a "Remote pointer: painted into the video by the server" option
-  per host; on the Frame it shadows the flatpak's menu entry and takes
-  over its hosts and bookmarks. With the option on, KRDC advertises no
-  pointer cache, and
-  the patched server paints the PC's pointer into the video for that
-  connection and tells KRDC to draw none, so the headset sees where the
-  PC's mouse is; a stock KRDC is served as upstream does. Turn off
-  KRDC's View → Show Local Cursor unless you want your own pointer over
-  the PC's. KRDC picks a server by port, and the stock one on 3389 is
-  never touched; [the PC side](../pc/README.md) and
-  [krdc-embed-cursor.md](krdc-embed-cursor.md) have the commands
-  and the rebuild after an update.
-- **Deskflow** makes the Frame a client of the PC's mouse and keyboard,
-  with no streaming: the pointer crosses an edge of the PC's screen into
-  the Frametop desktop. Run it on the host. It uses the KDE runtime 6.11
-  that Moonlight already installs. On Wayland the client injects input
-  through the RemoteDesktop portal, the route KRdp takes into the nested
-  KWin, so it works where krdpd does. The first start asks once in the
-  headset to allow remote control, and Deskflow keeps the portal's
-  restore token, so later starts don't ask. The PC side, the server,
-  needs the InputCapture portal; Plasma 6.7 offers it.
-- **BSManager** runs the fork's own `install.sh` from its latest
-  release, passing on `--uninstall` and `--appimage FILE`. After that,
-  BSManager updates itself. It needs the `fuse2` item, installed first:
-  SteamOS 0.5.7 dropped fuse2 from the image, and an AppImage's runtime
-  loads `libfuse.so.2` to mount itself (`dlopen(): error loading
-  libfuse.so.2` otherwise), so the kit builds it for
-  `~/.local/lib/fuse2` ([packages.md](packages.md)) and the menu entry
-  `install.sh` writes
-  is given that directory on `LD_LIBRARY_PATH`; `cjf installed` shows
-  `bsmanager` as outdated while the entry lacks it, as after a re-run
-  of `install.sh` by hand.
-- **Full Keyboard** is a separate app, not a replacement for the system
-  keyboard: start it from the dashboard's app launcher, with the VR
-  session running. It types into the dashboard and local apps, not into
-  streamed VR games. The script checks the release archive against its
-  `SHA256SUMS` and runs the `install.sh` inside it, which keeps the
-  previous release for rollback and refuses one already installed, so a
-  re-run with nothing newer just says so. Close the keyboard before
-  updating. `--uninstall` keeps the settings in
-  `~/.config/framekeyboard`.
-- **Frametop** comes as one release file, `Frametop.zip`, that its CI
-  builds from the tagged commit on an arm64 runner: a podman image with
-  everything compiled, and its installer. The script records the zip's
-  sha256 for the version it names, checks the download against it and
-  against the release's `SHA256SUMS`, and runs the zip's
-  `install-release.sh`, which checks the image file against the sha256
-  in the zip's `frametop-release.json`, loads it, copies the release's
-  files out and runs their `install.sh`: nothing compiles, and nothing
-  else downloads but the table of tested SteamOS builds, which the zip
-  also carries for offline. A release replaced on GitHub fails the
-  recorded sum; `--version` takes another release and then has only
-  `SHA256SUMS` to check against, which it says. The SteamVR driver, the
-  services and the desktop go in the home directory. Frametop's own eye
-  tracker, a root service in `/etc/frametop`, and the Bluetooth fixes,
-  in `/etc/steamframe`, are the two parts that ask for sudo, and each is
-  offered, not forced. For 0.2.2, the zip's scripts and the source tree
-  inside its image were compared with the tagged commit: identical.
-  Frametop's commits and tags aren't signed, so GitHub's TLS and the
-  maintainer's account are the root of trust, as for Full Keyboard and
-  BSManager. A source checkout in `~/frametop` is left alone, but the
-  launcher's Desktop entry and the services switch to the release; that
-  checkout's `install.sh` switches them back.
-- **KRdp's server** is the other direction: the Frame as the RDP host,
-  for seeing and using a Plasma desktop that runs on it (Frametop's, or
-  SteamOS's stock Desktop) from a PC. SteamOS has no krdp and Flathub
-  only has the client, so the kit builds it.
-  `cjf install krdpserver` builds krdp 6.4.5 on the Frame against the
-  host's own FreeRDP, Frameworks and Qt, in a few minutes, as a
-  `pacman-home` package under `~/.local/lib/krdpserver`; the PKGBUILD
-  (`src/curiousj_framekit/data/pkgbuilds/krdpserver/`) says why that
-  release, the newest whose minimums both the stable and the beta
-  SteamOS meet, and what it carries: a kpipewire of its own with the
-  cursor fix below and ffmpeg 8's spelling of the H.264 profiles,
-  qtkeychain, and one line of krdp 6.8's FreeRDP 3.32 fix. It is
-  unsandboxed, so KWin grants it the capture through the desktop file
-  the package puts in `~/.local/share/applications`, whose Exec is the
-  binary. A SteamOS update that changes a library it links shows in
-  `cjf installed` and `cjf update` rebuilds it, as with KRDC.
-  Neither desktop needs KWin's permission checks turned off, and
-  nothing starts by itself. krdp 6.8 has to wait for a SteamOS with
-  KWin 6.7 or later: it needs a newer screencast protocol than the
-  Frame's KWin speaks (0.5.7 beta's 6.6.2 is one version short), so it
-  streams nothing on the Frame. Until 2026-11-14 the kit also built
-  the server as a Flatpak, `io.github.curiousjtuber.Krdp` (krdp 6.7.5
-  on KDE's runtime, half an hour and 1 GB of SDK), and GitHub built
-  its bundle for the `krdp-*` releases; the package replaced it. If
-  that Flatpak is still installed, `flatpak --user uninstall
-  io.github.curiousjtuber.Krdp` removes it, `org.kde.Sdk` and
-  `org.flatpak.Builder` with it if nothing else uses them, and
-  `~/.cache/krdpd/flatpak` is its build state.
-- **`cjf rdp start [--desktop frametop|stock|DIR] [--port N] [--user
-  NAME] [--address ADDR]`**, `stop`, `status`, `log`, `password [NEW |
-  --generate]` runs that server by hand. It serves Frametop's desktop
-  when that runs (the stock Desktop only with `--force`: on SteamOS
-  0.4.5 its KWin, 6.2.5 on the X11 backend inside gamescope, crashes in
-  its screencast plugin as soon as a client connects, which leaves a
-  bare KWin until you log out of it; Frametop's KWin, on the Wayland
-  backend, streams fine), on port 3391 by default: 3389 is SteamOS's own
-  xrdp, which logs into a separate X11 session, and 3390 is Frametop
-  Remote Access's krdp when that is on, so `cjf rdp` runs beside either.
-  The login is the Frame's user with the password in
+Run them on the host, not in a distrobox.
+
+## Frametop
+
+[Frametop](https://github.com/Frametop/frametop) is a Plasma desktop
+on several screens placed around you, each a SteamVR overlay of its
+own, with a 3D mouse. Launch a program → Desktop starts it once it is
+installed; SteamOS's own single-screen desktop stays in the same list
+as Native Desktop.
+
+- **Where it lives.** The release goes in
+  `~/.local/share/frametop/releases/<version>`, with a podman image
+  and a container made from it, a SteamVR driver, and user services:
+  all in the home directory. Its own eye tracker, a root service in
+  `/etc/frametop`, and the Bluetooth fixes in `/etc/steamframe` are
+  the two parts that ask for sudo, and each is offered, not forced.
+- **A source checkout** in `~/frametop` can sit beside a release. The
+  launcher's Desktop entry and the services point at whichever was
+  installed last; `cjf after-update` says which.
+- **Its own XDG dirs.** A terminal inside it has `XDG_CONFIG_HOME` and
+  `XDG_STATE_HOME` pointed at the desktop's; the kit's shell init
+  keeps mise and the kit's own files on the usual ones
+  ([shell-init.md](shell-init.md#frametop-terminals)).
+- **The kit's commands that know about it:** `cjf cursor` sets its
+  cursor as well as Desktop Mode's ([cursor.md](cursor.md)), and `cjf
+  rdp` serves its desktop to a PC, below.
+
+## KRDC
+
+[KRDC](https://apps.kde.org/krdc), KDE's RDP and VNC client, is for
+desktop work on a PC from the headset; Moonlight is for games. KRdp,
+Plasma's Remote Desktop, streams every monitor as one picture and
+moves the pointer through KWin, so it lines up on a multi-monitor
+host, where Sunshine's absolute mouse spans the whole desktop but the
+stream shows one monitor.
+
+- **On the PC, run `krdpserver` with `--plasma`** (a systemd drop-in
+  for `app-org.kde.krdpserver.service`). Without it KRdp goes through
+  the desktop portal, whose permission prompt shows on the PC's
+  screen, and KRDC gets a blank blue screen until someone answers it
+  there.
+- **The PC's pointer.** KRdp sends KRDC the pointer's shape, drawn at
+  the Frame's own pointer, so a mouse moved at the PC shows only as
+  focus changes. Two patches fix that, one on each side, both meant
+  for upstream. The kit's KRDC has a per-host option, "Remote pointer:
+  painted into the video by the server", and the PC's patched
+  krdpserver, a second server on port 3390 beside the stock one on
+  3389, paints its pointer into the video for a client that asks.
+  Turn off KRDC's View → Show Local Cursor unless you want your own
+  pointer over the PC's. [krdc-embed-cursor.md](krdc-embed-cursor.md)
+  and [the PC side](../pc/README.md) have the commands and the rebuild
+  after an update.
+- **Two monitors, pixel for pixel:** in a panel of its own, with `cjf
+  panel`, below.
+- **What the kit's build carries** besides the option: a FreeRDP of
+  its own with hardware H.264 decode, and libvncclient for VNC. A
+  Flathub KRDC, if installed, is shadowed and its hosts and bookmarks
+  are taken over.
+
+## Moonlight
+
+[Moonlight](https://moonlight-stream.org) streams games from a PC
+running Sunshine or GeForce Experience. The Flatpak's sandbox can
+reach gamescope, so it can also be added to Steam as a non-Steam game
+and started from Game Mode.
+
+## Deskflow
+
+[Deskflow](https://deskflow.org) makes the Frame a client of the PC's
+mouse and keyboard, with no streaming: the pointer crosses an edge of
+the PC's screen into the Frame's desktop, SteamOS's own Desktop Mode
+or Frametop's.
+
+- **On the Frame** the client injects input through the RemoteDesktop
+  portal, the route KRdp takes into the nested KWin. The first start
+  asks once in the headset to allow remote control, and Deskflow keeps
+  the portal's restore token, so later starts don't ask.
+- **On the PC** the server needs the InputCapture portal; Plasma 6.7
+  offers it.
+
+## Stream Frame
+
+[Stream Frame](https://streamframe.app) shows the headset's view on
+another device, and records and screenshots it. It is the app Discover
+installs from the website, from the same Flatpak repository. It needs
+ffmpeg on the headset, which SteamOS already has in `/usr/bin`.
+
+## KRdp's server and `cjf rdp`
+
+The other direction: the Frame as the RDP host, for seeing and using a
+Plasma desktop that runs on it (Frametop's, or SteamOS's stock
+Desktop) from a PC, with KRDC, Remmina or Windows Remote Desktop.
+SteamOS has no krdp and Flathub only has the client, so the kit builds
+it.
+
+```bash
+cjf rdp start [--desktop frametop|stock|DIR] [--port N] [--user NAME] [--address ADDR]
+```
+
+`stop`, `status`, `log` and `password [NEW | --generate]` are the
+rest; nothing starts by itself.
+
+- **Which desktop.** Frametop's when that runs. The stock Desktop only
+  with `--force`: on SteamOS 0.4.5 its KWin, 6.2.5 on the X11 backend
+  inside gamescope, crashed in its screencast plugin as soon as a
+  client connected, which leaves a bare KWin until you log out of it.
+  Frametop's KWin, on the Wayland backend, streams fine.
+- **The port** is 3391 by default: 3389 is SteamOS's own xrdp, which
+  logs into a separate X11 session, and 3390 is Frametop Remote
+  Access's krdp when that is on, so `cjf rdp` runs beside either.
+- **The login** is the Frame's user with the password in
   `~/.config/krdpd/password`, made at the first start; the self-signed
-  certificate there is what clients accept once. The Frame's firewall
-  already allows every port above 1024 on the LAN (see
-  [Firewall](tailscale.md#firewall)), and RDP brings its own TLS and login (NLA);
-  `--address` with the tailnet address keeps it off the LAN. Over RDP,
-  Frametop's screens you aren't looking at draw slowly, since only
-  Frametop Remote Access asks ft-screens for full rate.
-- **KRdp Server**, the menu entry the krdpserver install adds, is
-  `cjf rdp gui`: a window that starts and stops the same server and
-  shows where to connect, the password, and the log. It runs `cjf rdp` for
+  certificate there is what clients accept once.
+- **The network.** The Frame's firewall already allows every port
+  above 1024 on the LAN ([Firewall](tailscale.md#firewall)), and RDP
+  brings its own TLS and login (NLA); `--address` with the tailnet
+  address keeps it off the LAN.
+- **Over RDP,** Frametop's screens you aren't looking at draw slowly,
+  since only Frametop Remote Access asks ft-screens for full rate.
+- **KRdp Server**, the menu entry the package adds, is `cjf rdp gui`:
+  a window that starts and stops the same server and shows where to
+  connect, the password, and the log. It runs `cjf rdp` for
   everything, so the two never disagree, and the server keeps running
-  after the window closes. It's GTK 4 and libadwaita through Python, all
-  in SteamOS's image, so it needs nothing installed; run it on the host,
-  from either desktop.
-- **`cjf panel start [--size WxH] [--width METRES] [--name NAME]
-  [--fullscreen] [--wayland] [--env VAR=VALUE] -- COMMAND`**, `stop`,
-  `status`, `log` runs any app in a SteamVR panel of its own with a
-  screen of exactly that size, beside Game Mode, which scales every app
-  to one 1920x1080 overlay: KRDC at 3840x1080 shows a PC's two
-  monitors pixel for pixel. It runs the gamescope `cjf install
-  gamescope-panel` builds for `~/.local` (about ten minutes), the
-  host's release with one patch, since the host's binary aborts above
-  1080p on a fixed-size upload buffer. `cjf panel desktop --size WxH`
-  runs SteamOS's own Desktop Mode in one, with a screen of that size
-  in place of its 1280x800. [panel.md](panel.md) has the why and the
-  limits.
-- **`bsmanager [--no-gpu]`** shows the Frame's BSManager in a
-  window on a Linux PC's Wayland desktop, through waypipe. In the
-  headset, start BSManager from Steam instead. It runs in either of two
-  places:
-  - On the Frame, where `setup.sh` puts it on `PATH`, in a session
-    opened from the PC with `waypipe --remote-bin
-    /home/steamos/.local/bin/waypipe ssh steamos@frame.local`. From a
-    distrobox it runs on the host, and it refuses without the session's
-    `WAYLAND_DISPLAY`.
-  - On the PC, copied there, where it opens that session itself. HOST
-    defaults to `$FRAME_HOST`, or else `steamos@frame.local`.
+  after the window closes. It is GTK 4 and libadwaita through Python,
+  all in SteamOS's image; run it on the host, from either desktop.
 
-  The Frame needs `setup.sh --waypipe`, and `bsmanager` runs the
-  AppImage with the `fuse2` item's directory on `LD_LIBRARY_PATH`, as
-  the menu entry does. BSManager allows one instance,
-  so the script stops if it's already running on the Frame: a second
-  launch would hand off to the first and exit, and no window would show
-  on the PC. `--no-gpu` is for a blank or crashing window; in a session
-  opened by hand, also pass `-n` to waypipe.
+The package is krdp 6.4.5, built on the Frame against the host's own
+FreeRDP, Frameworks and Qt in a few minutes, under
+`~/.local/lib/krdpserver`. Its PKGBUILD
+(`src/curiousj_framekit/data/pkgbuilds/krdpserver/`) says why that
+release, the newest whose minimums both the stable and the beta
+SteamOS meet, and what it carries: a kpipewire of its own with a
+cursor fix and ffmpeg 8's spelling of the H.264 profiles, qtkeychain,
+and one line of krdp 6.8's FreeRDP 3.32 fix
+([patches.md](patches.md)).
+
+- **No permission bypass.** It is unsandboxed, so KWin grants it the
+  capture through the desktop file the package puts in
+  `~/.local/share/applications`, whose Exec is the binary.
+- **After a SteamOS update** that changes a library it links, `cjf
+  installed` shows it and `cjf update` rebuilds it, as with KRDC.
+- **krdp 6.8 has to wait** for a SteamOS with KWin 6.7 or later: it
+  needs a newer screencast protocol than the Frame's KWin speaks
+  (0.5.7 beta's 6.6.2 is one version short), so it streams nothing on
+  the Frame.
+- **The old Flatpak.** Until 2026-11-14 the kit built the server as a
+  Flatpak, `io.github.curiousjtuber.Krdp`. If it is still installed,
+  `flatpak --user uninstall io.github.curiousjtuber.Krdp` removes it,
+  `org.kde.Sdk` and `org.flatpak.Builder` with it if nothing else uses
+  them, and `~/.cache/krdpd/flatpak` is its build state.
+
+## `cjf panel`
+
+```bash
+cjf panel start [--size WxH] [--width METRES] [--name NAME] [--fullscreen] [--wayland] [--env VAR=VALUE] -- COMMAND
+```
+
+Runs any app in a SteamVR panel of its own with a screen of exactly
+that size, beside Game Mode, which scales every app to one 1920x1080
+overlay: KRDC at 3840x1080 shows a PC's two monitors pixel for pixel.
+`stop`, `status` and `log` are the rest, and `cjf panel desktop --size
+WxH` runs SteamOS's own Desktop Mode in one, with a screen of that
+size in place of its 1280x800. It runs the gamescope that `cjf install
+gamescope-panel` builds, the host's release with one patch.
+[panel.md](panel.md) has the why and the limits.
+
+## Full Keyboard
+
+[Full Keyboard](https://github.com/TaiKeid/steam-frame-full-keyboard)
+is TaiKeid's full-size virtual keyboard: arrow keys, a numpad, Ctrl
+and Alt, in a panel you type on with the controller laser. It types
+into the dashboard, Steam's text fields and apps running on the Frame.
+
+- **Beside the system keyboard, or in its place.** Installed by hand
+  it is a separate app, started from the dashboard's app launcher with
+  the VR session running. Its installer asks whether it should replace
+  the native keyboard and start with SteamOS; both are in its Settings
+  afterwards.
+- **It updates itself** from its Settings, and rolls back if a new
+  release fails to start.
+- **Settings** are in `~/.config/framekeyboard`, which its uninstaller
+  keeps.
+
+## BSManager
+
+[BSManager](https://github.com/DaVarga/bs-manager), DaVarga's arm64
+fork, manages Beat Saber versions, mods and maps:
+`~/Applications/BSManager.AppImage`, a menu entry and the BeatSaver
+OneClick links. In the headset, start it from Steam. It updates
+itself.
+
+It needs the `fuse2` item on SteamOS 0.5.7 and later, which dropped
+fuse2 from the image: an AppImage's runtime loads `libfuse.so.2` to
+mount itself (`dlopen(): error loading libfuse.so.2` otherwise). The
+kit builds that one library for `~/.local/lib/fuse2`
+([packages.md](packages.md)), and the menu entry has to name that
+directory on `LD_LIBRARY_PATH`, which a line in
+[simple-installs.md](simple-installs.md#bsmanager) sees to.
+
+### `bsmanager`: its window on a PC
+
+```bash
+waypipe --remote-bin /home/steamos/.local/bin/waypipe ssh steamos@frame.local bsmanager
+```
+
+Run on the PC, that shows the Frame's BSManager in a window on the
+PC's Wayland desktop, through waypipe: `bsmanager [--no-gpu]` is the
+kit's command on the Frame, run inside a `waypipe ssh` session.
+
+- **It needs** `cjf install waypipe` and `cjf install fuse2` on the
+  Frame, and waypipe on the PC. It runs the AppImage with the fuse2
+  directory on `LD_LIBRARY_PATH` itself.
+- **From a distrobox** it hands over to the host, and it refuses
+  without the session's `WAYLAND_DISPLAY`.
+- **One instance.** BSManager allows one, so the command stops if it
+  is already running on the Frame: a second launch would hand off to
+  the first and exit, and no window would show on the PC.
+- **`--no-gpu`** is for a blank or crashing window; pass `-n` to
+  waypipe on the PC as well, so the window travels as plain pixels.

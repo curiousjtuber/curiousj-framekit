@@ -10,7 +10,10 @@ are the README's from before the kit, kept for the reasons behind each
 part: what `setup.sh` did, and Homebrew and Nerd Fonts in particular.
 Where they name `setup.sh --x` or an `install-*.sh`, read `cjf install
 x`; the `arch` distrobox and its box routes are gone (the host route
-is the one).
+is the one). Since 2026-11-17 the catalog leaves out what a package
+manager installs or an upstream's own instructions do: for `--brew`,
+`--zsh`, `--mise`'s rust, `--nerd-fonts` and distrobox, read the
+commands in [simple-installs.md](simple-installs.md).
 
 ## Setup
 

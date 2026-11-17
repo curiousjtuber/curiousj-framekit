@@ -10,7 +10,7 @@ from curiousj_framekit.install.catalog import Item, State, Status
 class Load(unittest.TestCase):
     def test_every_item_has_a_kind_module_and_trust(self):
         items = catalog.load()
-        self.assertGreater(len(items), 15)
+        self.assertGreater(len(items), 6)
         for item in items.values():
             kind = kinds.for_item(item)
             self.assertTrue(hasattr(kind, "status"), item.name)
@@ -19,20 +19,15 @@ class Load(unittest.TestCase):
             for need in item.needs:
                 self.assertIn(need, items, f"{item.name} needs {need}")
 
-    def test_upstream_items_name_a_known_installer(self):
-        from curiousj_framekit.install.kinds import upstream
-        for item in catalog.load().values():
-            if item.kind == "upstream":
-                self.assertIn(item["installer"], upstream.INSTALLERS, item.name)
-
 
 class Resolve(unittest.TestCase):
     def test_needs_come_first_in_catalog_order(self):
-        items = catalog.load()
-        names = [it.name for it in catalog.resolve(items, ["zsh"])]
-        self.assertEqual(names, ["homebrew", "zsh"])
-        names = [it.name for it in catalog.resolve(items, ["moonlight", "cursor"])]
-        self.assertEqual(names, ["cursor", "moonlight"])
+        items = {"base": Item("base", "config", "b"), "other": Item("other", "config", "o"),
+                 "app": Item("app", "config", "a", ("base",))}
+        names = [it.name for it in catalog.resolve(items, ["app"])]
+        self.assertEqual(names, ["base", "app"])
+        names = [it.name for it in catalog.resolve(catalog.load(), ["krdc", "cursor"])]
+        self.assertEqual(names, ["cursor", "krdc"])
 
     def test_unknown_and_cycle(self):
         items = catalog.load()
@@ -42,6 +37,18 @@ class Resolve(unittest.TestCase):
         with self.assertRaises(cmdline.Error) as cm:
             catalog.resolve(fake, ["a"])
         self.assertIn("cycle", str(cm.exception))
+
+
+class SimpleInstalls(unittest.TestCase):
+    def test_a_simple_install_is_not_an_item(self):
+        """What brew, mise, flatpak or uv installs, or an upstream's own
+        instructions do, is docs/simple-installs.md's, not the
+        catalog's."""
+        self.assertFalse({"homebrew", "zsh", "rust", "distrobox", "curiousj-tools", "stream-frame",
+                          "moonlight", "deskflow", "bsmanager", "full-keyboard", "nerd-fonts",
+                          "frametop"} & set(catalog.load()))
+        self.assertEqual({it.kind for it in catalog.load().values()},
+                         {"config", "system-service", "pacman-home"})
 
 
 class Needs(unittest.TestCase):
@@ -61,10 +68,10 @@ class Commands(unittest.TestCase):
         from curiousj_framekit.install import commands
         items = catalog.load()
         self.assertEqual(commands.split_words(items, ["tailscale", "waypipe"]), (["tailscale", "waypipe"], []))
-        self.assertEqual(commands.split_words(items, ["frametop", "--version", "0.2.3", "--yes"]),
-                         (["frametop"], ["--version", "0.2.3", "--yes"]))
+        self.assertEqual(commands.split_words(items, ["tailscale", "--trust", "x"]),
+                         (["tailscale"], ["--trust", "x"]))
         with self.assertRaises(cmdline.Error):
-            commands.split_words(items, ["frametop", "krdpserver", "--yes"])
+            commands.split_words(items, ["tailscale", "krdpserver", "--yes"])
         with self.assertRaises(cmdline.Error):
             commands.split_words(items, ["nothing"])
 

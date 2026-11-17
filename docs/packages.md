@@ -16,8 +16,9 @@ and a FreeRDP of its own, newer than the host's, and libvncclient for
 VNC, which the host lacks
 ([krdc-embed-cursor.md](krdc-embed-cursor.md)). `fuse2/` is libfuse 2,
 the `libfuse.so.2` that every AppImage's runtime loads to mount itself
-and that SteamOS 0.5.7 dropped from the image; `cjf install bsmanager`
-brings it, and runs the AppImage with its directory on
+and that SteamOS 0.5.7 dropped from the image; BSManager needs it
+([simple-installs.md](simple-installs.md#bsmanager)), and the `bsmanager`
+command runs the AppImage with its directory on
 `LD_LIBRARY_PATH` (the library's own directory, `~/.local/lib/fuse2`,
 so nothing else travels with it). The shell init puts the same
 directory on `LD_LIBRARY_PATH` in every host shell while the package

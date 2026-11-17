@@ -841,7 +841,7 @@ PREFIX_BLOCK = [
 
 def unlist_block(names: list[str]) -> list[str]:
     return [
-        "# homeify: these makedepends come from mise's shims (cjf install rust), not host",
+        "# homeify: these makedepends come from mise's shims (mise use -g rust), not host",
         "# packages, which is all makepkg checks; the build fails plainly without them.",
         f"for _d in {' '.join(names)}; do for _i in \"${{!makedepends[@]}}\"; do",
         '  [[ ${makedepends[_i]} == "$_d" ]] && unset \'makedepends[_i]\'; done; done; unset _d _i',

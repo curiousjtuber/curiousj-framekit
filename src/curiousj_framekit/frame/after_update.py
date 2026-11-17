@@ -16,9 +16,8 @@ the command that fixes it.
               a host library moved from under a build means a rebuild
   cursor      the environment.d file matches the choice in the config,
               and the size entry is where the software cursor is
-  frametop    which Frametop the Desktop launcher starts, the release
-              the catalog knows or a checkout, and whether the release is
-              current
+  frametop    which Frametop the Desktop launcher starts, a release
+              (and which) or a checkout
 
 Then docs/desktop-cursor.md says how to re-check the cursor fixes on a
 new SteamOS, which only a person with the headset on can do.
@@ -26,6 +25,7 @@ new SteamOS, which only a person with the headset on can do.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import time
 from pathlib import Path
@@ -159,7 +159,7 @@ def check_cursor() -> list[str]:
     return lines
 
 
-def check_frametop(items: dict, statuses: dict) -> list[str]:
+def check_frametop() -> list[str]:
     lines = []
     launcher = Path.home() / LAUNCHER
     exec_line = ""
@@ -172,17 +172,14 @@ def check_frametop(items: dict, statuses: dict) -> list[str]:
         lines.append(f"{'ok':<14} Frametop: no Desktop launcher (not installed)")
         return lines
     if str(releases) in exec_line:
-        lines.append(f"{'ok':<14} the Desktop launcher starts the Frametop release ({exec_line})")
+        try:
+            version = Path(os.readlink(releases / "current")).name
+        except OSError:
+            version = "?"
+        lines.append(f"{'ok':<14} the Desktop launcher starts the Frametop release, {version} ({exec_line})")
     else:
         lines.append(f"{'note':<14} the Desktop launcher starts {exec_line.split()[0]}, a checkout, not the "
                      "release; that checkout's install.sh switched it")
-    status = statuses.get("frametop")
-    if status is not None:
-        from ..install.catalog import State
-        if status.state == State.OUTDATED:
-            lines.append(f"{'check':<14} Frametop {status.detail}  ->  cjf install frametop")
-        elif status.state == State.OK:
-            lines.append(f"{'ok':<14} Frametop {status.detail} is the release the catalog knows")
     return lines
 
 
@@ -193,7 +190,6 @@ def after_update(opts: Options) -> int:
     where.require_host("after-update")
     from ..install import catalog
     items = catalog.load()
-    statuses = {n: catalog.status_of(items[n], opts) for n in ("frametop",) if n in items}
     info = where.os_release()
     recorded = read_record()
     print(steamos_line(info, recorded))
@@ -202,7 +198,7 @@ def after_update(opts: Options) -> int:
         print(line)
     for line in check_cursor():
         print(line)
-    for line in check_frametop(items, statuses):
+    for line in check_frametop():
         print(line)
     if recorded and any(recorded.get(k) != info.get(k) for k in RECORD_KEYS):
         print(f"{'note':<14} docs/desktop-cursor.md says how to re-check the cursor fixes on a new SteamOS")
