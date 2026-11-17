@@ -64,6 +64,34 @@ class InitSh(unittest.TestCase):
             for shell in shells:
                 self.assertEqual(self.fuse2_path(shell, home, "/opt/lib"), "/opt/lib")
 
+    def zsh_completion(self, home: Path, rc: str) -> str:
+        """What an interactive zsh has for cjf after an rc file of `rc`,
+        where INIT stands for sourcing init.sh, and its first prompt."""
+        share = home / ".local/share/curiousj-framekit"
+        share.mkdir(parents=True, exist_ok=True)
+        (share / "init.sh").write_text(init.init_sh_text())
+        (share / "completion.zsh").write_text("compdef _cjf_completion cjf\n")
+        (home / ".zshrc").write_text(rc.replace("INIT", f"source {share}/init.sh") + "\n")
+        env = {"HOME": str(home), "ZDOTDIR": str(home), "PATH": "/usr/bin:/bin", "TERM": "dumb"}
+        proc = subprocess.run(
+            ["zsh", "-i"], input='print -r -- "got=${_comps[cjf]-} hooks=${precmd_functions[*]}"\n',
+            capture_output=True, text=True, env=env)
+        return next((line for line in proc.stdout.splitlines() if line.startswith("got=")),
+                    proc.stdout + proc.stderr)
+
+    @unittest.skipUnless(shutil.which("zsh"), "no zsh here")
+    def test_zsh_completion_whenever_compinit_runs(self):
+        """init.sh is sourced from the top of ~/.zshrc, so compinit
+        usually runs after it."""
+        compinit = "autoload -Uz compinit && compinit -u -d $HOME/.zcompdump"
+        with tempfile.TemporaryDirectory() as tmp:
+            home = Path(tmp)
+            self.assertEqual(self.zsh_completion(home, f"INIT\n{compinit}"),
+                             "got=_cjf_completion hooks=")
+            self.assertEqual(self.zsh_completion(home, f"{compinit}\nINIT"),
+                             "got=_cjf_completion hooks=")
+            self.assertEqual(self.zsh_completion(home, "INIT"), "got= hooks=")
+
     def test_shim_parses(self):
         self.assertEqual(parses("sh", init.shim_text("podman")), "")
 
