@@ -64,6 +64,21 @@ class InitSh(unittest.TestCase):
             for shell in shells:
                 self.assertEqual(self.fuse2_path(shell, home, "/opt/lib"), "/opt/lib")
 
+    def test_an_appimages_argv0_goes(self):
+        """zsh would give it to every command as its argv[0]; one set
+        without an AppImage around is somebody's own, and stays."""
+        text = init.init_sh_text()
+        start = text.index("if [[ -n ${APPIMAGE:-}")
+        part = text[start:text.index("\nfi\n", start) + 4]
+        for shell in ["bash"] + (["zsh"] if shutil.which("zsh") else []):
+            for appimage, want in (("/x/wayvr.appimage", ""), ("", "/x/wayvr.appimage")):
+                env = {"PATH": "/usr/bin:/bin", "ARGV0": "/x/wayvr.appimage"}
+                if appimage:
+                    env["APPIMAGE"] = appimage
+                proc = subprocess.run([shell, "-c", part + 'printf %s "${ARGV0:-}"'],
+                                      capture_output=True, text=True, env=env)
+                self.assertEqual((proc.stderr, proc.stdout), ("", want), shell)
+
     def zsh_completion(self, home: Path, rc: str) -> str:
         """What an interactive zsh has for cjf after an rc file of `rc`,
         where INIT stands for sourcing init.sh, and its first prompt."""

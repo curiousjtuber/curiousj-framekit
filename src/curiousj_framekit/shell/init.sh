@@ -37,6 +37,18 @@ if [[ -n ${FRAMETOP_XDG_CONFIG_HOME:-} ]]; then
     }
 fi
 
+# --- A terminal started from an AppImage -------------------------------
+# An AppImage's runtime exports ARGV0, the name it was started by, and
+# everything started from the app inherits it: a terminal from WayVR,
+# say. zsh gives an exported ARGV0 to every command it runs as that
+# command's argv[0], and mise takes its name for a shim's: "mise ERROR
+# wayvr.appimage is not a valid shim". bash doesn't read it but hands
+# it on to a zsh started from it, so it goes in both, and ahead of
+# everything here that runs a command.
+if [[ -n ${APPIMAGE:-} && -n ${ARGV0:-} ]]; then
+    unset ARGV0
+fi
+
 # --- Homebrew ------------------------------------------------------------
 # On the host only: a distrobox doesn't see /home/linuxbrew. Ahead of the
 # PATH additions below, so that those come first.

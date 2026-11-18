@@ -2,7 +2,9 @@
 
 Since stage 3 of the reorganization this is `cjf init`'s: it writes
 `~/.local/share/curiousj-framekit/init.sh`, one file for bash and zsh
-whose parts each guard themselves (Frametop terminals, Homebrew, the
+whose parts each guard themselves (Frametop terminals, an AppImage's
+`ARGV0` taken out of a terminal started from one, such as WayVR's,
+where zsh would hand it to mise as its name, Homebrew, the
 shims and `~/.local/bin` on `PATH`, mise, the `waypipe` function, the
 `fuse2` package's directory on `LD_LIBRARY_PATH` when the image has no
 libfuse 2 of its own, the `tailscale` alias, and `cjf`'s completion
