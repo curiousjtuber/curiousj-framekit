@@ -86,8 +86,8 @@ commands and the upstream page they come from: rust (`mise use`),
 Homebrew, wl-clipboard and zsh (`brew install`), curiousj-tools (`uv
 tool install`), the Flatpaks Moonlight, Deskflow and Stream Frame
 (`flatpak install`), and distrobox, Nerd Fonts, BSManager, Full
-Keyboard and [Frametop](https://github.com/Frametop/frametop) by
-their own installers.
+Keyboard, [Frametop](https://github.com/Frametop/frametop) and WayVR
+by their own installers.
 
 ## Layout
 

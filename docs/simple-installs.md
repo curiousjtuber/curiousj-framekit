@@ -34,6 +34,7 @@ nothing.
 | [BSManager](#bsmanager) | the fork's `install.sh`, with `fuse2` first | [the fork's Steam Frame page](https://github.com/DaVarga/bs-manager/blob/HEAD/docs/steam-frame.md) | it updates itself | its `install.sh --uninstall` |
 | [Full Keyboard](#full-keyboard) | its installer AppImage | [Quick install](https://github.com/TaiKeid/steam-frame-full-keyboard#quick-install) | from its own Settings | its `uninstall.sh` |
 | [Frametop](#frametop) | its `get.sh --release` | [Install on the headset](https://github.com/Frametop/frametop#install-on-the-headset) | Update Frametop in its menu, or `get.sh` again | its `uninstall.sh` |
+| [WayVR](#wayvr) | its aarch64 AppImage through Gear Lever; `wayvrctl` built with cargo | [Installing on Steam Frame](https://github.com/wayvr-org/wayvr#installing-on-steam-frame) | a newer AppImage, then `wayvrctl` again | in Gear Lever; delete `~/.local/bin/wayvrctl` |
 
 ## rust
 
@@ -387,3 +388,97 @@ Trust: GitHub's TLS and the Frametop organization's account; nothing
 is signed. [TRUST.md](TRUST.md#frametop) has what was found when
 release 0.2.2 was checked end to end, and how much of the headset
 Frametop gets.
+
+## WayVR
+
+Instructions: <https://github.com/wayvr-org/wayvr#installing-on-steam-frame>
+
+[WayVR](https://github.com/wayvr-org/wayvr) puts apps around you as
+overlays, each window its own, from a Wayland compositor inside it.
+Never a catalog item. Upstream calls its Steam Frame support
+experimental. The aarch64 AppImage is a nightly: an artifact of the
+[Build AppImage](https://github.com/wayvr-org/wayvr/actions/workflows/build-appimage.yml)
+workflow's topmost green run, `WayVR-main-aarch64.AppImage.zip`, which
+GitHub hands out only to a logged-in account, so it is a browser
+download, not a curl line. Then
+[Gear Lever](https://flathub.org/apps/it.mijorus.gearlever) installs
+it:
+
+```bash
+flatpak --user install flathub it.mijorus.gearlever
+```
+
+```bash
+unzip WayVR-main-aarch64.AppImage.zip && flatpak run it.mijorus.gearlever --integrate WayVR-aarch64.AppImage
+```
+
+That leaves `~/AppImages/wayvr.appimage` and a menu entry,
+`~/.local/share/applications/wayvr.desktop`, which upstream's page
+says how to edit. Settings and the saved layout are in
+`~/.config/wayvr/conf.d`. Its AppImage runs without `fuse2`.
+
+### wayvrctl, and a window of a given size
+
+WayVR's launcher offers four pixel counts (480p to 1440p) in five
+shapes. `wayvrctl`, its command-line client, takes any size, but it
+is not in the AppImage and upstream's releases build it for x86_64
+only. So it is built on the Frame, with cargo ([rust](#rust)), about
+four minutes:
+
+```bash
+git clone https://github.com/wayvr-org/wayvr ~/src/wayvr
+```
+
+```bash
+cd ~/src/wayvr && cargo build --release -p wayvrctl && install -m755 target/release/wayvrctl ~/.local/bin/
+```
+
+Build it from the AppImage's own commit, since the two speak one
+protocol: WayVR's first log line names it ("Welcome to wayvr v.
+26.8.0-2df0c63"), and `git checkout` takes it. After a newer
+AppImage, `git pull` and the second line again.
+
+```bash
+wayvrctl process-launch --resolution 2560x1080 --pos floating --env QT_QPA_PLATFORM=wayland -- krdc rdp://HOST
+```
+
+Measured on 2026-11-17, commit 2df0c63, sizes read back through
+`wayvrctl`:
+
+- **Exact up to 2560x1440.** 1500x700 gave the app 1500x700;
+  3840x1080 gave 2560x1080. The cap is WayVR's one virtual output,
+  a constant (`WAYVR_SCREEN_RES` in `wayvr/src/backend/wayvr/mod.rs`).
+  For more, `cjf panel` ([panel.md](panel.md)).
+- **A saved size wins.** WayVR keeps each app's last window size in
+  `zz-saved-state.json5` (`WindowSize`, by app ID) and gives a new
+  window that, whatever `--resolution` says. An app that was never
+  resized there has none.
+- **A window that is up** takes a size too. The name is from
+  `wayvrctl window-list`, and this size is the overlay's, WayVR's
+  frame included: 10 wider and 58 taller than the app's.
+
+  ```bash
+  wayvrctl window-attrib "wayvr/app/15:org.kde.dolphin" set window_size 1510x758
+  ```
+
+- **It is a first size, not a screen.** The app may resize itself
+  within the output, unlike in a panel.
+- **`--env`** takes its variables separated by commas. `--name` did
+  not show in `process-list`, which had the command's name.
+
+To start WayVR from SSH or a service, not from its menu entry:
+
+```bash
+systemd-run --user --setenv=LD_LIBRARY_PATH=/opt/steamvr/bin/linuxarm64 ~/AppImages/wayvr.appimage
+```
+
+Without the variable it stops with "Will not use OpenVR: Context init
+failed": the `libopenvr_api.so` in the AppImage loads SteamVR's client
+from `/opt/steamvr/bin/linux64`, the x86-64 one. SteamVR's own arm64
+`libopenvr_api.so`, found first, loads the right one.
+
+Trust: a nightly of the `main` branch, unsigned and unpinned, from
+GitHub's Actions storage; GitHub's TLS and the wayvr-org account are
+the root. It runs unsandboxed and makes a uinput device, so it can
+type and click as you. `wayvrctl` is built from the same repository's
+source, with its crates from crates.io by `Cargo.lock`.
