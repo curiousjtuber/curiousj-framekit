@@ -51,10 +51,8 @@ program or library of the installed package can no longer load (`ldd`
 names a library the host lost: SteamOS 0.5.7 took libxml2's soname from
 under emacs), so `cjf update` rebuilds after a SteamOS update with no
 bump.
-`pc/pkgbuilds/frame-control-bin` is the other kind, an ordinary `/usr`
-package for an Arch PC, which nothing here builds or offers; the PC's
-`krdpserver-embed-cursor` is a `~/.local` build by script (see [the PC
-side](../pc/README.md)).
+The PC's `krdpserver-embed-cursor` is a `~/.local` build by script
+(see [the PC side](../pc/README.md)).
 
 Any package whose build takes a prefix can be set up the same way.
 `cjf pkg homeify NAME` fetches Arch's PKGBUILD for NAME, or the

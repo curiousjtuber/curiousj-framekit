@@ -1,11 +1,10 @@
 # The PC side
 
 What a PC does for a Steam Frame, as far as this kit is concerned: a
-build script, an Arch package, and the commands the kit's own docs
-assume on the PC. Nothing here runs on the Frame, and nothing in the
-kit's catalog looks under `pc/`. The PC runs Plasma 6 on Wayland; the
-script builds on any distribution, Frame Control's package is Arch's,
-and other distros get it by other means.
+build script and the commands the kit's own docs assume on the PC.
+Nothing here runs on the Frame, and nothing in the kit's catalog looks
+under `pc/`. The PC runs Plasma 6 on Wayland; the script builds on any
+distribution.
 
 If a PC command ever comes, it is a second package in this repository,
 `curiousj-framekit-pc`, installed with `uv tool install
@@ -103,23 +102,6 @@ distribution's `libKRdp.so.6`). An earlier form of this was an Arch
 package, `krdpserver-embed-cursor` beside `krdp`, pinned to krdp's
 version; if it is still installed, the user unit overrides its unit of
 the same name, and `sudo pacman -R krdpserver-embed-cursor` retires it.
-
-## `pkgbuilds/frame-control-bin`
-
-[Frame Control](https://github.com/saphid/frame-control), the PC-side
-app for the Frame, as an Arch package built from the `.deb` each
-release's workflow publishes, checked against the sha256 from its
-`SHA256SUMS`, so what pacman installs is byte for byte the tested
-release. Its own updater sees a package install and only announces a
-release; updating is bumping `pkgver` and the two sums, then:
-
-```bash
-cd pc/pkgbuilds/frame-control-bin && makepkg -si
-```
-
-The header explains the two changes to the `.deb`'s layout
-(`/opt/frame-control` without a space in the path, `chrome-sandbox`
-left 0755).
 
 ## Commands the Frame's docs assume on the PC
 
