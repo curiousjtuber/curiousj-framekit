@@ -50,6 +50,32 @@ class KrdcPkgbuild(unittest.TestCase):
         self.assertIn("ffmpeg", deps)
 
 
+
+class WayvrPackage(unittest.TestCase):
+    def test_item_and_pkgbuild(self):
+        """Both git sources are pinned by commit and the two patches by
+        their sums; cargo is not a makedepend, since the host has no
+        package for it."""
+        import hashlib
+        import re
+        from curiousj_framekit.frame import pkg
+        from curiousj_framekit.install import catalog
+        item = catalog.load()["wayvr"]
+        self.assertEqual(item.kind, "pacman-home")
+        directory = pkg.pkgbuilds_dir() / item["pkgbuild"]
+        name, ver, rel, deps = pkg.pkgbuild_info(directory)
+        self.assertEqual(name, "wayvr")
+        self.assertTrue(pkg.is_snapshot(ver), ver)
+        self.assertIn("xorg-xwayland", deps)
+        text = (directory / "PKGBUILD").read_text()
+        self.assertEqual(len(re.findall(r"#commit=\$_(?:satellite_)?commit$", text, re.M)), 2)
+        self.assertNotRegex(text, r"makedepends=\([^)]*\b(cargo|rust)\b")
+        patches = ["wvr-screen-res.patch", "wayvr-bundled-beside-exe.patch"]
+        self.assertEqual(sorted(p.name for p in directory.glob("*.patch")), sorted(patches))
+        sums = re.findall(r"'([0-9a-f]{128})'", text)
+        self.assertEqual(sums, [hashlib.blake2b((directory / p).read_bytes()).hexdigest() for p in patches])
+
+
 class KrdpserverPackage(unittest.TestCase):
     """The pacman-home server: its PKGBUILD reads, carries its patches,
     and asks for the KRdp Server menu entry."""

@@ -1,0 +1,89 @@
+WayVR's virtual output, the one screen its apps see, is 2560x1440, a
+constant (WAYVR_SCREEN_RES), and it caps every panel: a window can not
+be launched, resized or maximized past it, so `wayvrctl process-launch
+--resolution 3840x1080` gave 2560x1080. This adds a config key,
+wvr_screen_res: [w, h] (default the old size, clamped to 640x480 and
+8192 a side so that a typo can not ask for an impossible texture), read
+when the output is made, and a 2160p preset to the launcher, whose
+presets ended at 1440p. Set it in a file of its own under
+~/.config/wayvr/conf.d, e.g. { "wvr_screen_res": [6400, 2160] }.
+Made against wayvr main at cc8843a (2026-11-26). Ours, not upstream.
+
+diff --git a/dash-frontend/assets/gui/view/app_launcher.xml b/dash-frontend/assets/gui/view/app_launcher.xml
+index 831f9fc..a3e0f9a 100644
+--- a/dash-frontend/assets/gui/view/app_launcher.xml
++++ b/dash-frontend/assets/gui/view/app_launcher.xml
+@@ -27,6 +27,7 @@
+         <Separator />
+         <label translation="APP_LAUNCHER.RES_TITLE" />
+         <RadioGroup id="radio_res" flex_direction="row" gap="16">
++          <RadioBox text="2160p" value="Res2160" />
+           <RadioBox text="1440p" value="Res1440" />
+           <RadioBox text="1080p" value="Res1080"/>
+           <RadioBox text="720p" value="Res720" />
+diff --git a/dash-frontend/src/views/app_launcher.rs b/dash-frontend/src/views/app_launcher.rs
+index af1ccd1..6eaf8fa 100644
+--- a/dash-frontend/src/views/app_launcher.rs
++++ b/dash-frontend/src/views/app_launcher.rs
+@@ -462,6 +462,7 @@ impl View {
+ 
+ 	fn calculate_resolution(res_mode: AppResMode, orientation_mode: AppOrientationMode) -> [u32; 2] {
+ 		let total_pixels = match res_mode {
++			AppResMode::Res2160 => 3840 * 2160,
+ 			AppResMode::Res1440 => 2560 * 1440,
+ 			AppResMode::Res1080 => 1920 * 1080,
+ 			AppResMode::Res720 => 1280 * 720,
+diff --git a/wayvr/src/backend/wayvr/mod.rs b/wayvr/src/backend/wayvr/mod.rs
+index 0899fd5..7cdb7b5 100644
+--- a/wayvr/src/backend/wayvr/mod.rs
++++ b/wayvr/src/backend/wayvr/mod.rs
+@@ -277,7 +277,13 @@ impl WvrServerState {
+ 
+         let mode = Mode {
+             refresh: dummy_milli_hz,
+-            size: (WAYVR_SCREEN_RES[0], WAYVR_SCREEN_RES[1]).into(), //logical size in pixels
++            // logical size in pixels; from the config, within what a
++            // texture can reasonably be
++            size: (
++                i32::from(config.wvr_screen_res[0]).clamp(640, 8192),
++                i32::from(config.wvr_screen_res[1]).clamp(480, 8192),
++            )
++                .into(),
+         };
+ 
+         let _global = output.create_global::<Application>(&dh);
+diff --git a/wlx-common/src/config.rs b/wlx-common/src/config.rs
+index aea3b94..acead70 100644
+--- a/wlx-common/src/config.rs
++++ b/wlx-common/src/config.rs
+@@ -231,6 +231,7 @@ pub enum AppCompositorMode {
+ 
+ #[derive(Debug, Serialize, Deserialize, Clone, Copy, Eq, PartialEq, EnumString, VariantNames, AsRefStr)]
+ pub enum AppResMode {
++	Res2160,
+ 	Res1440,
+ 	Res1080,
+ 	Res720,
+@@ -319,6 +320,10 @@ const fn def_max_height() -> u16 {
+ 	1440
+ }
+ 
++const fn def_wvr_screen_res() -> [u16; 2] {
++	[2560, 1440]
++}
++
+ #[derive(Deserialize, Serialize)]
+ pub struct GeneralConfig {
+ 	#[serde(default = "def_theme_path")]
+@@ -450,6 +455,11 @@ pub struct GeneralConfig {
+ 	#[serde(default = "def_max_height")]
+ 	pub screen_max_height: u16,
+ 
++	/// Size of the virtual output that apps in WayVR panels see. A window
++	/// can not be launched, resized or maximized beyond it.
++	#[serde(default = "def_wvr_screen_res")]
++	pub wvr_screen_res: [u16; 2],
++
+ 	#[serde(default)]
+ 	pub screen_render_down: bool,
+ 

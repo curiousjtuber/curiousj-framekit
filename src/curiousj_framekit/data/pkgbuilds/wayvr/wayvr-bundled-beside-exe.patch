@@ -1,0 +1,38 @@
+WayVR starts xwayland-satellite, the X server its panels' X11 apps
+use, from the AppImage's own directory, and outside an AppImage by
+name alone, from PATH. SteamVR starts wayvr from the manifest wayvr
+registers, by the binary's path and with no directory of the package
+on PATH, so a wayvr installed in a prefix of its own found no
+xwayland-satellite and X11 apps had no server. This looks beside the
+executable first, where the package puts it. Made against wayvr main
+at cc8843a (2026-11-26). Ours, not upstream.
+
+diff --git a/wayvr/src/backend/wayvr/client.rs b/wayvr/src/backend/wayvr/client.rs
+index 392324d..a9dc62b 100644
+--- a/wayvr/src/backend/wayvr/client.rs
++++ b/wayvr/src/backend/wayvr/client.rs
+@@ -463,10 +463,20 @@ fn accumulate_discrete_scroll(acc: &mut f32, delta_v120: i32) -> i32 {
+     steps
+ }
+ 
+-/// Runs executable from APPDIR, falling back to PATH
++/// Runs executable from APPDIR, then from beside this executable,
++/// falling back to PATH
+ fn bundled_executable(name: impl AsRef<std::path::Path>) -> PathBuf {
+-    match std::env::var_os("APPDIR") {
+-        Some(appdir) => PathBuf::from(appdir).join("usr").join("bin").join(name),
+-        None => PathBuf::from(name.as_ref()),
++    if let Some(appdir) = std::env::var_os("APPDIR") {
++        return PathBuf::from(appdir).join("usr").join("bin").join(name);
+     }
++    // Outside an AppImage, a copy installed beside this executable:
++    // SteamVR starts wayvr by its path, with a PATH that has no such
++    // directory on it.
++    if let Ok(exe) = std::env::current_exe()
++        && let Some(beside) = exe.parent().map(|dir| dir.join(name.as_ref()))
++        && beside.is_file()
++    {
++        return beside;
++    }
++    PathBuf::from(name.as_ref())
+ }

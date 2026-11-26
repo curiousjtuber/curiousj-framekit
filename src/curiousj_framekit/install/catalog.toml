@@ -66,3 +66,11 @@ package = "gamescope-panel"
 pkgbuild = "gamescope-panel"
 trust_root = "the gamescope, wlroots, openvr and other git repositories on GitHub and freedesktop.org, your review of the PKGBUILD and the patch"
 trust_checks = "every git source pinned to a commit in the PKGBUILD, glm and stb to the revisions in gamescope's wrap files; the patch's BLAKE2 sum, by makepkg"
+
+[item.wayvr]
+kind = "pacman-home"
+description = "WayVR, apps as panels around you in SteamVR, built here for ~/.local with a virtual output of any size, and wayvrctl (about ten minutes; needs cargo)"
+package = "wayvr"
+pkgbuild = "wayvr"
+trust_root = "the wayvr and xwayland-satellite repositories on GitHub, crates.io and the git repositories WayVR's Cargo.lock names, your review of the PKGBUILD and the patches"
+trust_checks = "both git sources pinned to a commit in the PKGBUILD; every crate by the checksum or commit in the two Cargo.lock files, by cargo --locked; the patches' BLAKE2 sums, by makepkg"

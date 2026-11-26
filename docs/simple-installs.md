@@ -34,7 +34,7 @@ nothing.
 | [BSManager](#bsmanager) | the fork's `install.sh`, with `fuse2` first | [the fork's Steam Frame page](https://github.com/DaVarga/bs-manager/blob/HEAD/docs/steam-frame.md) | it updates itself | its `install.sh --uninstall` |
 | [Full Keyboard](#full-keyboard) | its installer AppImage | [Quick install](https://github.com/TaiKeid/steam-frame-full-keyboard#quick-install) | from its own Settings | its `uninstall.sh` |
 | [Frametop](#frametop) | its `get.sh --release` | [Install on the headset](https://github.com/Frametop/frametop#install-on-the-headset) | Update Frametop in its menu, or `get.sh` again | its `uninstall.sh` |
-| [WayVR](#wayvr) | its aarch64 AppImage through Gear Lever; `wayvrctl` built with cargo | [Installing on Steam Frame](https://github.com/wayvr-org/wayvr#installing-on-steam-frame) | a newer AppImage, then `wayvrctl` again | in Gear Lever; delete `~/.local/bin/wayvrctl` |
+| [WayVR](#wayvr) | its aarch64 AppImage through Gear Lever; `wayvrctl` built with cargo (or `cjf install wayvr`, the kit's build of both) | [Installing on Steam Frame](https://github.com/wayvr-org/wayvr#installing-on-steam-frame) | a newer AppImage, then `wayvrctl` again | in Gear Lever; delete `~/.local/bin/wayvrctl` |
 
 ## rust
 
@@ -395,8 +395,12 @@ Instructions: <https://github.com/wayvr-org/wayvr#installing-on-steam-frame>
 
 [WayVR](https://github.com/wayvr-org/wayvr) puts apps around you as
 overlays, each window its own, from a Wayland compositor inside it.
-Never a catalog item. Upstream calls its Steam Frame support
-experimental. The aarch64 AppImage is a nightly: an artifact of the
+Upstream calls its Steam Frame support experimental. What follows is
+upstream's own install, as it is. The catalog has a second way since
+2026-11-26, `cjf install wayvr`: the same source built on the Frame
+with two patches of the kit's, one lifting the 2560x1440 cap below,
+and `wayvrctl` with it ([patches.md](patches.md)). Use one or the
+other: each registers its own path with SteamVR when it runs. The aarch64 AppImage is a nightly: an artifact of the
 [Build AppImage](https://github.com/wayvr-org/wayvr/actions/workflows/build-appimage.yml)
 workflow's topmost green run, `WayVR-main-aarch64.AppImage.zip`, which
 GitHub hands out only to a logged-in account, so it is a browser
@@ -422,8 +426,8 @@ says how to edit. Settings and the saved layout are in
 WayVR's launcher offers four pixel counts (480p to 1440p) in five
 shapes. `wayvrctl`, its command-line client, takes any size, but it
 is not in the AppImage and upstream's releases build it for x86_64
-only. So it is built on the Frame, with cargo ([rust](#rust)), about
-four minutes:
+only. `cjf install wayvr` brings its own; beside the AppImage it is
+built on the Frame, with cargo ([rust](#rust)), about four minutes:
 
 ```bash
 git clone https://github.com/wayvr-org/wayvr ~/src/wayvr
@@ -448,7 +452,11 @@ Measured on 2026-11-17, commit 2df0c63, sizes read back through
 - **Exact up to 2560x1440.** 1500x700 gave the app 1500x700;
   3840x1080 gave 2560x1080. The cap is WayVR's one virtual output,
   a constant (`WAYVR_SCREEN_RES` in `wayvr/src/backend/wayvr/mod.rs`).
-  For more, `cjf panel` ([panel.md](panel.md)).
+  For more, `cjf panel` ([panel.md](panel.md)), or the kit's build:
+  with `cjf install wayvr`, `{ "wvr_screen_res": [6400, 2160] }` in a
+  file of its own under `~/.config/wayvr/conf.d` sets the output, up
+  to 8192 a side (the X server in it reported 6400x2160 on
+  2026-11-26).
 - **A saved size wins.** WayVR keeps each app's last window size in
   `zz-saved-state.json5` (`WindowSize`, by app ID) and gives a new
   window that, whatever `--resolution` says. An app that was never
