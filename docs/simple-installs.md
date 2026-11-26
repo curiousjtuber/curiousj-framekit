@@ -399,8 +399,10 @@ Upstream calls its Steam Frame support experimental. What follows is
 upstream's own install, as it is. The catalog has a second way since
 2026-11-26, `cjf install wayvr`: the same source built on the Frame
 with two patches of the kit's, one lifting the 2560x1440 cap below,
-and `wayvrctl` with it ([patches.md](patches.md)). Use one or the
-other: each registers its own path with SteamVR when it runs. The aarch64 AppImage is a nightly: an artifact of the
+and `wayvrctl` with it ([patches.md](patches.md)); it installs the
+`xwayland-satellite` item first, the X server for X11 apps in its
+panels. Use one or the other: each registers its own path with
+SteamVR when it runs. The aarch64 AppImage is a nightly: an artifact of the
 [Build AppImage](https://github.com/wayvr-org/wayvr/actions/workflows/build-appimage.yml)
 workflow's topmost green run, `WayVR-main-aarch64.AppImage.zip`, which
 GitHub hands out only to a logged-in account, so it is a browser

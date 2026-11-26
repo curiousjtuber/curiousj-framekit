@@ -1,0 +1,71 @@
+# xwayland-satellite (https://github.com/Supreeeme/xwayland-satellite),
+# built for ~/.local on the Steam Frame host: Xwayland for a Wayland
+# compositor that has none of its own, each X11 window shown as a
+# Wayland one. WayVR runs it for the X11 apps in its panels, which is
+# why the kit has it: the wayvr item needs this one.
+#
+# Arch Linux ARM packages the same release, and `pacman-home relocate`
+# refuses it, as it does any package with files under
+# /usr/lib/systemd: the package's user unit would do nothing from
+# ~/.local. So it is built here, from the release tag's commit, about
+# a minute. The unit isn't installed: WayVR starts the program itself.
+#
+# cargo is mise's or rustup's, not a host package, so makedepends can't
+# name it: cjf install puts mise's shims on PATH for the build, and
+# build() stops with a line saying so when there is none. cargo
+# downloads the crates Cargo.lock pins by checksum (--locked) into
+# ~/.cargo during prepare(); the build needs the network for that step
+# alone.
+#
+# The one program goes to ~/.local/bin. The package is for this one
+# user on this one device.
+#
+# Build and install (on the Frame):
+#   cjf install xwayland-satellite
+# or by hand, in this directory, with cargo on PATH:
+#   makepkg -f && pacman-home -U xwayland-satellite-*.pkg.tar.zst
+#
+# For a new release: set pkgver and _commit to the tag's commit.
+
+pkgname=xwayland-satellite
+pkgver=0.8.3
+pkgrel=1
+pkgdesc="Xwayland outside a Wayland compositor, built for ~/.local on the Steam Frame host"
+arch=('aarch64' 'x86_64')
+url='https://github.com/Supreeeme/xwayland-satellite'
+license=(MPL-2.0)
+depends=(libxcb xcb-util-cursor xorg-xwayland)
+makedepends=(clang git pkgconf)
+options=(!debug !lto)
+# The tag v0.8.3.
+_commit=b83eab900644e4c7c77982ce3d44cb490f0c5e1d
+source=(xwayland-satellite::git+https://github.com/Supreeeme/xwayland-satellite.git#commit=$_commit)
+# The git source is pinned by commit above, which is the check.
+b2sums=('SKIP')
+
+_prefix=$HOME/.local
+
+_need_cargo() {
+  command -v cargo >/dev/null && return
+  echo "no cargo on PATH: this package builds with Rust, which SteamOS doesn't ship; install it with mise (mise use -g rust) or rustup, then build again" >&2
+  return 1
+}
+
+prepare() {
+  _need_cargo
+  cd xwayland-satellite
+  cargo fetch --locked
+}
+
+build() {
+  _need_cargo
+  cd xwayland-satellite
+  cargo build --release --frozen
+}
+
+package() {
+  install -Dm755 xwayland-satellite/target/release/xwayland-satellite \
+    "$pkgdir$_prefix/bin/xwayland-satellite"
+  install -Dm644 xwayland-satellite/LICENSE \
+    "$pkgdir$_prefix/share/licenses/xwayland-satellite/LICENSE"
+}

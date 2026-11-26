@@ -53,9 +53,11 @@ class KrdcPkgbuild(unittest.TestCase):
 
 class WayvrPackage(unittest.TestCase):
     def test_item_and_pkgbuild(self):
-        """Both git sources are pinned by commit and the two patches by
+        """The git source is pinned by commit and the two patches by
         their sums; cargo is not a makedepend, since the host has no
-        package for it."""
+        package for it, and neither is xwayland-satellite a depend,
+        since makepkg would look for it on the host: the item needs
+        the kit's package of it."""
         import hashlib
         import re
         from curiousj_framekit.frame import pkg
@@ -66,9 +68,14 @@ class WayvrPackage(unittest.TestCase):
         name, ver, rel, deps = pkg.pkgbuild_info(directory)
         self.assertEqual(name, "wayvr")
         self.assertTrue(pkg.is_snapshot(ver), ver)
-        self.assertIn("xorg-xwayland", deps)
+        self.assertEqual(item.needs, ("xwayland-satellite",))
+        self.assertNotIn("xwayland-satellite", deps)
+        satellite = catalog.load()["xwayland-satellite"]
+        sat_name, sat_ver, _, sat_deps = pkg.pkgbuild_info(pkg.pkgbuilds_dir() / satellite["pkgbuild"])
+        self.assertEqual((sat_name, sat_ver), ("xwayland-satellite", "0.8.3"))
+        self.assertIn("xorg-xwayland", sat_deps)
         text = (directory / "PKGBUILD").read_text()
-        self.assertEqual(len(re.findall(r"#commit=\$_(?:satellite_)?commit$", text, re.M)), 2)
+        self.assertEqual(len(re.findall(r"#commit=\$_commit$", text, re.M)), 1)
         self.assertNotRegex(text, r"makedepends=\([^)]*\b(cargo|rust)\b")
         patches = ["wvr-screen-res.patch", "wayvr-bundled-beside-exe.patch"]
         self.assertEqual(sorted(p.name for p in directory.glob("*.patch")), sorted(patches))

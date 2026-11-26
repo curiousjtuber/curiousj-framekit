@@ -10,7 +10,13 @@
 # panel. wayvr-bundled-beside-exe.patch: outside an AppImage WayVR
 # finds xwayland-satellite on PATH alone, and SteamVR starts it by the
 # binary's path with no PATH of ours; the patch looks beside the
-# executable, where this package puts it.
+# executable, where this package puts a link to it.
+#
+# xwayland-satellite itself is the kit's package of that name, which
+# the catalog's wayvr item needs and installs first. It isn't in
+# depends: makepkg checks those against the host's packages, which
+# don't have it, and would refuse to build. Without it WayVR runs and
+# X11 apps in its panels don't.
 #
 # The package also holds wayvrctl, WayVR's command-line client, built
 # from the same commit: the two speak a protocol that changes with the
@@ -22,13 +28,11 @@
 # Frame is always on OpenVR, and without it the binary needs no OpenXR
 # loader, which SteamOS doesn't have. OpenVR's library is the host's,
 # /usr/lib/libopenvr_api.so, from SteamVR's own package.
-# xwayland-satellite is the release tag upstream's AppImage script
-# clones the head of.
 #
 # cargo is mise's or rustup's, not a host package, so makedepends can't
 # name it: cjf install puts mise's shims on PATH for the build, and
 # build() stops with a line saying so when there is none. cargo
-# downloads the crates the two Cargo.lock files pin by checksum
+# downloads the crates Cargo.lock pins by checksum
 # (--locked), and the git dependencies they pin by commit, into
 # ~/.cargo, during prepare(); the build needs the network for that
 # step alone.
@@ -55,7 +59,7 @@ pkgname=wayvr
 # As WayVR names itself in its log: Cargo.toml's version, the commit's
 # number on main and its id.
 pkgver=26.8.0.r193.gcc8843a
-pkgrel=1
+pkgrel=2
 pkgdesc="WayVR built for ~/.local on the Steam Frame host, with a virtual output of any size, and wayvrctl"
 arch=('aarch64' 'x86_64')
 url='https://github.com/wayvr-org/wayvr'
@@ -74,23 +78,17 @@ depends=(
   libxrandr
   systemd-libs
   vulkan-icd-loader
-  xcb-util-cursor
-  xorg-xwayland
 )
 makedepends=(clang cmake git pkgconf)
 options=(!debug !lto)
 _commit=cc8843a95a8aaf6adcd9db21b30aaf1438372ef0
-# xwayland-satellite v0.8.3.
-_satellite_commit=b83eab900644e4c7c77982ce3d44cb490f0c5e1d
 source=(
   wayvr::git+https://github.com/wayvr-org/wayvr.git#commit=$_commit
-  xwayland-satellite::git+https://github.com/Supreeeme/xwayland-satellite.git#commit=$_satellite_commit
   wvr-screen-res.patch
   wayvr-bundled-beside-exe.patch
 )
-# The git sources are pinned by commit above, which is the check.
+# The git source is pinned by commit above, which is the check.
 b2sums=('SKIP'
-        'SKIP'
         '5182543027716c6ddce913496897a389535fa74dff45fb7479ad35a139d664a34c4f74145f2bea7225f677c053f9492e4a182da8d11e60b1eb525c9508e537dc'
         '5eaf73bd53f7ad21bc12a5342e8c349a135857781e2f6b7fc2ba37b2c1d61964507b93c389e8375711dc1462101d6b96da76506885227cc6994707affaa5c67e')
 
@@ -111,8 +109,6 @@ prepare() {
   patch -p1 --forward < "$srcdir/wvr-screen-res.patch"
   patch -p1 --forward < "$srcdir/wayvr-bundled-beside-exe.patch"
   cargo fetch --locked
-  cd ../xwayland-satellite
-  cargo fetch --locked
 }
 
 build() {
@@ -121,19 +117,15 @@ build() {
   cargo build --release --frozen --no-default-features --features "$_features"
   cd ../wayvrctl
   cargo build --release --frozen
-  cd ../../xwayland-satellite
-  cargo build --release --frozen
 }
 
 package() {
   install -Dm755 wayvr/target/release/wayvr "$pkgdir$_home/bin/wayvr"
   install -Dm755 wayvr/target/release/wayvrctl "$pkgdir$_home/bin/wayvrctl"
-  # Beside wayvr, where the second patch has it look.
-  install -Dm755 xwayland-satellite/target/release/xwayland-satellite \
-    "$pkgdir$_home/bin/xwayland-satellite"
+  # Beside wayvr, where the second patch has it look: the
+  # xwayland-satellite package's program.
+  ln -s "$_prefix/bin/xwayland-satellite" "$pkgdir$_home/bin/xwayland-satellite"
   install -Dm644 wayvr/LICENSE "$pkgdir$_home/share/licenses/wayvr/LICENSE"
-  install -Dm644 xwayland-satellite/LICENSE \
-    "$pkgdir$_home/share/licenses/xwayland-satellite/LICENSE"
   install -Dm644 wayvr/dash-frontend/assets/dashboard/wayvr_dashboard.png \
     "$pkgdir$_home/share/icons/wayvr.png"
 
