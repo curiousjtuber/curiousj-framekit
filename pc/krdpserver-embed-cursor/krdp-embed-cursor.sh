@@ -103,10 +103,15 @@ verify=1
 cache=${XDG_CACHE_HOME:-$HOME/.cache}/$name
 unit_dir=${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user
 unit=$unit_dir/$name.service
-# Plasma release signers, as Arch's krdp PKGBUILD lists them.
+# Plasma release signers, as Arch's krdp PKGBUILD lists them, and
+# Bhushan Shah's key of 2026-11-05, which signed 6.8.3: taken from
+# KDE's release keyring (invent.kde.org/sysadmin/release-keyring,
+# keys/bshah@key2.asc, added 2026-11-09); his old key doesn't certify
+# it.
 release_keys=(
   E0A3EB202F8E57528E13E72FD7574483BB57B18D # Jonathan Esk-Riddell
   0AAC775BB6437A8D9AF7A3ACFE0784117FBCE11D # Bhushan Shah
+  58743C0A93487794BC44ECE873C3D7758E7A544A # Bhushan Shah, from 2026-11-05
   D07BD8662C56CB291B316EB2F5675605C74E02CF # David Edmundson
   1FA881591C26B276D7A5518EEAAF29B42A678C20 # Marco Martin
 )
