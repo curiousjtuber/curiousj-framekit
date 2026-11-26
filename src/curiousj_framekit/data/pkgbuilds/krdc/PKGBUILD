@@ -9,8 +9,10 @@
 # them: extra-cmake-modules, needed at configure time only, goes in a
 # staging directory and never in the package; qtkeychain, a library
 # KRDC links, is built from its repository at a pinned commit and
-# installed with the rest. ECM 6.20.0 is the last release that takes
-# the host's CMake 3.29 (6.24 wants 3.27, 6.31 3.30).
+# installed with the rest. ECM 6.23.0 is the Frameworks release the
+# SteamOS beta has (0.5.11: KF 6.23, CMake 4.2), and what the
+# krdpserver package stages; 6.20.0, until 2026-11-26, was the last to
+# take the CMake 3.29 of an earlier SteamOS.
 #
 # VNC needs libvncclient, which the host lacks as well: LibVNCServer's
 # client library, built here and installed beside FreeRDP's. Its build
@@ -79,7 +81,7 @@
 
 pkgname=krdc
 pkgver=26.08.3
-pkgrel=7
+pkgrel=8
 pkgdesc='KRDC, RDP and VNC, with the "Remote pointer" option, built for ~/.local on the Steam Frame host'
 arch=('aarch64' 'x86_64')
 url='https://apps.kde.org/krdc'
@@ -135,7 +137,7 @@ makedepends=(cmake gettext git ninja qt6-tools)
 options=(!debug !lto)
 _freerdp=3.33.1
 _libvncserver=0.9.15
-_ecm=6.20.0
+_ecm=6.23.0
 _qtkeychain=0.18.0
 # The commit tag 0.18.0 pointed at on 2026-11-26.
 _qtkeychain_commit=e86bc3cbb50b172be61ed857803a372412b6ad85
@@ -154,13 +156,13 @@ source=(
 # The tarballs as checked against their signatures: krdc's by Heiko
 # Becker's KDE Gear key and FreeRDP's by akallabeth's, its maintainer,
 # on 2026-11-11; extra-cmake-modules' by Nicolas Fella's KDE Frameworks
-# key, on 2026-11-03. LibVNCServer signs nothing: its sum is of GitHub's
+# key, on 2026-11-26. LibVNCServer signs nothing: its sum is of GitHub's
 # archive of the tag on 2026-11-12, whose files are those of the tag
 # (commit 9b54b1ec) that Arch's libvncserver package pins by checksum.
 b2sums=('5d340d03d4b99d00722ae7d60f51602ae825f5eec7fa1d64046190c72ed770e7c63b7c3b0a8068475207e99be6e70948700048f916de584f781a25b7b077b3c1'
         '8e167f1131315130ea718f98e5137318958c811e3f6f7825aaebd1c958e3fc4f93d163974e5739f12afaf05a85e99b4412d047120ca53a9ec2e13ee503e0719d'
         '4495c82f1e0e77bbb51a3dd35e4d723bf75020c1ebe1dc693842222a1606f3c800757a4a0a444d25621ad87eeb4cd4c12e1de25f44fe0b7635c31c59ffd4af9c'
-        '1e6cb0037a70bc3d40e29eff5b074808c317a113e0c634a6c196ce5a0558c5dcc0ef71f512ce469be3098cea596507795aeed63580c9488266224b7898845f48'
+        '21fe83d5c7ef94593ced840bffe870f783f051c91c5c082dfb9cbadf243db6f9087cfb9630e8e57d0a9ef3d9558580cead33a73ed4945177f8121317c6a96572'
         'SKIP'
         '23b284c3166eeb4328934e10a53ffa7d2013055454c758e2cba098b51bc83360572a72f18e957870c6eeeb4271db52cd705dd351d00fe666e24b8f5ce0a915a7'
         '0b015168caa68647dd422fbc6abca8d8bcaf738c5e4e08c456f5349f65b1f967f14f630e5b5b67f5f9c7d4fe67adaeb79eeef385dc795c33d792457e5cad7c32'
