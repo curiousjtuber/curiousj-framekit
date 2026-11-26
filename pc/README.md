@@ -52,7 +52,11 @@ the fix for a crash on a viewer without a pointer cache, and
 `krdp-embed-cursor.patch`, the feature, on top of it), builds, installs
 the binary and its
 private `libKRdp` under `~/.local`, writes the unit, and runs `start`.
-`--port N` picks another port, `--help` lists the rest. The build needs
+`--port N` picks another port, `--help` lists the rest. When a new
+Plasma's krdp rejects a patch or doesn't build, `install` falls back
+to the release pinned in the script (6.8.3, by its sha256), built
+against the new libraries, and `status` says so until the patches are
+refreshed. The build needs
 the distribution's development packages for Qt 6, KF6, FreeRDP 3,
 kpipewire, libei, xkbcommon, PAM and qtkeychain, plus
 extra-cmake-modules and plasma-wayland-protocols; when cmake can't

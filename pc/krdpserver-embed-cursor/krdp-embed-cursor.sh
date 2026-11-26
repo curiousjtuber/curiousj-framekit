@@ -50,6 +50,17 @@
 # the unit. The tarball's signature is checked against the Plasma
 # release keys below; a missing key is fetched by fingerprint.
 #
+# One release is pinned below, the one the patches were last made to
+# fit, with its tarball's sha256. When the host's release rejects a
+# patch or doesn't build, install builds the pinned one against the
+# host's libraries and says so, and status keeps saying it, so a
+# Plasma update costs the newer krdp, not the server; refresh the
+# patches, move the pin, and install --force. It can't help when the
+# pinned release no longer compiles against a newer kpipewire: then
+# what is installed stays. A patch the host's release already has is
+# skipped, which is how the fix ends once upstream ships it. --version
+# builds exactly that release, with no fallback.
+#
 # The firewall is handled apart from the unit: a PC that lets 3389 in
 # usually has a rule for it and none for 3390, and the server logs
 # nothing for a packet it never gets. start checks and opens the port
@@ -77,7 +88,8 @@
 #                 stop, close the port, then remove the unit, the
 #                 binary, the library and the build cache;
 #                 krdpserverrc keeps EmbedCursor
-#   --version V   the krdp release to build (default: the host's)
+#   --version V   the krdp release to build (default: the host's,
+#                 or the pinned one when that takes no patch)
 #   --embed-all   EmbedCursor=true: the pointer in the video for every
 #                 viewer, not only one that asks (asks: advertises no
 #                 pointer cache)
@@ -115,6 +127,14 @@ release_keys=(
   D07BD8662C56CB291B316EB2F5675605C74E02CF # David Edmundson
   1FA881591C26B276D7A5518EEAAF29B42A678C20 # Marco Martin
 )
+# The pin: the krdp release the two patches were last made to fit and
+# run on (2026-11-26), with its tarball's sha256, taken after the
+# signature check. install builds it when the host's release rejects a
+# patch or doesn't build, and the sum stands in for the signature, so a
+# new signing key can't keep a vetted release from building. Move both
+# when the patches are refreshed for a newer release.
+known_good=6.8.3
+known_good_sha256=8a80e5a5e0f3e7b665752a60264ac36367431d6d8865cd5797370010a819a40b
 
 say() { printf '%s: %s\n' "$name" "$*"; }
 die() { printf '%s: %s\n' "$name" "$*" >&2; exit 1; }
@@ -180,6 +200,12 @@ host_version() {
 
 installed_version() {
   [ -r "$libdir/version" ] && cat "$libdir/version"
+}
+
+# The Plasma release the pinned krdp was installed for in place of its
+# own, when install fell back to it.
+held_for() {
+  [ -r "$libdir/held-for" ] && cat "$libdir/held-for"
 }
 
 # --- firewall ---------------------------------------------------------
@@ -316,6 +342,8 @@ do_status() {
     host=$(host_version || echo "no Plasma found")
     if [ "$inst" = "$host" ]; then
       say "installed krdp $inst, matching Plasma $host"
+    elif [ "$inst" = "$known_good" ] && [ "$(held_for || true)" = "$host" ]; then
+      say "installed krdp $inst, the pinned release, on Plasma $host: the patches don't fit $host yet (install --force tries again)"
     else
       say "installed krdp $inst, Plasma is $host: run install to rebuild"
     fi
@@ -393,14 +421,116 @@ verify_tarball() {
   die "$(basename "$1") is signed by $fpr, not one of the Plasma release keys this script knows"
 }
 
+# The pinned release is checked by its sum; any other by its signature.
+check_tarball() {
+  local v=$1 tarball=$2 sum
+  if [ "$v" = "$known_good" ]; then
+    command -v sha256sum >/dev/null || die "sha256sum is needed to check the pinned tarball"
+    sum=$(sha256sum "$tarball" | awk '{print $1}')
+    [ "$sum" = "$known_good_sha256" ] \
+      || die "$(basename "$tarball") is not the tarball this script pins (sha256 $sum); remove it from $cache and install again"
+    say "checksum good: the pinned krdp $v"
+  elif [ "$verify" -eq 1 ]; then
+    verify_tarball "$tarball"
+  else
+    say "not checking the signature (--no-verify)"
+  fi
+}
+
+# Applies one patch to the source. A patch the release already has is
+# skipped, which is how the fix ends once upstream ships it; one that
+# fits neither way is rejected, and that returns 1.
+apply_patch() {
+  local src=$1 p=$2 v=$3
+  if patch -d "$src" -p1 --forward --dry-run < "$here/$p" >/dev/null 2>&1; then
+    say "applying $p"
+    patch -d "$src" -p1 --forward < "$here/$p" || return 1
+  elif patch -d "$src" -p1 --reverse --dry-run < "$here/$p" >/dev/null 2>&1; then
+    say "krdp $v already has $p: skipped, and the patch can leave this script"
+  else
+    say "$p no longer applies to krdp $v: upstream moved the code, the patch needs refreshing"
+    return 1
+  fi
+}
+
+# Fetches, checks, patches and builds one release into the staging
+# directory. Returns 1 when a patch is rejected or the build fails,
+# which is what the pin is for; a failed download or check ends the
+# script, since another release is no answer to those.
+build_release() {
+  local v=$1 tarball url f p gen
+  mkdir -p "$cache"
+  tarball=$cache/krdp-$v.tar.xz
+  url=https://download.kde.org/stable/plasma/$v/krdp-$v.tar.xz
+  for f in "$tarball" "$tarball.sig"; do
+    [ -s "$f" ] && continue
+    # The pinned release needs no signature file.
+    [ "$f" = "$tarball.sig" ] && { [ "$v" = "$known_good" ] || [ "$verify" -eq 0 ]; } && continue
+    say "downloading $(basename "$f")"
+    curl -fsSL --retry 3 -o "$f.part" "$url${f##"$tarball"}" || die "download failed: $url${f##"$tarball"}"
+    mv -f "$f.part" "$f"
+  done
+  check_tarball "$v" "$tarball"
+
+  rm -rf "${cache:?}/src" "${cache:?}/build" "${cache:?}/stage"
+  mkdir -p "$cache/src"
+  tar -xJf "$tarball" -C "$cache/src" --strip-components=1 || die "could not unpack $tarball"
+  # The fix first: the feature is made against the source with it.
+  for p in krdp-pointer-cache-check.patch krdp-embed-cursor.patch; do
+    apply_patch "$cache/src" "$p" "$v" || return 1
+  done
+
+  gen=()
+  command -v ninja >/dev/null && gen=(-G Ninja)
+  say "configuring krdp $v"
+  if ! cmake -S "$cache/src" -B "$cache/build" "${gen[@]}" \
+      -DCMAKE_BUILD_TYPE=Release \
+      -DCMAKE_INSTALL_PREFIX="$prefix" \
+      -DKDE_INSTALL_LIBDIR="lib/$name" \
+      -DBUILD_TESTING=OFF \
+      -DBUILD_EXAMPLES=OFF; then
+    dependency_hint
+    say "cmake could not configure krdp $v; see above for what is missing"
+    return 1
+  fi
+  say "building (this takes a few minutes)"
+  cmake --build "$cache/build" --parallel "$(nproc)" \
+    || { say "krdp $v did not build"; return 1; }
+  DESTDIR=$cache/stage cmake --install "$cache/build" >/dev/null \
+    || { say "krdp $v did not install into the staging directory"; return 1; }
+}
+
+# Installs what build_release staged. With a second argument, the
+# Plasma release the pinned krdp stands in for, which status reads.
+install_built() {
+  local v=$1 held=${2:-} staged
+  # New files beside the old, then renamed over them, so a running
+  # server keeps the inodes it has mapped until it is restarted.
+  staged=$cache/stage$prefix
+  mkdir -p "$bindir" "$prefix/lib"
+  rm -rf "${libdir:?}.new"
+  mkdir -p "$libdir.new"
+  # the versioned library and its SONAME link, not the libKRdp.so link
+  # for linking against
+  cp -P "$staged/lib/$name"/libKRdp.so.6* "$libdir.new/"
+  echo "$v" > "$libdir.new/version"
+  [ -z "$held" ] || echo "$held" > "$libdir.new/held-for"
+  rm -rf "${libdir:?}"
+  mv "$libdir.new" "$libdir"
+  install -m755 "$staged/bin/krdpserver" "$bindir/$name.new"
+  mv -f "$bindir/$name.new" "$bindir/$name"
+  say "installed $bindir/$name and $libdir"
+}
+
 do_install() {
-  local installed tarball url staged gen p
+  local installed explicit
   for tool in cmake curl tar patch; do
     command -v "$tool" >/dev/null || die "$tool is needed; install it first"
   done
   if [ "$verify" -eq 1 ]; then
     command -v gpg >/dev/null || die "gpg is needed to check the tarball's signature (or pass --no-verify)"
   fi
+  explicit=$version
   [ -n "$version" ] || version=$(host_version) \
     || die "no krdpserver or plasmashell to read the Plasma version from; pass --version"
   case $version in
@@ -411,62 +541,24 @@ do_install() {
   installed=$(installed_version || true)
   if [ "$installed" = "$version" ] && [ -x "$bindir/$name" ] && [ "$force" -eq 0 ]; then
     say "$version is already built and installed (--force rebuilds)"
+  elif [ -z "$explicit" ] && [ "$installed" = "$known_good" ] && [ -x "$bindir/$name" ] \
+      && [ "$(held_for || true)" = "$version" ] && [ "$force" -eq 0 ]; then
+    say "the pinned krdp $known_good is installed for Plasma $version, which the patches don't fit yet; refresh them, then install --force"
   else
     if [ -n "$installed" ]; then
       say "installed $installed, Plasma is $version: rebuilding"
     fi
-    mkdir -p "$cache"
-    tarball=$cache/krdp-$version.tar.xz
-    url=https://download.kde.org/stable/plasma/$version/krdp-$version.tar.xz
-    for f in "$tarball" "$tarball.sig"; do
-      [ -s "$f" ] && continue
-      say "downloading $(basename "$f")"
-      curl -fsSL --retry 3 -o "$f.part" "$url${f##"$tarball"}" || die "download failed: $url${f##"$tarball"}"
-      mv -f "$f.part" "$f"
-    done
-    if [ "$verify" -eq 1 ]; then verify_tarball "$tarball"; else say "not checking the signature (--no-verify)"; fi
-
-    rm -rf "${cache:?}/src" "${cache:?}/build" "${cache:?}/stage"
-    mkdir -p "$cache/src"
-    tar -xJf "$tarball" -C "$cache/src" --strip-components=1
-    # The fix first: the feature is made against the source with it.
-    for p in krdp-pointer-cache-check.patch krdp-embed-cursor.patch; do
-      say "applying $p"
-      patch -d "$cache/src" -p1 --forward < "$here/$p" \
-        || die "$p no longer applies to krdp $version: upstream moved the code, the patch needs refreshing"
-    done
-
-    gen=()
-    command -v ninja >/dev/null && gen=(-G Ninja)
-    say "configuring krdp $version"
-    if ! cmake -S "$cache/src" -B "$cache/build" "${gen[@]}" \
-        -DCMAKE_BUILD_TYPE=Release \
-        -DCMAKE_INSTALL_PREFIX="$prefix" \
-        -DKDE_INSTALL_LIBDIR="lib/$name" \
-        -DBUILD_TESTING=OFF \
-        -DBUILD_EXAMPLES=OFF; then
-      dependency_hint
-      die "cmake could not configure krdp; see above for what is missing"
+    if build_release "$version"; then
+      install_built "$version"
+    elif [ -n "$explicit" ] || [ "$version" = "$known_good" ]; then
+      die "krdp $version was not built; what is installed stays as it was"
+    else
+      say "falling back to the pinned krdp $known_good, the release the patches were made for, built against Plasma $version's libraries"
+      build_release "$known_good" \
+        || die "the pinned krdp $known_good does not build against Plasma $version either; what is installed stays as it was"
+      install_built "$known_good" "$version"
+      say "the patches need refreshing for krdp $version; until then this server is krdp $known_good"
     fi
-    say "building (this takes a few minutes)"
-    cmake --build "$cache/build" --parallel "$(nproc)"
-    DESTDIR=$cache/stage cmake --install "$cache/build" >/dev/null
-
-    # New files beside the old, then renamed over them, so a running
-    # server keeps the inodes it has mapped until it is restarted.
-    staged=$cache/stage$prefix
-    mkdir -p "$bindir" "$prefix/lib"
-    rm -rf "${libdir:?}.new"
-    mkdir -p "$libdir.new"
-    # the versioned library and its SONAME link, not the libKRdp.so link
-    # for linking against
-    cp -P "$staged/lib/$name"/libKRdp.so.6* "$libdir.new/"
-    echo "$version" > "$libdir.new/version"
-    rm -rf "${libdir:?}"
-    mv "$libdir.new" "$libdir"
-    install -m755 "$staged/bin/krdpserver" "$bindir/$name.new"
-    mv -f "$bindir/$name.new" "$bindir/$name"
-    say "installed $bindir/$name and $libdir"
   fi
 
   mkdir -p "$unit_dir"
