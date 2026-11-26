@@ -398,7 +398,7 @@ overlays, each window its own, from a Wayland compositor inside it.
 Upstream calls its Steam Frame support experimental. What follows is
 upstream's own install, as it is. The catalog has a second way since
 2026-11-26, `cjf install wayvr`: the same source built on the Frame
-with two patches of the kit's, one lifting the 2560x1440 cap below,
+with three patches of the kit's, one lifting the 2560x1440 cap below,
 and `wayvrctl` with it ([patches.md](patches.md)); it installs the
 `xwayland-satellite` item first, the X server for X11 apps in its
 panels. Use one or the other: each registers its own path with

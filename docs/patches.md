@@ -96,8 +96,9 @@ These two stay for as long as the package does.
 |---|---|---|---|
 | `pkgbuilds/wayvr/wvr-screen-res.patch` | `wayvr` package, main at `cc8843a` | ours, not upstream | not sent. Upstream asks that bug reports not be written with AI, so sending it is the user's to do |
 | `pkgbuilds/wayvr/wayvr-bundled-beside-exe.patch` | `wayvr` package | ours, not upstream | not sent, as above |
+| `pkgbuilds/wayvr/wayvr-anchor-before-spawn.patch` | `wayvr` package | ours, not upstream | not sent, as above; a bug fix, so the first worth reporting |
 
-The package pins a commit of `main`, which moves daily; both patches
+The package pins a commit of `main`, which moves daily; the patches
 are small and are refreshed at each bump. A third change the kit once
 carried in a hand build, for a panic opening Settings on OpenVR,
 upstream fixed itself (`3e7b27f`, `75f8d4e`, 2026-11-19 and -20).

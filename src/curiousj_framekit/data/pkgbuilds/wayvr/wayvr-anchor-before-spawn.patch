@@ -1,0 +1,122 @@
+An overlay shown before WayVR's own overlays were ever shown opened
+on the floor, its lower half under it. WayVR positions floating and
+anchored overlays against an anchor, which starts at the stage
+origin and which only the show/hide action moved in front of the
+user. WayVR starts with its set hidden, so whatever came first
+without a show/hide was placed against the origin: an app launched
+from the dashboard or with wayvrctl, a set shown from the watch's
+buttons, and the dashboard itself when toggled on (which the
+first-run tutorial hides, by placing the dashboard its own way until
+the tutorial is finished).
+Measured on the Frame on 2026-11-26 (main at cc8843a, headset at
+1.65 m): anchor (0, 0, 0), new window at (0, 0, -0.95). With this
+patch the anchor is put in front of the headset first: the dashboard
+opens at 1.37 m, a metre ahead, and an app window at 1.15 m, where
+they open after a show/hide. The anchor is placed once, for an app or
+screen window, a toggled or reset overlay, the dashboard, or a set
+being shown, and only from a pose that has arrived: a toast at
+startup runs the same code before the first pose and must not count.
+Ours, not upstream.
+
+diff --git a/wayvr/src/windowing/manager.rs b/wayvr/src/windowing/manager.rs
+index 92d66b7..bcad564 100644
+--- a/wayvr/src/windowing/manager.rs
++++ b/wayvr/src/windowing/manager.rs
+@@ -82,6 +82,9 @@ pub struct OverlayWindowManager<T> {
+     dropped_overlays: VecDeque<OverlayWindowData<T>>,
+     initialized: bool,
+     autostart_launched: bool,
++    /// Whether the anchor has been put in front of the user yet. Until
++    /// then it sits at the stage origin, on the floor.
++    anchor_placed: bool,
+ }
+ 
+ impl<T> OverlayWindowManager<T>
+@@ -103,6 +106,7 @@ where
+             dropped_overlays: VecDeque::with_capacity(8),
+             initialized: false,
+             autostart_launched: false,
++            anchor_placed: false,
+         };
+ 
+         if headless {
+@@ -233,6 +237,7 @@ where
+                 self.switch_to_set(app, maybe_set, false);
+             }
+             OverlayTask::ResetOverlay(sel) => {
++                self.ensure_anchor(app);
+                 if let Some(o) = self.mut_by_selector(&sel) {
+                     let was_active = o.config.is_active();
+                     o.config.activate(app, true);
+@@ -259,6 +264,7 @@ where
+                     return Ok(());
+                 };
+ 
++                self.ensure_anchor(app);
+                 let o = &mut self.overlays[id];
+ 
+                 match mode {
+@@ -296,6 +302,8 @@ where
+                 self.set_edit_mode(!self.edit_mode, app)?;
+             }
+             OverlayTask::ToggleDashboard => {
++                // The dashboard floats against the anchor too.
++                self.ensure_anchor(app);
+                 if let Some(overlay) =
+                     self.mut_by_selector(&OverlaySelector::Name(DASH_NAME.into()))
+                 {
+@@ -1469,6 +1477,12 @@ impl<T> OverlayWindowManager<T> {
+             .unwrap(); // IdAssigned not expected to fail
+ 
+         if !shown && show_on_spawn {
++            // An app launched before the overlays were ever shown: the
++            // anchor is still at the stage origin, and the window would
++            // open on the floor, its lower half under it.
++            if !internal {
++                self.ensure_anchor(app);
++            }
+             log::debug!("activating {name} due to show_on_spawn");
+             self.overlays[oid]
+                 .config
+@@ -1615,6 +1629,11 @@ impl<T> OverlayWindowManager<T> {
+             return;
+         }
+ 
++        // A set shown some other way than show_hide, before show_hide ever ran.
++        if new_set.is_some() && !keep_transforms {
++            self.ensure_anchor(app);
++        }
++
+         self.save_active_states();
+ 
+         if let Some(new_set) = new_set {
+@@ -1670,10 +1689,27 @@ impl<T> OverlayWindowManager<T> {
+         }
+     }
+ 
++    /// Puts the anchor, which floating and anchored overlays are
++    /// positioned against, in front of the user.
++    fn place_anchor(&mut self, app: &mut AppState) {
++        let hmd = snap_upright(app.input_state.hmd, Vec3A::Y);
++        app.anchor = hmd * self.anchor_local;
++        // Before the first pose arrives the HMD reads as the origin
++        // too; that is not a placement, so the next caller tries again.
++        self.anchor_placed = app.input_state.hmd != Affine3A::IDENTITY;
++    }
++
++    /// Places the anchor if nothing has yet: for whatever is about to
++    /// be shown against it.
++    fn ensure_anchor(&mut self, app: &mut AppState) {
++        if self.initialized && !self.anchor_placed {
++            self.place_anchor(app);
++        }
++    }
++
+     pub fn show_hide(&mut self, app: &mut AppState) {
+         if self.current_set.is_none() {
+-            let hmd = snap_upright(app.input_state.hmd, Vec3A::Y);
+-            app.anchor = hmd * self.anchor_local;
++            self.place_anchor(app);
+ 
+             self.switch_to_set(app, Some(self.restore_set), false);
+         } else {

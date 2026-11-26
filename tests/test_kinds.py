@@ -53,7 +53,7 @@ class KrdcPkgbuild(unittest.TestCase):
 
 class WayvrPackage(unittest.TestCase):
     def test_item_and_pkgbuild(self):
-        """The git source is pinned by commit and the two patches by
+        """The git source is pinned by commit and the three patches by
         their sums; cargo is not a makedepend, since the host has no
         package for it, and neither is xwayland-satellite a depend,
         since makepkg would look for it on the host: the item needs
@@ -77,7 +77,7 @@ class WayvrPackage(unittest.TestCase):
         text = (directory / "PKGBUILD").read_text()
         self.assertEqual(len(re.findall(r"#commit=\$_commit$", text, re.M)), 1)
         self.assertNotRegex(text, r"makedepends=\([^)]*\b(cargo|rust)\b")
-        patches = ["wvr-screen-res.patch", "wayvr-bundled-beside-exe.patch"]
+        patches = ["wvr-screen-res.patch", "wayvr-bundled-beside-exe.patch", "wayvr-anchor-before-spawn.patch"]
         self.assertEqual(sorted(p.name for p in directory.glob("*.patch")), sorted(patches))
         sums = re.findall(r"'([0-9a-f]{128})'", text)
         self.assertEqual(sums, [hashlib.blake2b((directory / p).read_bytes()).hexdigest() for p in patches])

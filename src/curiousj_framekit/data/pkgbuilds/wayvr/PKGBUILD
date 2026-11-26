@@ -11,6 +11,9 @@
 # finds xwayland-satellite on PATH alone, and SteamVR starts it by the
 # binary's path with no PATH of ours; the patch looks beside the
 # executable, where this package puts a link to it.
+# wayvr-anchor-before-spawn.patch: an app or the dashboard opened before
+# the overlays were ever shown landed on the floor, half under it; the
+# patch puts WayVR's anchor in front of the headset first.
 #
 # xwayland-satellite itself is the kit's package of that name, which
 # the catalog's wayvr item needs and installs first. It isn't in
@@ -50,7 +53,7 @@
 #   makepkg -f && pacman-home -U wayvr-*.pkg.tar.zst
 #
 # For a newer WayVR: set _commit and pkgver (git rev-list --count
-# gives the r), make sure the two patches still apply
+# gives the r), make sure the three patches still apply
 # (docs/patches.md says where each stands), and build. A change to a
 # patch needs its b2sum here and a pkgrel bump, which is what tells
 # pacman-home the install is outdated.
@@ -59,7 +62,7 @@ pkgname=wayvr
 # As WayVR names itself in its log: Cargo.toml's version, the commit's
 # number on main and its id.
 pkgver=26.8.0.r193.gcc8843a
-pkgrel=2
+pkgrel=4
 pkgdesc="WayVR built for ~/.local on the Steam Frame host, with a virtual output of any size, and wayvrctl"
 arch=('aarch64' 'x86_64')
 url='https://github.com/wayvr-org/wayvr'
@@ -86,11 +89,13 @@ source=(
   wayvr::git+https://github.com/wayvr-org/wayvr.git#commit=$_commit
   wvr-screen-res.patch
   wayvr-bundled-beside-exe.patch
+  wayvr-anchor-before-spawn.patch
 )
 # The git source is pinned by commit above, which is the check.
 b2sums=('SKIP'
         '5182543027716c6ddce913496897a389535fa74dff45fb7479ad35a139d664a34c4f74145f2bea7225f677c053f9492e4a182da8d11e60b1eb525c9508e537dc'
-        '5eaf73bd53f7ad21bc12a5342e8c349a135857781e2f6b7fc2ba37b2c1d61964507b93c389e8375711dc1462101d6b96da76506885227cc6994707affaa5c67e')
+        '5eaf73bd53f7ad21bc12a5342e8c349a135857781e2f6b7fc2ba37b2c1d61964507b93c389e8375711dc1462101d6b96da76506885227cc6994707affaa5c67e'
+        '4c9ac6bf65df81221c346242b1ccaa63eb9451c1154a84ce6a06a13e863b6c6335603a3eec8ae8189a40ea0b84fa0346faee74da88edde709ed7e52152a18165')
 
 _prefix=$HOME/.local
 _home=$_prefix/lib/wayvr
@@ -108,6 +113,7 @@ prepare() {
   cd wayvr
   patch -p1 --forward < "$srcdir/wvr-screen-res.patch"
   patch -p1 --forward < "$srcdir/wayvr-bundled-beside-exe.patch"
+  patch -p1 --forward < "$srcdir/wayvr-anchor-before-spawn.patch"
   cargo fetch --locked
 }
 
