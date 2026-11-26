@@ -6,18 +6,19 @@
 # backend makes a flat black texture the size of its output when it
 # starts, through an upload buffer of exactly 1920x1080x4 bytes, so
 # `gamescope --backend openvr -W 3840 -H 1080` aborts before it shows
-# anything (seen on SteamOS 0.5.8, gamescope 3.16.30, 2026-11-07;
-# Frametop hit the same wall and wrote its own compositor instead).
-# flat-texture-clear.patch clears the texture on the GPU, which needs
-# no buffer; nothing else gamescope does sizes an upload by the output.
-# Frames themselves reach SteamVR as Vulkan textures, with no limit.
+# anything (seen on SteamOS 0.5.8, gamescope 3.16.30, 2026-11-07, and
+# 0.5.11 beta still ships 3.16.30; Frametop hit the same wall and
+# wrote its own compositor instead). gamescope 3.17.0 clears the
+# texture on the GPU, which needs no buffer: the kit's patch for
+# 3.16.30, upstream as 2fbaae9b. So this is 3.17.0 as it is, one
+# release ahead of the host's, until SteamOS ships it and the package
+# can go.
 #
-# The same release as the host's package (3.16.30, whose options match
-# the host binary's), from the tag's commit, with its seven submodules
-# pinned to the commits the tag records and glm and stb fetched by
-# meson from the wrap files' revisions. Everything else is the host's:
-# Xwayland, libdrm, PipeWire, libinput, Vulkan, the X and Wayland
-# libraries. The host's Vulkan layer serves this gamescope too, so the
+# From the tag's commit, with its seven submodules pinned to the
+# commits the tag records and glm and stb fetched by meson from the
+# wrap files' revisions. Everything else is the host's: Xwayland,
+# libdrm, PipeWire, libinput, Vulkan, the X and Wayland libraries. The
+# host's Vulkan layer, 3.16.30's, serves this gamescope too, so the
 # layer isn't built; nor are the tests and the benchmark.
 #
 # Everything goes under ~/.local/lib/gamescope-panel. The binary stays
@@ -32,13 +33,10 @@
 #
 # For a new gamescope release: set _commit to the tag's commit and the
 # seven submodule commits to what `git ls-tree TAG subprojects/
-# src/reshade thirdparty/SPIRV-Headers` lists, check that the patch
-# still applies, and bump pkgver. A change to the patch needs its b2sum
-# here and a pkgrel bump, which is what tells pacman-home the install
-# is outdated.
+# src/reshade thirdparty/SPIRV-Headers` lists, and bump pkgver.
 
 pkgname=gamescope-panel
-pkgver=3.16.30
+pkgver=3.17.0
 pkgrel=1
 pkgdesc="gamescope built for ~/.local on the Steam Frame host, its VR backend starting at any size, for cjf panel"
 arch=('aarch64' 'x86_64')
@@ -80,8 +78,8 @@ depends=(
 )
 makedepends=(cmake git glslang meson ninja vulkan-headers wayland-protocols)
 options=(!debug !lto)
-# The tag 3.16.30, and the submodule commits it records.
-_commit=ad2763da1c48860f649abfe842a087188dcb6e20
+# The tag 3.17.0, and the submodule commits it records.
+_commit=e6674a98118ca7b098b98a3874b8f195ae1bf750
 source=(
   gamescope::git+https://github.com/ValveSoftware/gamescope.git#commit=$_commit
   libdisplay-info::git+https://gitlab.freedesktop.org/emersion/libdisplay-info.git#commit=c67a3e9bedb05ab61c7443704a1a107e76254595
@@ -89,9 +87,8 @@ source=(
   openvr::git+https://github.com/ValveSoftware/openvr.git#commit=ff87f683f41fe26cc9353dd9d9d7028357fd8e1a
   reshade::git+https://github.com/Joshua-Ashton/reshade.git#commit=696b14cd6006ae9ca174e6164450619ace043283
   SPIRV-Headers::git+https://github.com/KhronosGroup/SPIRV-Headers.git#commit=d790ced752b5bfc06b6988baadef6eb2d16bdf96
-  vkroots::git+https://github.com/Joshua-Ashton/vkroots.git#commit=5106d8a0df95de66cc58dc1ea37e69c99afc9540
+  vkroots::git+https://github.com/Joshua-Ashton/vkroots.git#commit=20733b938267dcac60f6ac105dbb757f9cc8df9c
   wlroots::git+https://gitlab.freedesktop.org/wlroots/wlroots.git#commit=d783533489e1f75d6886c2ab5c5960090ef268f8
-  flat-texture-clear.patch
 )
 # The git sources are pinned by commit above, which is the check.
 b2sums=('SKIP'
@@ -101,8 +98,7 @@ b2sums=('SKIP'
         'SKIP'
         'SKIP'
         'SKIP'
-        'SKIP'
-        '1694e7895c48bbfbcc9a3ea071964f3c5aeb72d5ab4b55f0d2e5035387c483fa24aebfd543b319f3d5c70387d900f452a55f1ecf99fdd88dc06ec94d5debbc04')
+        'SKIP')
 
 _prefix=$HOME/.local
 _home=$_prefix/lib/gamescope-panel
@@ -117,7 +113,6 @@ prepare() {
   git -c protocol.file.allow=always submodule update
   # glm and stb, at the revisions subprojects/*.wrap pin.
   meson subprojects download
-  patch -p1 --forward < "$srcdir/flat-texture-clear.patch"
 }
 
 build() {

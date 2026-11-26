@@ -25,7 +25,7 @@ inside, at the size asked for. Frametop's first version did exactly
 that (its gamescope backend, still in its session script) and found
 the one thing in the way.
 
-## The one thing in the way, and the patch
+## The one thing in the way, and the fix
 
 Checked on 2026-11-07 (SteamOS 0.5.8, gamescope 3.16.30), with a second
 gamescope started through the user manager beside Game Mode:
@@ -46,19 +46,18 @@ over 1080p's worth of pixels overflows it. Nothing else in gamescope
 sizes an upload by the output; frames reach SteamVR as Vulkan
 textures, with no size limit.
 
-`flat-texture-clear.patch` makes `vulkan_create_flat_texture` clear the
-texture on the GPU (`vkCmdClearColorImage`, which gamescope already
-loads for its ReShade path) instead of filling it from the buffer. A
-new `CVulkanCmdBuffer::clearImage` does the clear with the same
-barrier and dirty bookkeeping as `copyBufferToImage`. Twenty-six
-lines, no behaviour change for sizes that fit.
+The fix makes `vulkan_create_flat_texture` clear the texture on the
+GPU (`vkCmdClearColorImage`, which gamescope already loads for its
+ReShade path) instead of filling it from the buffer. The kit carried
+it as a patch to 3.16.30; upstream took it as `2fbaae9b`, and
+gamescope 3.17.0 has it. SteamOS still ships 3.16.30 (0.5.11 beta), so
+the package builds 3.17.0 as it is.
 
 ## The package
 
-`cjf install gamescope-panel` builds gamescope 3.16.30 from the kit's
-PKGBUILD (`src/curiousj_framekit/data/pkgbuilds/gamescope-panel/`), the
-same release as the host's package and, by its option set, the same
-source: the tag's commit from GitHub, the seven submodules it records
+`cjf install gamescope-panel` builds gamescope 3.17.0 from the kit's
+PKGBUILD (`src/curiousj_framekit/data/pkgbuilds/gamescope-panel/`), one
+release ahead of the host's package: the tag's commit from GitHub, the seven submodules it records
 (wlroots, libliftoff, vkroots, openvr, libdisplay-info, reshade,
 SPIRV-Headers) as git sources pinned to those commits, glm and stb
 fetched by meson at the revisions gamescope's wrap files pin. Every

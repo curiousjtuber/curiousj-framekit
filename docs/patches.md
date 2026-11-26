@@ -71,12 +71,9 @@ pre-release, so the bump to 26.12 drops them together.
 
 ### gamescope
 
-| Patch | Applied by | Kind | Upstream |
-|---|---|---|---|
-| `pkgbuilds/gamescope-panel/flat-texture-clear.patch` | `gamescope-panel` package, gamescope 3.16.30 | ours, upstream since | `2fbaae9b` (2026-10-23), in 3.17.0; 3.16.31 lacks it |
-
-The package follows the host's gamescope release, so the patch goes
-when SteamOS ships 3.17.
+None now. `flat-texture-clear.patch`, ours, went upstream as
+`2fbaae9b` (2026-10-23) and is in 3.17.0, which the `gamescope-panel`
+package builds since 2026-11-26; 3.16.31 lacks it.
 
 ### libfuse 2
 

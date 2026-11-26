@@ -17,7 +17,7 @@ is Arch Linux ARM.
 | `krdc` | download.kde.org's and pub.freerdp.com's release tarballs, LibVNCServer's GitHub tag archive and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
 | `fuse2` | libfuse's GitHub release tarball, your review of the PKGBUILD | the BLAKE2 sums in the PKGBUILD, by makepkg |
 | `krdpserver` | download.kde.org's release tarballs and qtkeychain's GitHub repository, your review of the PKGBUILD and the patches | the BLAKE2 sums in the PKGBUILD, by makepkg; qtkeychain by the commit pinned there |
-| `gamescope-panel` | the gamescope, wlroots, openvr and other git repositories on GitHub and freedesktop.org, your review of the PKGBUILD and the patch | every git source pinned to a commit in the PKGBUILD, glm and stb to the revisions in gamescope's wrap files; the patch's BLAKE2 sum, by makepkg |
+| `gamescope-panel` | the gamescope, wlroots, openvr and other git repositories on GitHub and freedesktop.org, your review of the PKGBUILD | every git source pinned to a commit in the PKGBUILD, glm and stb to the revisions in gamescope's wrap files |
 | `xwayland-satellite` | xwayland-satellite's GitHub repository and crates.io, your review of the PKGBUILD | the git source pinned to a commit in the PKGBUILD; every crate by the checksum in Cargo.lock, by cargo --locked |
 | `wayvr` | WayVR's GitHub repository, crates.io and the git repositories its Cargo.lock names, your review of the PKGBUILD and the patches | the git source pinned to a commit in the PKGBUILD; every crate by the checksum or commit in Cargo.lock, by cargo --locked; the patches' BLAKE2 sums, by makepkg |
 

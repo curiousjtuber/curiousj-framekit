@@ -186,7 +186,7 @@ overlay: KRDC at 3840x1080 shows a PC's two monitors pixel for pixel.
 `stop`, `status` and `log` are the rest, and `cjf panel desktop --size
 WxH` runs SteamOS's own Desktop Mode in one, with a screen of that
 size in place of its 1280x800. It runs the gamescope that `cjf install
-gamescope-panel` builds, the host's release with one patch.
+gamescope-panel` builds, 3.17.0, one release ahead of the host's.
 [panel.md](panel.md) has the why and the limits.
 
 ## Full Keyboard

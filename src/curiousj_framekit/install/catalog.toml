@@ -64,8 +64,8 @@ kind = "pacman-home"
 description = "gamescope built here for ~/.local, its VR backend starting at any size: cjf panel runs an app in a SteamVR panel of its own (about ten minutes)"
 package = "gamescope-panel"
 pkgbuild = "gamescope-panel"
-trust_root = "the gamescope, wlroots, openvr and other git repositories on GitHub and freedesktop.org, your review of the PKGBUILD and the patch"
-trust_checks = "every git source pinned to a commit in the PKGBUILD, glm and stb to the revisions in gamescope's wrap files; the patch's BLAKE2 sum, by makepkg"
+trust_root = "the gamescope, wlroots, openvr and other git repositories on GitHub and freedesktop.org, your review of the PKGBUILD"
+trust_checks = "every git source pinned to a commit in the PKGBUILD, glm and stb to the revisions in gamescope's wrap files"
 
 [item.xwayland-satellite]
 kind = "pacman-home"

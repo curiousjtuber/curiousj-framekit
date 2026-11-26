@@ -5,8 +5,8 @@ app's screen is set to. A panel is a second gamescope on SteamVR's
 overlay interface with one app inside and a screen of the size you
 give: a remote desktop of two 1920x1080 monitors at 3840x1080, pixel
 for pixel. It is the kit's build of gamescope (`cjf install
-gamescope-panel`), whose one patch lets the VR backend start above
-1080p; the host's aborts there.
+gamescope-panel`), 3.17.0, whose VR backend starts above 1080p; the
+host's 3.16.30 aborts there.
 
     cjf panel start [--size WxH] [--width METRES] [--name NAME] [--fullscreen] [--wayland] [--env VAR=VALUE]... [--] COMMAND [ARGS...]
     cjf panel desktop [--size WxH] [--width METRES] [--name NAME]
