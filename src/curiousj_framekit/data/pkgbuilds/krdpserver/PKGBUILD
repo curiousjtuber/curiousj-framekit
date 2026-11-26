@@ -3,37 +3,35 @@
 # until 2026-11-14: minutes against the host's libraries, where the
 # flatpak downloaded KDE's SDK and built for half an hour.
 #
-# krdp 6.4.5, not the Plasma the host runs, because it is the newest release whose minimums both SteamOS
-# branches meet: stable (0.5.6) has Qt 6.8 and KDE Frameworks 6.14,
-# the beta (0.5.7) Qt 6.10 and Frameworks 6.23, and 6.4.5 asks for
-# exactly Qt 6.8 and KF 6.14 (6.5 wants Qt 6.9). krdp links kpipewire,
-# never KWin, so it needs no match with the Plasma around it; what it
-# asks the compositor for, screencast protocol 3 and fake-input 4,
-# both branches' KWins offer. 6.4.5 authenticates with NLA against a
-# SAM file of its users as it is, so krdp 6.8's NLA commits aren't
-# needed; krdp-ext-security.patch is the one line of them that applies
-# here, upstream's fix for FreeRDP 3.32
-# turning extended security on by default: nothing on the host's
-# older FreeRDP, ready for the update that brings 3.32. One thing 6.4.5
-# gets wrong that later releases don't: with --plasma and no
-# --monitor it never asks KWin for a stream, so a client sees an empty
-# screen; krdp-plasma-stream.patch is upstream's 6.5 fix for that.
+# krdp 6.6.7, the last release of the Plasma the SteamOS beta runs
+# (0.5.11 has Plasma 6.6.2, Qt 6.10 and KDE Frameworks 6.23): 6.6.7
+# asks for Qt 6.10 and Frameworks 6.22, which the beta meets and
+# SteamOS stable, when 0.5.6 with Qt 6.8 and Frameworks 6.14, did not;
+# this package is for the beta. krdp links kpipewire, never KWin, so
+# it needs no match with the Plasma around it; krdp 6.8 is still out,
+# asking KWin for a screencast protocol version only KWin 6.7 has.
+# 6.6.7 offers a client TLS security only, no NLA, and checks the name
+# and password itself once the client is connected; NLA against a SAM
+# file is krdp 6.8's, and 6.4.5 had NLA of its own.
+# krdp-ext-security.patch is one line of 6.8's fix for FreeRDP 3.32
+# turning extended security on by default: nothing on the host's older
+# FreeRDP, ready for the update that brings 3.32. One thing 6.6.7 gets
+# wrong: with --plasma and no --monitor it never asks KWin for a
+# stream, so a client sees an empty screen; krdp-plasma-stream.patch
+# is upstream's fix for that, which the 6.6 releases don't have.
 #
 # The host has FreeRDP 3 with its server library, kpipewire, PAM,
 # PipeWire, libva, ffmpeg and the Frameworks, all with headers. The
 # build still carries three things. extra-cmake-modules goes in a
 # staging directory, for configuring only. kpipewire is built again,
-# with kpipewire-cursor-bitmap-size.patch: the host's copies the cursor bitmap with stride * height
-# * 4 bytes and segfaults on the 256 px cursor gamescope sets; the fix
-# is upstream since 2026-10-13 but in no SteamOS yet. Its H.264
-# encoders, which krdp's video goes through, name ffmpeg's profile
-# constants as ffmpeg 8 no longer spells them, which
-# kpipewire-ffmpeg-profiles.patch renames. qtkeychain, which krdp
+# unpatched, at krdp's version: the host's 6.6.2 copies the cursor
+# bitmap with stride * height * 4 bytes and segfaults on the 256 px
+# cursor gamescope sets, which 6.6.7 has fixed. qtkeychain, which krdp
 # requires, is built at the commit the krdc package pins.
 #
 # Everything goes under ~/.local/lib/krdpserver, a prefix of its own,
 # with that prefix's lib in the RUNPATH of everything built, so the
-# patched libKPipeWire loads rather than the host's. KWin grants an
+# libKPipeWire built here loads rather than the host's. KWin grants an
 # unsandboxed client the screencast and fake-input interfaces when a
 # desktop file lists them in X-KDE-Wayland-Interfaces and its Exec is
 # the client's binary, so krdp's own desktop file goes to
@@ -56,9 +54,9 @@
 # what tells pacman-home the install is outdated.
 
 pkgname=krdpserver
-pkgver=6.4.5
-pkgrel=3
-pkgdesc="KRdp's server, built for ~/.local on the Steam Frame host with a patched kpipewire of its own"
+pkgver=6.6.7
+pkgrel=1
+pkgdesc="KRdp's server, built for ~/.local on the Steam Frame host with a kpipewire of its own"
 arch=('aarch64' 'x86_64')
 url='https://invent.kde.org/plasma/krdp'
 license=(GPL-2.0-or-later LGPL-2.1-or-later)
@@ -70,6 +68,7 @@ depends=(
   kcoreaddons
   kcrash
   kdbusaddons
+  kguiaddons
   ki18n
   kstatusnotifieritem
   libdrm
@@ -86,7 +85,7 @@ depends=(
 # aren't listed; cjf installed's ldd over the binary covers the library.
 makedepends=(cmake gettext git ninja plasma-wayland-protocols qt6-tools)
 options=(!debug !lto)
-_ecm=6.20.0
+_ecm=6.23.0
 _qtkeychain=0.17.0
 # The commit tag 0.17.0 pointed at on 2026-11-03.
 _qtkeychain_commit=875f77d9f61bd97fd84cca47ce3bc71186dfbd09
@@ -95,23 +94,19 @@ source=(
   https://download.kde.org/stable/plasma/${pkgver}/kpipewire-${pkgver}.tar.xz
   https://download.kde.org/stable/frameworks/${_ecm%.*}/extra-cmake-modules-${_ecm}.tar.xz
   qtkeychain::git+https://github.com/frankosterfeld/qtkeychain.git#commit=${_qtkeychain_commit}
-  kpipewire-cursor-bitmap-size.patch
-  kpipewire-ffmpeg-profiles.patch
   krdp-ext-security.patch
   krdp-plasma-stream.patch
 )
 # The tarballs as checked against their signatures: krdp's and
-# kpipewire's by Bhushan Shah's Plasma release key, on 2026-11-07;
+# kpipewire's by Bhushan Shah's Plasma release key,
 # extra-cmake-modules' by Nicolas Fella's KDE Frameworks key, on
-# 2026-11-03.
-b2sums=('e1becc6ebcc4ffa5b4ab4febcaacfd83c47344e99bb2d85d3aa9dcf233dcc8b9f95c038c17cc212fc84583cc7376dbad5232c4a669a1061f1af221642a74daf2'
-        '70e4346ed351789b1561376d72551195381348d04113ed993c0e43389c02fc72120612bd14be1ad47bbb99362fc7a10cefbdef49e38a63752517c4ddbaa9d14b'
-        '1e6cb0037a70bc3d40e29eff5b074808c317a113e0c634a6c196ce5a0558c5dcc0ef71f512ce469be3098cea596507795aeed63580c9488266224b7898845f48'
+# 2026-11-26.
+b2sums=('afdb221d0da74edf645cd2e4fa71667f139ec8c10968cca6c26fbec3df260d891dd344dc70f7d0cdf816c184a429c314f23c598094b289a21b91808d5c581a09'
+        '6312d261a5c6533896ce1cb6575d8513f72fd3ac2d93cae4520432964fa6ea0b325d8799bcb01b364604bc032f9740d1147ba18fd673f9a0de43bcd5060d9391'
+        '21fe83d5c7ef94593ced840bffe870f783f051c91c5c082dfb9cbadf243db6f9087cfb9630e8e57d0a9ef3d9558580cead33a73ed4945177f8121317c6a96572'
         'SKIP'
-        '721d8b0f6fc3ef1223ac27887184d9831937a1ed43a6003836eb1dbb86af814f82b58657a3a1cd89bf5395fc4a7b92a03aa121672cc79371d214d26872a530dd'
-        'e853815907683ce99b8d0a3cd58a57754d1abd6a4e17e0bf3a71e650d104f42554b28eaa4ba441213d9c6f7f98b6ba2360703e4109d234e033ee8b508066b13b'
-        '765a949387f194bee810a56a5c42bea8a22f2f97747199b585f2c7dec11db2d135923186990291158b6e53f4246835b351ded1061fb50634ea249fe3e9517198'
-        'b36e242b8cec7ceebcb0fa384dc0f10dba9383cc3f3d79f817d8ca6b7f20acf600f901e15c4c7594ef3fdc98219908286ee02f11308a8c80161684b8a9fef0ca')
+        'e2ea891ad5faaa68c78404c3f6add0a8dc9cf855d7eff02103aa5b2dc6213993e2914d2c2f2ea0cbcb67ccb53da2719d35d1d29ffc630ba333ea1e161ffda95c'
+        'cf7aa6a6d781ca6659e92bb02d4e9db6ee47114ceb9c9dfb7386bdde7d87e64285e5b4ea37f1d0413bb5e7e8823fe4f7de698617cfbdba716a7a3b37a0f334b9')
 
 _prefix=$HOME/.local
 _home=$_prefix/lib/krdpserver
@@ -121,10 +116,7 @@ prepare() {
   # directory configured from another version's source, which cmake
   # refuses, and staged copies of that version's libraries.
   rm -rf build-ecm build-kpipewire build-qtkeychain build-krdp ecm stage
-  cd kpipewire-${pkgver}
-  patch -p1 --forward < "$srcdir/kpipewire-cursor-bitmap-size.patch"
-  patch -p1 --forward < "$srcdir/kpipewire-ffmpeg-profiles.patch"
-  cd ../krdp-${pkgver}
+  cd krdp-${pkgver}
   patch -p1 --forward < "$srcdir/krdp-ext-security.patch"
   patch -p1 --forward < "$srcdir/krdp-plasma-stream.patch"
 }
@@ -151,7 +143,7 @@ build() {
     -DBUILD_TESTING=OFF -DBUILD_HTML_DOCS=OFF -DBUILD_MAN_DOCS=OFF -DBUILD_QTHELP_DOCS=OFF
   cmake --install build-ecm
 
-  # kpipewire with the cursor fix, for the package; krdp configures
+  # kpipewire, which has the cursor fix, for the package; krdp configures
   # against a staged copy, whose cmake files resolve to the stage.
   cmake -S kpipewire-${pkgver} -B build-kpipewire -G Ninja \
     "${_kde_opts[@]}" \

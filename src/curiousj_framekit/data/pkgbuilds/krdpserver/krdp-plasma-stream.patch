@@ -1,22 +1,22 @@
-krdp 6.4.5: the Plasma session asks KWin for a stream again, upstream's
-"Fix plasma screencast option" (429f584c, 2026-03-31, in 6.5 and later)
-rebased onto v6.4.5 with the hunks' offsets taken up, plus the server
-side of it, which upstream changed on its own: SessionController hands
-the session a monitor index only when --monitor gave one. In 6.4.5 the
-server hands each session the --monitor index, -1 when none was given,
-and PlasmaScreencastV1Session::start() creates its workspace stream
-only when that index is zero: with no --monitor it requests nothing,
-and the client connects to an empty screen (nothing in the log past
-"Video stream initialized" but two "QObject::connect(...): invalid
-nullptr parameter"). The fix keeps the index optional, streams the
-named monitor when there is one and the whole workspace otherwise,
-which is what the flatpak's 6.7.5 does. With the session's half alone
-the -1 reaches screens().at(-1) and the server segfaults in
-QScreen::handle() as the client connects.
+krdp 6.6.7: the Plasma session asks KWin for a stream again, upstream's
+"Fix plasma screencast option" (429f584c, 2026-03-31, which the 6.6
+releases don't have) rebased onto v6.6.7, plus the server side of it,
+which upstream changed on its own: SessionController hands the session
+a monitor index only when --monitor gave one. In 6.6.7 the server
+hands each session the --monitor index, -1 when none was given, and
+PlasmaScreencastV1Session::start() creates its workspace stream only
+when that index is zero: with no --monitor it requests nothing, and
+the client connects to an empty screen (nothing in the log past "Video
+stream initialized" but two "QObject::connect(...): invalid nullptr
+parameter"). The fix keeps the index optional, streams the named
+monitor when there is one and the whole workspace otherwise. With the
+session's half alone the -1 reaches screens().at(-1) and the server
+segfaults in QScreen::handle() as the client connects.
 
+diff --color -u -r a/server/SessionController.cpp b/server/SessionController.cpp
 --- a/server/SessionController.cpp
 +++ b/server/SessionController.cpp
-@@ -122,8 +122,8 @@
+@@ -133,8 +133,8 @@
      auto wrapper = std::make_unique<SessionWrapper>(newConnection, makeSession(), m_sni);
      if (m_virtualMonitor) {
          wrapper->session->setVirtualMonitor(*m_virtualMonitor);
@@ -27,6 +27,7 @@ QScreen::handle() as the client connects.
      }
      wrapper->session->setVideoQuality(m_quality.value());
  
+diff --color -u -r a/src/AbstractSession.cpp b/src/AbstractSession.cpp
 --- a/src/AbstractSession.cpp
 +++ b/src/AbstractSession.cpp
 @@ -44,9 +44,9 @@
@@ -41,9 +42,10 @@ QScreen::handle() as the client connects.
  }
  
  std::optional<VirtualMonitor> AbstractSession::virtualMonitor() const
+diff --color -u -r a/src/AbstractSession.h b/src/AbstractSession.h
 --- a/src/AbstractSession.h
 +++ b/src/AbstractSession.h
-@@ -74,7 +74,7 @@
+@@ -88,7 +88,7 @@
      QSize size() const;
      QSize logicalSize() const;
      std::optional<VirtualMonitor> virtualMonitor() const;
@@ -52,6 +54,7 @@ QScreen::handle() as the client connects.
  
      void setStarted(bool started);
      void setSize(QSize size);
+diff --color -u -r a/src/PlasmaScreencastV1Session.cpp b/src/PlasmaScreencastV1Session.cpp
 --- a/src/PlasmaScreencastV1Session.cpp
 +++ b/src/PlasmaScreencastV1Session.cpp
 @@ -174,7 +174,14 @@
@@ -70,9 +73,10 @@ QScreen::handle() as the client connects.
          d->request = d->m_screencasting.createWorkspaceStream(Screencasting::Metadata);
      }
      connect(d->request, &ScreencastingStream::failed, this, &PlasmaScreencastV1Session::error);
+diff --color -u -r a/src/PortalSession.cpp b/src/PortalSession.cpp
 --- a/src/PortalSession.cpp
 +++ b/src/PortalSession.cpp
-@@ -231,7 +231,7 @@
+@@ -274,7 +274,7 @@
          parameters = {{QStringLiteral("types"), 4u}}; // VIRTUAL
      } else {
          parameters = {{QStringLiteral("types"), 1u}, // MONITOR
@@ -81,7 +85,7 @@ QScreen::handle() as the client connects.
      }
  
      new PortalRequest(d->screencastInterface->SelectSources(d->sessionPath, parameters), this, &PortalSession::onSourcesSelected);
-@@ -281,11 +281,13 @@
+@@ -324,11 +324,13 @@
          if (reply.isValid()) {
              qCDebug(KRDP) << "Started Freedesktop Portal session";
  
@@ -95,5 +99,5 @@ QScreen::handle() as the client connects.
 -            auto stream = streams.at(activeStream() >= 0 ? activeStream() : 0);
 +            auto stream = streams.at(streamIndex);
  
-             setLogicalSize(qdbus_cast<QSize>(stream.map.value(u"size"_qs)));
+             setLogicalSize(qdbus_cast<QSize>(stream.map.value(u"size"_s)));
              auto fd = reply.value();

@@ -28,7 +28,7 @@ automatically.
            `--generate` makes a new random one (restart after).
 --address  default 0.0.0.0, every address: the Frame's firewall already
            lets the LAN at every port above 1024, and RDP brings its
-           own TLS and login (NLA). Give the tailnet address to keep it
+           own TLS and login. Give the tailnet address to keep it
            off the LAN.
 
 status --keys prints key=value lines, for the GUI. gui opens the KRdp

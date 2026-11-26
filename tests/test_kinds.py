@@ -103,11 +103,10 @@ class KrdpserverPackage(unittest.TestCase):
         directory = pkg.pkgbuilds_dir() / item["pkgbuild"]
         name, ver, rel, deps = pkg.pkgbuild_info(directory)
         self.assertEqual(name, "krdpserver")
-        self.assertEqual(ver, "6.4.5")
+        self.assertEqual(ver, "6.6.7")
         self.assertIn("freerdp", deps)
         self.assertEqual(sorted(p.name for p in directory.glob("*.patch")),
-                         ["kpipewire-cursor-bitmap-size.patch", "kpipewire-ffmpeg-profiles.patch",
-                          "krdp-ext-security.patch", "krdp-plasma-stream.patch"])
+                         ["krdp-ext-security.patch", "krdp-plasma-stream.patch"])
         self.assertFalse(any(p.is_symlink() for p in directory.glob("*.patch")))
 
 

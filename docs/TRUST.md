@@ -89,12 +89,12 @@ database's checksum alone.
 
 ## KRdp's server
 
-`cjf install krdpserver` builds krdp 6.4.5 from the kit's PKGBUILD,
+`cjf install krdpserver` builds krdp 6.6.7 from the kit's PKGBUILD,
 `src/curiousj_framekit/data/pkgbuilds/krdpserver/`, the same tier as
 KRDC below: the krdp, kpipewire and extra-cmake-modules tarballs come
 from download.kde.org with their BLAKE2 sums in the PKGBUILD, recorded
 after a check against the Plasma and Frameworks release signatures;
-qtkeychain is a git source pinned to a commit; the four patches are
+qtkeychain is a git source pinned to a commit; the two patches are
 in this repo with their sums. It links the host's FreeRDP and
 Frameworks and installs under `~/.local` through `pacman-home -U`,
 unsandboxed, as a distribution's krdp would be; KWin grants it the

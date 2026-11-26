@@ -134,7 +134,7 @@ rest; nothing starts by itself.
   certificate there is what clients accept once.
 - **The network.** The Frame's firewall already allows every port
   above 1024 on the LAN ([Firewall](tailscale.md#firewall)), and RDP
-  brings its own TLS and login (NLA); `--address` with the tailnet
+  brings its own TLS and login; `--address` with the tailnet
   address keeps it off the LAN.
 - **Over RDP,** Frametop's screens you aren't looking at draw slowly,
   since only Frametop Remote Access asks ft-screens for full rate.
@@ -145,15 +145,19 @@ rest; nothing starts by itself.
   after the window closes. It is GTK 4 and libadwaita through Python,
   all in SteamOS's image; run it on the host, from either desktop.
 
-The package is krdp 6.4.5, built on the Frame against the host's own
+The package is krdp 6.6.7, built on the Frame against the host's own
 FreeRDP, Frameworks and Qt in a few minutes, under
 `~/.local/lib/krdpserver`. Its PKGBUILD
 (`src/curiousj_framekit/data/pkgbuilds/krdpserver/`) says why that
-release, the newest whose minimums both the stable and the beta
-SteamOS meet, and what it carries: a kpipewire of its own with a
-cursor fix and ffmpeg 8's spelling of the H.264 profiles, qtkeychain,
-and one line of krdp 6.8's FreeRDP 3.32 fix
-([patches.md](patches.md)).
+release, the last of the Plasma the SteamOS beta runs, and what it
+carries: a kpipewire of its own, 6.6.7 for its cursor fix, qtkeychain,
+and two patches to krdp ([patches.md](patches.md)).
+
+- **SteamOS beta only.** 6.6.7 needs Qt 6.10 and Frameworks 6.22,
+  which 0.5.11 beta has.
+- **TLS, not NLA.** 6.6.7 offers clients TLS security and checks the
+  name and password itself once they connect; NLA comes back with
+  krdp 6.8.
 
 - **No permission bypass.** It is unsandboxed, so KWin grants it the
   capture through the desktop file the package puts in
@@ -162,7 +166,7 @@ and one line of krdp 6.8's FreeRDP 3.32 fix
   installed` shows it and `cjf update` rebuilds it, as with KRDC.
 - **krdp 6.8 has to wait** for a SteamOS with KWin 6.7 or later: it
   needs a newer screencast protocol than the Frame's KWin speaks
-  (0.5.7 beta's 6.6.2 is one version short), so it streams nothing on
+  (0.5.11 beta's 6.6.2 is one version short), so it streams nothing on
   the Frame.
 - **The old Flatpak.** Until 2026-11-14 the kit built the server as a
   Flatpak, `io.github.curiousjtuber.Krdp`. If it is still installed,

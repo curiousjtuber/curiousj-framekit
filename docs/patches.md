@@ -22,7 +22,11 @@ at the next version bump:
 ## Being sent upstream
 
 In the order they depend on each other. One has been through already:
-KPipeWire's cursor bitmap size, merged in October (its row is below).
+KPipeWire's cursor bitmap size, sent as
+[!285](https://invent.kde.org/plasma/kpipewire/-/merge_requests/285)
+and merged 2026-10-13 as `d5dbf359`: in 6.8.1, 6.7.6 and 6.6.7, the
+last being what the `krdpserver` package builds, so the kit no longer
+carries the patch.
 
 | Patch | To | State |
 |---|---|---|
@@ -43,15 +47,8 @@ Flatpak and its two patches left the kit on 2026-11-14.
 |---|---|---|---|
 | `pc/krdpserver-embed-cursor/krdp-pointer-cache-check.patch` | the PC's `krdp-embed-cursor.sh`, on the host's Plasma release | ours, not upstream | being sent, see above |
 | `pc/krdpserver-embed-cursor/krdp-embed-cursor.patch` | the same script, after the check | ours, not upstream | to send next |
-| `pkgbuilds/krdpserver/krdp-ext-security.patch` | `krdpserver` package, krdp 6.4.5 | backport | one line of `f868133` (Plasma/6.8 as `31824f9`); in 6.8 |
-| `pkgbuilds/krdpserver/krdp-plasma-stream.patch` | `krdpserver` package | backport, rebased | `429f584c`, in 6.5 and later, with the server side upstream changed separately |
-
-### KPipeWire
-
-| Patch | Applied by | Kind | Upstream |
-|---|---|---|---|
-| `pkgbuilds/krdpserver/kpipewire-cursor-bitmap-size.patch` | `krdpserver` package, kpipewire 6.4.5 | ours, upstream since | sent as [!285](https://invent.kde.org/plasma/kpipewire/-/merge_requests/285), merged 2026-10-13 as `d5dbf359` and picked to the stable branches: in 6.8.1, 6.7.6 and 6.6.7. 6.4 gets no more releases, so the package keeps it |
-| `pkgbuilds/krdpserver/kpipewire-ffmpeg-profiles.patch` | `krdpserver` package, kpipewire 6.4.5 | ours, upstream since | 6.5 builds with ffmpeg 8 through fallback defines; this is the rename alone |
+| `pkgbuilds/krdpserver/krdp-ext-security.patch` | `krdpserver` package, krdp 6.6.7 | backport | one line of `f868133` (Plasma/6.8 as `31824f9`); in 6.8 |
+| `pkgbuilds/krdpserver/krdp-plasma-stream.patch` | `krdpserver` package | backport, rebased | `429f584c`, not in the 6.6 releases, with the server side upstream changed separately |
 
 ### KRDC (the RDP and VNC client)
 
