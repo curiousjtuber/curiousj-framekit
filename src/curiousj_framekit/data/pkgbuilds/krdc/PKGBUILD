@@ -79,7 +79,7 @@
 
 pkgname=krdc
 pkgver=26.08.3
-pkgrel=6
+pkgrel=7
 pkgdesc='KRDC, RDP and VNC, with the "Remote pointer" option, built for ~/.local on the Steam Frame host'
 arch=('aarch64' 'x86_64')
 url='https://apps.kde.org/krdc'
@@ -136,9 +136,9 @@ options=(!debug !lto)
 _freerdp=3.33.1
 _libvncserver=0.9.15
 _ecm=6.20.0
-_qtkeychain=0.17.0
-# The commit tag 0.17.0 pointed at on 2026-11-03.
-_qtkeychain_commit=875f77d9f61bd97fd84cca47ce3bc71186dfbd09
+_qtkeychain=0.18.0
+# The commit tag 0.18.0 pointed at on 2026-11-26.
+_qtkeychain_commit=e86bc3cbb50b172be61ed857803a372412b6ad85
 source=(
   https://download.kde.org/stable/release-service/${pkgver}/src/krdc-${pkgver}.tar.xz
   https://pub.freerdp.com/releases/freerdp-${_freerdp}.tar.xz

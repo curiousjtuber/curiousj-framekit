@@ -55,7 +55,7 @@
 
 pkgname=krdpserver
 pkgver=6.6.7
-pkgrel=1
+pkgrel=2
 pkgdesc="KRdp's server, built for ~/.local on the Steam Frame host with a kpipewire of its own"
 arch=('aarch64' 'x86_64')
 url='https://invent.kde.org/plasma/krdp'
@@ -86,9 +86,9 @@ depends=(
 makedepends=(cmake gettext git ninja plasma-wayland-protocols qt6-tools)
 options=(!debug !lto)
 _ecm=6.23.0
-_qtkeychain=0.17.0
-# The commit tag 0.17.0 pointed at on 2026-11-03.
-_qtkeychain_commit=875f77d9f61bd97fd84cca47ce3bc71186dfbd09
+_qtkeychain=0.18.0
+# The commit tag 0.18.0 pointed at on 2026-11-26.
+_qtkeychain_commit=e86bc3cbb50b172be61ed857803a372412b6ad85
 source=(
   https://download.kde.org/stable/plasma/${pkgver}/krdp-${pkgver}.tar.xz
   https://download.kde.org/stable/plasma/${pkgver}/kpipewire-${pkgver}.tar.xz
