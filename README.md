@@ -45,7 +45,7 @@ release, run it once, then update.
 | `cjf installed [--trust]` | every catalog item's state, without the network; `--trust` adds the root of trust and what is checked ([docs/TRUST.md](docs/TRUST.md)) |
 | `cjf outdated [NAME...]` | every installed item, and the kit, against its upstream: current, outdated, behind (upstream moved past what the kit pins, so the fix is a bump here), or no way to tell |
 | `cjf update [NAME...]` | install what `outdated` finds newer, asked once; `cjf --check update` only lists |
-| `cjf uninstall NAME` | remove one item, or print the steps |
+| `cjf uninstall NAME` | remove one item, or print the steps; refused while an installed item needs it |
 | `cjf init` | the base, again: it changes only what differs |
 | `cjf init --remove` | the base taken out again, before uninstalling the kit |
 | `cjf cursor size\|theme\|apply\|software` | the mouse cursor in Desktop Mode and Frametop's desktop: its size and theme, and Desktop Mode's software cursor ([docs/cursor.md](docs/cursor.md)) |

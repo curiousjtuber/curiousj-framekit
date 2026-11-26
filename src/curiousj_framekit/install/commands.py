@@ -7,6 +7,8 @@ items: host packages, Tailscale's service, and the cursor fix.
     cjf installed [--trust]           every item's state; --trust adds the
                                       root of trust and what is checked
     cjf uninstall NAME                remove one item, or print the steps
+                                      (refused while an installed item
+                                      needs it)
 
 An installed item is updated by installing it again, as every script
 did on a re-run; `cjf outdated` says which have something newer, and
@@ -146,10 +148,14 @@ def uninstall(opts: Options, name: str) -> int:
     if name not in items:
         raise Error(f"no catalog item named {name}; cjf installed lists them")
     item = items[name]
+    # An item another installed one needs stays: the catalog is the only
+    # place that relation is written (a kit PKGBUILD can't put a home
+    # package in depends), so pacman-home would not object.
     dependants = [n for n, it in items.items() if name in it.needs
                   and catalog.status_of(it, opts).state != State.MISSING]
     if dependants:
-        cmdline.note(f"{', '.join(dependants)} need{'s' if len(dependants) == 1 else ''} {name}")
+        raise Error(f"{', '.join(dependants)} need{'s' if len(dependants) == 1 else ''} {name}: "
+                    f"cjf uninstall {' '.join(dependants)} first")
     changed = kinds.for_item(item).uninstall(item, opts)
     if opts.check:
         print("run without --check to apply" if changed else "nothing to change")

@@ -81,3 +81,31 @@ class Commands(unittest.TestCase):
         lines = commands.state_lines(items, {"a": Status(State.OK, "1.0")}, trust=True)
         self.assertEqual(lines[0].splitlines()[0], "ok        a  the a thing [1.0]")
         self.assertIn("trust: r; checks: c", lines[0])
+
+
+class Uninstall(unittest.TestCase):
+    """An item that an installed item needs is not removed: wayvr needs
+    xwayland-satellite, and only the catalog says so."""
+
+    def run_uninstall(self, state: State):
+        from click.testing import CliRunner
+        from curiousj_framekit import cli, where
+        from curiousj_framekit.install import commands
+        kind = mock.Mock()
+        kind.uninstall.return_value = True
+        with mock.patch.object(where, "require_frame"), \
+                mock.patch.object(catalog, "status_of", return_value=Status(state)), \
+                mock.patch.object(commands.kinds, "for_item", return_value=kind):
+            result = CliRunner().invoke(cli.cli, ["uninstall", "xwayland-satellite"])
+        return result, kind
+
+    def test_refused_while_a_dependant_is_installed(self):
+        result, kind = self.run_uninstall(State.OK)
+        self.assertNotEqual(result.exit_code, 0)
+        self.assertIn("wayvr needs xwayland-satellite: cjf uninstall wayvr first", result.output + str(result.exception))
+        kind.uninstall.assert_not_called()
+
+    def test_removed_when_no_dependant_is_installed(self):
+        result, kind = self.run_uninstall(State.MISSING)
+        self.assertEqual(result.exit_code, 0, result.output)
+        kind.uninstall.assert_called_once()
