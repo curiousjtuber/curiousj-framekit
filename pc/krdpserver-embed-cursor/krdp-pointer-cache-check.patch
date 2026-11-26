@@ -11,7 +11,7 @@ Activate, where the client's capabilities have been applied.
 
 This is the commit proposed to upstream KRdp (branch
 pointer-cache-check of curiousj/krdp on invent.kde.org, made against
-master), unchanged; it applies to krdp 6.8.2 as it is. It goes when
+master), unchanged; it applies to krdp 6.8.3 as it is. It goes when
 the krdp built has it. krdp-embed-cursor.patch applies on top and
 turns the refusal into a pointer painted into the video.
 

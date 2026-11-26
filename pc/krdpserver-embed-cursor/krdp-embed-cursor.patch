@@ -21,7 +21,8 @@ passed before the wrapper exists, so the wrapper both connects to
 stateChanged and checks the state at once. The off path is upstream's
 exactly: a false argument, two if (false) tests, and the unchanged mode
 values. KRDC asks for this with its "Remote pointer" host option (krdc-
-embed-cursor/ in this repository). Made against krdp 6.8.2.
+embed-cursor/ in this repository). Made against krdp 6.8.2; applies
+to 6.8.3 as it is.
 server/krdpserversettings.kcfg is a symlink to the kcm's.
 
 diff --git a/server/SessionController.cpp b/server/SessionController.cpp
